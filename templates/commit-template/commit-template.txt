@@ -1,0 +1,14 @@
+<id>: <imperative summary>
+# Subject line: present tense, imperative, under ~72 chars.
+
+# Why this change, and what it does. Prose, wrapped at about 72 columns.
+# Keep it directly relevant to the work done: no waffle, no filler, no
+# unnecessary detail. Clearly explain the intent behind the change.
+
+# Acceptance criteria satisfied by this commit (delete if none):
+# - <criterion>
+
+Type: <Feature|Tweak|Bug fix|Test coverage|Doc|Scaffolding|Refactor>
+# Work-item: repeat the ID so history is greppable. One item may span
+# several commits, each carrying this trailer.
+Work-item: <id>
