@@ -33,16 +33,18 @@ make_item() {
     } > "$FIXTURE/work-items/$queue/$id/index.md"
 }
 
-# Build a fixture spanning all four reported queues.
+# Build a fixture spanning all reported queues, plus done/ for dependencies.
 #   merge-queue: auth-5
-#   todo: auth-1 (ready), auth-2 (dep auth-1 in todo -> blocked), auth-3 (dep
-#         auth-9 not in todo -> ready), search-1 (ready)
+#   done: auth-0 (a merged dependency; done/ is read, not reported)
+#   todo: auth-1 (ready), auth-2 (dep auth-1 only in todo -> blocked), auth-3 (dep
+#         auth-0 in done/ -> ready), search-1 (ready)
 #   in-progress: infra-2
 #   agent-review: search-4, search-5
 make_item merge-queue auth-5
+make_item done auth-0
 make_item todo auth-1
 make_item todo auth-2 auth-1
-make_item todo auth-3 auth-9
+make_item todo auth-3 auth-0
 make_item todo search-1
 make_item in-progress infra-2
 make_item agent-review search-4

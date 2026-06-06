@@ -12,10 +12,12 @@
 //   todo: only the actionable items (dependencies resolved), capped so that
 //         todo + in-progress together never exceed LIMIT items in flight.
 //
-// A todo item is actionable when none of its dependencies are still sitting in
-// todo/: if a dependency is not in todo/ we assume it has already been actioned.
-// The dependency rule looks only at todo/; the other three queues are listed in
-// full. human-review/ and done/ are not driven by pb:next, so are not reported.
+// A todo item is actionable only when every one of its dependencies is in done/
+// (merged): items cannot start until their dependencies are merged. A dependency
+// sitting anywhere else (todo, in-progress, agent-review, human-review,
+// merge-queue) or missing entirely leaves the item blocked. done/ is read only
+// to resolve dependencies; it is not reported. human-review/ is neither driven
+// nor read.
 //
 // The todo cap shares one budget with in-progress: the implementation stage runs
 // at most LIMIT items at once, so todo is trimmed to LIMIT minus however many are
@@ -82,7 +84,7 @@ export async function nextItems(
     const todoBudget = Math.max(0, limit - inProgress.length);
 
     const todoIds = await listQueue(join(workItemsDir, "todo"));
-    const inTodo = new Set(todoIds);
+    const done = new Set(await listQueue(join(workItemsDir, "done")));
 
     const todoReady: string[] = [];
     for (const id of todoIds) {
@@ -100,8 +102,8 @@ export async function nextItems(
             indexMd = "";
         }
         const deps = parseDependsOn(indexMd);
-        // Ready when no dependency is still waiting in todo/.
-        if (deps.every((dep) => !inTodo.has(dep))) {
+        // Ready only when every dependency has been merged (is in done/).
+        if (deps.every((dep) => done.has(dep))) {
             todoReady.push(id);
         }
     }

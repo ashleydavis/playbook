@@ -86,10 +86,11 @@ describe("nextItems()", () => {
         expect(report.todo).toEqual([]);
     });
 
-    test("todo lists only actionable items, sorted", async () => {
+    test("todo lists only actionable items (deps merged), sorted", async () => {
+        await makeItem("done", "merged-9"); // a merged dependency
         await makeItem("todo", "auth-1");
-        await makeItem("todo", "auth-2", ["auth-1"]); // dep still in todo -> blocked
-        await makeItem("todo", "auth-3", ["auth-9"]); // dep not in todo -> ready
+        await makeItem("todo", "auth-2", ["auth-1"]); // dep only in todo -> blocked
+        await makeItem("todo", "auth-3", ["merged-9"]); // dep in done/ -> ready
         await makeItem("todo", "search-1");
 
         expect((await nextItems(workItemsDir)).todo).toEqual([
@@ -99,11 +100,20 @@ describe("nextItems()", () => {
         ]);
     });
 
-    test("a todo item is blocked if any one dependency is still in todo/", async () => {
+    test("a todo item is blocked unless every dependency is in done/", async () => {
+        await makeItem("done", "dep-ok");
         await makeItem("todo", "feat-1");
-        await makeItem("todo", "feat-3", ["feat-1", "gone-9"]);
+        await makeItem("todo", "feat-2", ["dep-ok"]); // only dep is merged -> ready
+        await makeItem("todo", "feat-3", ["dep-ok", "gone-9"]); // gone-9 not merged -> blocked
 
-        expect((await nextItems(workItemsDir)).todo).toEqual(["feat-1"]);
+        expect((await nextItems(workItemsDir)).todo).toEqual(["feat-1", "feat-2"]);
+    });
+
+    test("a dependency in-progress (not yet merged) keeps the dependent blocked", async () => {
+        await makeItem("in-progress", "dep-1");
+        await makeItem("todo", "child-1", ["dep-1"]);
+
+        expect((await nextItems(workItemsDir)).todo).toEqual([]);
     });
 
     test("the limit caps todo but not merge-queue or agent-review", async () => {
