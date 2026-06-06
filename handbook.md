@@ -236,6 +236,10 @@ todo/
       screenshots/
 ```
 
+### Your remotes are your responsibility
+
+Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **not** create GitHub repositories or push anything. Create a remote for each yourself and push periodically (the state repo too, so your queues and `current-state.md` are backed up). Playbook will not do this for you.
+
 ## Skills
 
 Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `pb:help`, `pb:status`, `pb:plan`, `pb:docs`, `pb:add`, `pb:next`, `pb:review`, `pb:debug`, `pb:customize`, and the one-time `pb:bootstrap:new` / `pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind, with the at-a-glance list in the [Skills Reference](#skills-reference); the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.

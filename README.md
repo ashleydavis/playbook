@@ -28,6 +28,8 @@ cd playbook
 
 > **Permissions warning.** The committed `.claude/settings.json` sets `bypassPermissions`, so Claude Code runs with permission prompts **off** wherever the playbook repo is launched, including your own host. Run it inside a sandbox VM (see [Host + VM](handbook.md#host--vm)) so the blast radius is the VM, not your machine.
 
+> **Your remotes are your responsibility.** Bootstrap scaffolds `project/` and `state/` as local git repos only. It does not create GitHub repos or push for you. Create a remote for each (the state repo too) and push periodically; Playbook won't do that for you.
+
 ## Next steps
 
 - [Setup](handbook.md#setup): the detailed setup steps.
