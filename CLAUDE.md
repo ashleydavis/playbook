@@ -28,6 +28,8 @@ When you are inside a project's work or state repo, that repo's `CLAUDE.md` appl
 
 TODO: Should this be in process.md?
 
-- If a project's project and state repos already exist, start with `/pb:status`: read `current-state.md`, summarise what is in flight and blocked, and recommend the next skill (`/pb:next`, `/pb:review`, `/pb:plan`, ...).
-- If the project is not set up yet, run `/pb:bootstrap:new` (greenfield) or `/pb:bootstrap:existing` (existing code) to scaffold the project and state repos, then begin the loop.
+**Your first response in every session must orient the developer before doing anything else.** Check whether `project/` and `state/` exist, then:
+
+- If the project is not set up yet (`project/` and/or `state/` is missing), tell the developer to run `/pb:bootstrap:new` (greenfield) or `/pb:bootstrap:existing` (existing code) to scaffold the project and state repos, then begin the loop.
+- If the project and state repos already exist, run `/pb:status`: read `current-state.md`, summarise what is in flight and blocked, and recommend the next skill (`/pb:next`, `/pb:review`, `/pb:plan`, ...).
 - Move work items only with `bun ../scripts/move.ts <id> <target-queue>`, run from `state/`. Never move queue directories by hand.
