@@ -1,18 +1,36 @@
 #!/usr/bin/env bun
-// List the work items in todo/ that are ready to be actioned.
+// Report the work the pb:next loop should act on, for every queue it drives.
 //
 // Usage (run with the state repo as the current working directory):
 //   bun playbook/scripts/next-items.ts
 //
-// Prints a JSON array of work-item IDs (up to LIMIT), sorted by ID. An item
-// is actionable when none of its dependencies are still sitting in todo/: if a
-// dependency is not in todo/ we assume it has already been actioned. The script
-// only ever reads todo/; it does not look in any other queue.
+// Prints a JSON object keyed by the four queues pb:next drives, each value the
+// list of item IDs to act on in that queue (sorted by ID):
+//
+//   merge-queue, in-progress, agent-review: every item in the queue.
+//   todo: only the actionable items (dependencies resolved), capped at LIMIT.
+//
+// A todo item is actionable when none of its dependencies are still sitting in
+// todo/: if a dependency is not in todo/ we assume it has already been actioned.
+// The dependency rule looks only at todo/; the other three queues are listed in
+// full. human-review/ and done/ are not driven by pb:next, so are not reported.
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-// Most items the loop will pick up in one pass.
+// The queues pb:next drives, in pipeline order. Reported in this key order.
+export const QUEUES = [
+    "merge-queue",
+    "todo",
+    "in-progress",
+    "agent-review",
+] as const;
+
+export type ReportedQueue = (typeof QUEUES)[number];
+
+export type NextItemsReport = Record<ReportedQueue, string[]>;
+
+// Most todo items the loop will pick up in one pass.
 export const LIMIT = 10;
 
 // Pull the dependency IDs out of an index.md's `**Depends on:**` line.
@@ -29,25 +47,38 @@ export function parseDependsOn(indexMd: string): string[] {
         .filter((id) => id.length > 0);
 }
 
-// Core logic: given the todo/ directory, return the IDs ready to action.
-// `todoDir` is the path to the state repo's `work-items/todo/` directory.
-export async function nextItems(
-    todoDir: string,
-    limit: number = LIMIT,
-): Promise<string[]> {
-    const entries = await readdir(todoDir, { withFileTypes: true });
-    const ids = entries
+// List the item directory names in a queue, sorted. Returns [] if the queue
+// directory does not exist.
+async function listQueue(queueDir: string): Promise<string[]> {
+    let entries;
+    try {
+        entries = await readdir(queueDir, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+    return entries
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
         .sort();
+}
 
-    const inTodo = new Set(ids);
+// Core logic: given the work-items/ directory, return the per-queue report.
+// `workItemsDir` is the path to the state repo's `work-items/` directory.
+export async function nextItems(
+    workItemsDir: string,
+    limit: number = LIMIT,
+): Promise<NextItemsReport> {
+    const todoIds = await listQueue(join(workItemsDir, "todo"));
+    const inTodo = new Set(todoIds);
 
-    const ready: string[] = [];
-    for (const id of ids) {
+    const todoReady: string[] = [];
+    for (const id of todoIds) {
         let indexMd: string;
         try {
-            indexMd = await readFile(join(todoDir, id, "index.md"), "utf8");
+            indexMd = await readFile(
+                join(workItemsDir, "todo", id, "index.md"),
+                "utf8",
+            );
         } catch {
             // No index.md: nothing to read dependencies from, treat as ready.
             indexMd = "";
@@ -55,28 +86,34 @@ export async function nextItems(
         const deps = parseDependsOn(indexMd);
         // Ready when no dependency is still waiting in todo/.
         if (deps.every((dep) => !inTodo.has(dep))) {
-            ready.push(id);
-            if (ready.length >= limit) {
+            todoReady.push(id);
+            if (todoReady.length >= limit) {
                 break;
             }
         }
     }
 
-    return ready;
+    return {
+        "merge-queue": await listQueue(join(workItemsDir, "merge-queue")),
+        todo: todoReady,
+        "in-progress": await listQueue(join(workItemsDir, "in-progress")),
+        "agent-review": await listQueue(join(workItemsDir, "agent-review")),
+    };
 }
 
 // Thin CLI wrapper. Not exercised by the unit tests.
 async function main(): Promise<void> {
-    const todoDir = join(process.cwd(), "work-items", "todo");
+    const workItemsDir = join(process.cwd(), "work-items");
     try {
-        const ready = await nextItems(todoDir);
-        console.log(JSON.stringify(ready));
+        await readdir(workItemsDir);
     } catch {
         console.error(
-            `no work-items/todo/ directory in ${process.cwd()}: run from the state repo root`,
+            `no work-items/ directory in ${process.cwd()}: run from the state repo root`,
         );
         process.exit(1);
     }
+    const report = await nextItems(workItemsDir);
+    console.log(JSON.stringify(report));
 }
 
 // Only run the CLI when invoked directly, not when imported by tests.
