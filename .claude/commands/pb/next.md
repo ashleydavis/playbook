@@ -17,7 +17,7 @@ Each work item passes through stages: merge, implement, agent-review. The parent
 { "merge-queue": [...], "todo": [...], "in-progress": [...], "agent-review": [...] }
 ```
 
-`merge-queue`, `in-progress`, and `agent-review` list every item in those queues; `todo` lists only the actionable items (dependencies resolved), capped at 10. Empty queues come back as empty arrays. To decide what to do, the parent agent runs no other command and reads no other file. It acts only on what the report says.
+`merge-queue`, `in-progress`, and `agent-review` list every item in those queues; `todo` lists only the actionable items (dependencies resolved), capped so that `todo` and `in-progress` together never exceed 10 items in flight (so `todo` is empty once `in-progress` is full). Empty queues come back as empty arrays. To decide what to do, the parent agent runs no other command and reads no other file. It acts only on what the report says.
 
 The repo layout is fixed and known: `state/` and `project/` are siblings under the playbook root where Claude Code was launched. There is nothing to discover, so **do not inspect, list, or explore the filesystem to orient yourself** (no `ls`, no checking that `state/` exists, no reading the tree). The first command you run against the filesystem is the report itself (`bun ../scripts/next-items.ts` from `state/`); never precede it with a directory listing or any other check.
 
@@ -45,7 +45,7 @@ The repo layout is fixed and known: `state/` and `project/` are siblings under t
 
       Timeout (abort): update `current-state.md` so the developer sees the stuck item, and exit `pb:next` (clear the parent `/goal`). The directory tells the developer the state of main: still in `merge-queue/` means the merge never happened (main is clean); already in `done/` means the merge happened but post-merge checks did not all pass (main may be broken). Do not keep pushing more items. The developer resolves the failure before invoking `pb:next` again.
 
-   2. **Run the report, then admit each ID in its `todo` list.** These are the actionable items (dependencies resolved); take them as-is without opening their files. For each ID, run `bun ../scripts/setup-work-item.ts <id>` from `state/`. That one command does the whole admission: it moves the directory from `todo/` to `in-progress/` and creates the item's worktree against the project repo at `worktrees/<id>`, detached at the project's current commit (no new branch). It resolves all the paths itself, so **never run `git worktree` by hand**. It is idempotent: re-running for an already-admitted item is a safe no-op.
+   2. **Run the report, then admit each ID in its `todo` list.** These are the actionable items (dependencies are already resolved); take them as-is without opening their files. For each ID, run `bun ../scripts/setup-work-item.ts <id>` from `state/`. That one command does the whole admission: it moves the directory from `todo/` to `in-progress/` and creates the item's worktree against the project repo at `project/worktrees/<id>`, on a new branch `worktrees/<id>` at the project's current commit. It resolves all the paths itself, so **never run `git worktree` by hand**. It is idempotent: re-running for an already-admitted item is a safe no-op.
 
    3. **Run the report, then for each ID in its `in-progress` list** (the items just admitted from `todo/`, plus any left from an interrupted earlier run), spawn a sub-agent in parallel with:
 

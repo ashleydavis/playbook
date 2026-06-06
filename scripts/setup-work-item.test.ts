@@ -48,9 +48,13 @@ afterEach(async () => {
 describe("setupItem()", () => {
     test("moves the item to in-progress and invokes git against project/", async () => {
         await makeItem("todo", "feat-1");
-        const calls: Array<{ projectDir: string; worktreePath: string }> = [];
-        const fakeGit: GitRunner = async (projectDir, worktreePath) => {
-            calls.push({ projectDir, worktreePath });
+        const calls: Array<{
+            projectDir: string;
+            worktreePath: string;
+            branch: string;
+        }> = [];
+        const fakeGit: GitRunner = async (projectDir, worktreePath, branch) => {
+            calls.push({ projectDir, worktreePath, branch });
         };
 
         const result = await setupItem("feat-1", stateDir, fakeGit);
@@ -59,10 +63,12 @@ describe("setupItem()", () => {
         expect(result.worktreeCreated).toBe(true);
         expect(await isDir(join(workItemsDir, "in-progress", "feat-1"))).toBe(true);
         expect(await isDir(join(workItemsDir, "todo", "feat-1"))).toBe(false);
-        // git ran against project/, not state/, and targeted worktrees/<id>.
+        // git ran against project/, not state/, targeted project/worktrees/<id>,
+        // and created the per-item branch worktrees/<id>.
         expect(calls).toHaveLength(1);
         expect(calls[0].projectDir).toBe(join(root, "project"));
-        expect(calls[0].worktreePath).toBe(join(root, "worktrees", "feat-1"));
+        expect(calls[0].worktreePath).toBe(join(root, "project", "worktrees", "feat-1"));
+        expect(calls[0].branch).toBe("worktrees/feat-1");
     });
 
     test("throws when no project repo is present", async () => {
@@ -82,7 +88,7 @@ describe("setupItem()", () => {
 
     test("skips git when the worktree already exists (idempotent retry)", async () => {
         await makeItem("todo", "feat-3");
-        await mkdir(join(root, "worktrees", "feat-3"), { recursive: true });
+        await mkdir(join(root, "project", "worktrees", "feat-3"), { recursive: true });
         let called = false;
         const fakeGit: GitRunner = async () => {
             called = true;

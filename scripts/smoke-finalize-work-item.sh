@@ -44,6 +44,7 @@ git -C "$ROOT" init -q project
 git -C "$ROOT/project" config user.email smoke@test
 git -C "$ROOT/project" config user.name smoke
 git -C "$ROOT/project" checkout -q -b main
+printf 'worktrees/\n' > "$ROOT/project/.gitignore"
 printf 'line1\nline2\n' > "$ROOT/project/shared.txt"
 git -C "$ROOT/project" add -A
 git -C "$ROOT/project" commit -qm base
@@ -53,9 +54,9 @@ run_finalize() { ( cd "$ROOT/state" && bun "$FINALIZE" "$@" ); }
 wt_commit() {
     # Commit a change in item $1's worktree.
     local id="$1" file="$2" content="$3"
-    printf '%s' "$content" > "$ROOT/worktrees/$id/$file"
-    git -C "$ROOT/worktrees/$id" add -A
-    git -C "$ROOT/worktrees/$id" commit -qm "$id work"
+    printf '%s' "$content" > "$ROOT/project/worktrees/$id/$file"
+    git -C "$ROOT/project/worktrees/$id" add -A
+    git -C "$ROOT/project/worktrees/$id" commit -qm "$id work"
 }
 
 # ---- merged: clean rebase onto advanced main, fast-forward, remove ----
@@ -65,10 +66,12 @@ wt_commit merge-1 feature.txt "from merge-1"
 echo other > "$ROOT/project/other.txt"
 git -C "$ROOT/project" add -A && git -C "$ROOT/project" commit -qm "other on main"
 if run_finalize merge-1 > /dev/null; then
-    [[ ! -e "$ROOT/worktrees/merge-1" ]] || fail "merge-1 worktree not removed"
+    [[ ! -e "$ROOT/project/worktrees/merge-1" ]] || fail "merge-1 worktree not removed"
     [[ -f "$ROOT/project/feature.txt" ]] || fail "merge-1 change missing from main"
     git -C "$ROOT/project" log --oneline | grep -q "merge-1 work" \
         || fail "merge-1 commit not on main"
+    git -C "$ROOT/project" show-ref --verify --quiet refs/heads/worktrees/merge-1 \
+        && fail "merge-1 per-item branch not deleted"
 else
     fail "finalize merge-1 should have exited 0"
 fi
@@ -82,10 +85,10 @@ git -C "$ROOT/project" add -A && git -C "$ROOT/project" commit -qm "main edits s
 run_finalize conflict-1 > /dev/null 2>&1
 rc=$?
 [[ "$rc" -eq 2 ]] || fail "finalize conflict-1 expected exit 2, got $rc"
-[[ -d "$ROOT/worktrees/conflict-1" ]] || fail "conflict-1 worktree was removed (should stay)"
+[[ -d "$ROOT/project/worktrees/conflict-1" ]] || fail "conflict-1 worktree was removed (should stay)"
 # Worktree must be left clean (rebase aborted), not mid-rebase.
-if [[ -d "$ROOT/worktrees/conflict-1/.git" ]] || true; then
-    git -C "$ROOT/worktrees/conflict-1" status > /dev/null 2>&1 \
+if [[ -d "$ROOT/project/worktrees/conflict-1/.git" ]] || true; then
+    git -C "$ROOT/project/worktrees/conflict-1" status > /dev/null 2>&1 \
         || fail "conflict-1 worktree left in a broken state"
 fi
 git -C "$ROOT/project" rev-parse --verify -q REBASE_HEAD > /dev/null 2>&1 \
@@ -94,7 +97,7 @@ git -C "$ROOT/project" rev-parse --verify -q REBASE_HEAD > /dev/null 2>&1 \
 # ---- noop: worktree with no commits ahead is just removed ----
 run_setup noop-1 > /dev/null || fail "setup noop-1 failed"
 if run_finalize noop-1 > /dev/null; then
-    [[ ! -e "$ROOT/worktrees/noop-1" ]] || fail "noop-1 worktree not removed"
+    [[ ! -e "$ROOT/project/worktrees/noop-1" ]] || fail "noop-1 worktree not removed"
 else
     fail "finalize noop-1 should have exited 0"
 fi

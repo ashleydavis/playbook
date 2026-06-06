@@ -7,13 +7,19 @@
 // Prints a JSON object keyed by the four queues pb:next drives, each value the
 // list of item IDs to act on in that queue (sorted by ID):
 //
-//   merge-queue, in-progress, agent-review: every item in the queue.
-//   todo: only the actionable items (dependencies resolved), capped at LIMIT.
+//   merge-queue, agent-review: every item in the queue.
+//   in-progress: every item in the queue.
+//   todo: only the actionable items (dependencies resolved), capped so that
+//         todo + in-progress together never exceed LIMIT items in flight.
 //
 // A todo item is actionable when none of its dependencies are still sitting in
 // todo/: if a dependency is not in todo/ we assume it has already been actioned.
 // The dependency rule looks only at todo/; the other three queues are listed in
 // full. human-review/ and done/ are not driven by pb:next, so are not reported.
+//
+// The todo cap shares one budget with in-progress: the implementation stage runs
+// at most LIMIT items at once, so todo is trimmed to LIMIT minus however many are
+// already in-progress (zero todo once in-progress is full).
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -30,7 +36,8 @@ export type ReportedQueue = (typeof QUEUES)[number];
 
 export type NextItemsReport = Record<ReportedQueue, string[]>;
 
-// Most todo items the loop will pick up in one pass.
+// Most items in flight in the implementation stage at once (todo admitted this
+// pass plus items already in-progress, combined).
 export const LIMIT = 10;
 
 // Pull the dependency IDs out of an index.md's `**Depends on:**` line.
@@ -68,11 +75,20 @@ export async function nextItems(
     workItemsDir: string,
     limit: number = LIMIT,
 ): Promise<NextItemsReport> {
+    const inProgress = await listQueue(join(workItemsDir, "in-progress"));
+    // The implementation stage runs at most `limit` items at once, and todo +
+    // in-progress share that budget. Trim todo to what is left after the items
+    // already in-progress (zero once in-progress is full).
+    const todoBudget = Math.max(0, limit - inProgress.length);
+
     const todoIds = await listQueue(join(workItemsDir, "todo"));
     const inTodo = new Set(todoIds);
 
     const todoReady: string[] = [];
     for (const id of todoIds) {
+        if (todoReady.length >= todoBudget) {
+            break;
+        }
         let indexMd: string;
         try {
             indexMd = await readFile(
@@ -87,16 +103,13 @@ export async function nextItems(
         // Ready when no dependency is still waiting in todo/.
         if (deps.every((dep) => !inTodo.has(dep))) {
             todoReady.push(id);
-            if (todoReady.length >= limit) {
-                break;
-            }
         }
     }
 
     return {
         "merge-queue": await listQueue(join(workItemsDir, "merge-queue")),
         todo: todoReady,
-        "in-progress": await listQueue(join(workItemsDir, "in-progress")),
+        "in-progress": inProgress,
         "agent-review": await listQueue(join(workItemsDir, "agent-review")),
     };
 }

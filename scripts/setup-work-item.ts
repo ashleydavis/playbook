@@ -8,16 +8,19 @@
 // the agent never has to compute paths or run `git worktree` by hand:
 //   1. Move work-items/todo/<id>/ -> work-items/in-progress/<id>/.
 //   2. Create a git worktree for the item against the PROJECT repo
-//      (../project) at ../worktrees/<id>, detached at the project's current
-//      HEAD (no new branch).
+//      (../project) at ../project/worktrees/<id>, on a new branch named
+//      worktrees/<id> based at the project's current HEAD.
 //
 // Paths are resolved relative to the state repo (the cwd): the project repo is
-// ../project and worktrees live in ../worktrees, both siblings of state/.
+// ../project and worktrees live inside it at ../project/worktrees/ (gitignored
+// by the project repo).
 //
-// --detach is used deliberately. The project repo already has its current
-// branch checked out, and git refuses to check the same branch out in a second
-// worktree; detaching at HEAD gives the item the current commit with no new
-// branch, matching the loop's "current branch directly, no new branch" rule.
+// Each worktree gets its own branch (worktrees/<id>). Git refuses to check the
+// same branch out in two worktrees, and the project repo already has its branch
+// checked out, so the worktree cannot share it; a per-item branch off the
+// current commit avoids the collision and keeps the item's commits on a named
+// ref. finalize-work-item.ts rebases that branch onto the project branch at
+// merge time and deletes it.
 
 import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -34,6 +37,7 @@ export class SetupError extends Error {}
 export type GitRunner = (
     projectDir: string,
     worktreePath: string,
+    branch: string,
 ) => Promise<void>;
 
 export interface SetupResult {
@@ -53,10 +57,12 @@ async function exists(path: string): Promise<boolean> {
     }
 }
 
-// Default runner: `git -C <projectDir> worktree add --detach <worktreePath>`.
-const realGit: GitRunner = async (projectDir, worktreePath) => {
+// Default runner: `git -C <projectDir> worktree add -b <branch> <worktreePath>`,
+// which creates the new branch at the project's current HEAD and checks it out
+// in the worktree.
+const realGit: GitRunner = async (projectDir, worktreePath, branch) => {
     const proc = Bun.spawn(
-        ["git", "-C", projectDir, "worktree", "add", "--detach", worktreePath],
+        ["git", "-C", projectDir, "worktree", "add", "-b", branch, worktreePath],
         { stdout: "pipe", stderr: "pipe" },
     );
     const code = await proc.exited;
@@ -80,8 +86,9 @@ export async function setupItem(
 
     const workItemsDir = join(stateDir, "work-items");
     const projectDir = resolve(stateDir, "..", "project");
-    const worktreesDir = resolve(stateDir, "..", "worktrees");
+    const worktreesDir = resolve(stateDir, "..", "project", "worktrees");
     const worktreePath = join(worktreesDir, id);
+    const branch = `worktrees/${id}`;
 
     if (!(await exists(projectDir))) {
         throw new SetupError(`no project repo at ${projectDir}`);
@@ -94,7 +101,7 @@ export async function setupItem(
     await mkdir(worktreesDir, { recursive: true });
     let worktreeCreated = false;
     if (!(await exists(worktreePath))) {
-        await runGit(projectDir, worktreePath);
+        await runGit(projectDir, worktreePath, branch);
         worktreeCreated = true;
     }
 

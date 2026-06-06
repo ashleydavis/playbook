@@ -5,8 +5,8 @@
 # queues, plus a project/ git repo on a `main` commit), admits a work item with
 # the real CLI, and asserts:
 #   - the item moved todo/ -> in-progress/,
-#   - a worktree was created at ../worktrees/<id> against project/ (not state/),
-#   - the worktree is detached at the project's current commit (no new branch),
+#   - a worktree was created at ../project/worktrees/<id> against project/ (not state/),
+#   - the worktree is on a new branch worktrees/<id> at the project's current commit,
 #   - a second run is idempotent (no error, worktree reused).
 # Then cleans up and prints PASS or FAIL.
 
@@ -41,6 +41,7 @@ git -C "$ROOT" init -q project
 git -C "$ROOT/project" config user.email smoke@test
 git -C "$ROOT/project" config user.name smoke
 git -C "$ROOT/project" checkout -q -b main
+printf 'worktrees/\n' > "$ROOT/project/.gitignore"
 echo base > "$ROOT/project/base.txt"
 git -C "$ROOT/project" add -A
 git -C "$ROOT/project" commit -qm base
@@ -57,27 +58,29 @@ if run_setup feat-1 > /dev/null; then
         || fail "feat-1 not in in-progress/"
     [[ ! -e "$ROOT/state/work-items/todo/feat-1" ]] \
         || fail "feat-1 still in todo/"
-    [[ -d "$ROOT/worktrees/feat-1" ]] \
-        || fail "worktree not created at worktrees/feat-1"
+    [[ -d "$ROOT/project/worktrees/feat-1" ]] \
+        || fail "worktree not created at project/worktrees/feat-1"
     # The worktree must belong to the project repo, never the state repo.
     git -C "$ROOT/project" worktree list | grep -q "worktrees/feat-1" \
         || fail "worktree not registered in project repo"
     [[ ! -d "$ROOT/state/.git" ]] \
         || fail "state repo unexpectedly became a git repo"
-    # Detached at the project's current commit, with no new branch named feat-1.
-    WT_SHA="$(git -C "$ROOT/worktrees/feat-1" rev-parse HEAD)"
+    # On a new branch worktrees/feat-1 at the project's current commit.
+    WT_SHA="$(git -C "$ROOT/project/worktrees/feat-1" rev-parse HEAD)"
     [[ "$WT_SHA" == "$MAIN_SHA" ]] \
         || fail "worktree HEAD ($WT_SHA) is not main ($MAIN_SHA)"
-    if git -C "$ROOT/project" show-ref --verify --quiet refs/heads/feat-1; then
-        fail "a branch named feat-1 was created (expected detached HEAD)"
-    fi
+    git -C "$ROOT/project" show-ref --verify --quiet refs/heads/worktrees/feat-1 \
+        || fail "branch worktrees/feat-1 was not created"
+    WT_BRANCH="$(git -C "$ROOT/project/worktrees/feat-1" rev-parse --abbrev-ref HEAD)"
+    [[ "$WT_BRANCH" == "worktrees/feat-1" ]] \
+        || fail "worktree not on branch worktrees/feat-1 (got $WT_BRANCH)"
 else
     fail "setup-work-item feat-1 exited non-zero"
 fi
 
 # Idempotent re-run: item already in in-progress/, worktree already present.
 if run_setup feat-1 > /dev/null; then
-    [[ -d "$ROOT/worktrees/feat-1" ]] || fail "worktree gone after re-run"
+    [[ -d "$ROOT/project/worktrees/feat-1" ]] || fail "worktree gone after re-run"
 else
     fail "idempotent re-run of setup-work-item feat-1 exited non-zero"
 fi

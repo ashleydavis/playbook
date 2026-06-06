@@ -44,7 +44,7 @@ beforeEach(async () => {
     stateDir = join(root, "state");
     await mkdir(join(stateDir, "work-items"), { recursive: true });
     await mkdir(join(root, "project"), { recursive: true });
-    await mkdir(join(root, "worktrees", "feat-1"), { recursive: true });
+    await mkdir(join(root, "project", "worktrees", "feat-1"), { recursive: true });
 });
 
 afterEach(async () => {
@@ -60,6 +60,7 @@ describe("teardownItem()", () => {
             ok("c2"), // rev-parse HEAD
             ok(), // merge --ff-only
             ok(), // worktree remove
+            ok(), // branch -D worktrees/feat-1
         ]);
 
         const result = await teardownItem("feat-1", stateDir, runGit);
@@ -67,8 +68,9 @@ describe("teardownItem()", () => {
         expect(result.status).toBe("merged");
         expect(result.branch).toBe("main");
         expect(result.mergedCommits).toEqual(["c1", "c2"]);
-        // Last git call removes the worktree.
-        expect(calls.at(-1)?.args.slice(0, 2)).toEqual(["worktree", "remove"]);
+        // It removes the worktree, then deletes the per-item branch last.
+        expect(calls.at(-2)?.args.slice(0, 2)).toEqual(["worktree", "remove"]);
+        expect(calls.at(-1)?.args).toEqual(["branch", "-D", "worktrees/feat-1"]);
     });
 
     test("reports conflict and aborts the rebase without merging", async () => {
@@ -96,6 +98,7 @@ describe("teardownItem()", () => {
             ok("main"), // rev-parse --abbrev-ref HEAD
             ok(""), // rev-list main..HEAD -> none
             ok(), // worktree remove
+            ok(), // branch -D worktrees/feat-1
         ]);
 
         const result = await teardownItem("feat-1", stateDir, runGit);
@@ -103,11 +106,12 @@ describe("teardownItem()", () => {
         expect(result.status).toBe("noop");
         expect(result.mergedCommits).toEqual([]);
         expect(calls.some((c) => c.args.includes("rebase"))).toBe(false);
-        expect(calls.at(-1)?.args.slice(0, 2)).toEqual(["worktree", "remove"]);
+        expect(calls.at(-2)?.args.slice(0, 2)).toEqual(["worktree", "remove"]);
+        expect(calls.at(-1)?.args).toEqual(["branch", "-D", "worktrees/feat-1"]);
     });
 
     test("throws when the worktree is missing", async () => {
-        await rm(join(root, "worktrees", "feat-1"), {
+        await rm(join(root, "project", "worktrees", "feat-1"), {
             recursive: true,
             force: true,
         });

@@ -4,3 +4,4 @@
 - Be cool to set the CC status bar to show an overview of current state.
 - /status command is already used. Need a better name.
 - Review output of /pb:help
+- The state repo actually needs to be commited after each change so we can see the history. Make the process manage it.

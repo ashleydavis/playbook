@@ -106,7 +106,7 @@ describe("nextItems()", () => {
         expect((await nextItems(workItemsDir)).todo).toEqual(["feat-1"]);
     });
 
-    test("the todo limit caps only the todo list", async () => {
+    test("the limit caps todo but not merge-queue or agent-review", async () => {
         await makeItem("todo", "a-1");
         await makeItem("todo", "b-1");
         await makeItem("todo", "c-1");
@@ -116,6 +116,29 @@ describe("nextItems()", () => {
         const report = await nextItems(workItemsDir, 2);
         expect(report.todo).toEqual(["a-1", "b-1"]);
         expect(report["merge-queue"]).toEqual(["m-1", "m-2"]);
+    });
+
+    test("todo and in-progress share the limit budget", async () => {
+        // limit 3, with 2 already in-progress, leaves room for only 1 todo.
+        await makeItem("in-progress", "ip-1");
+        await makeItem("in-progress", "ip-2");
+        await makeItem("todo", "t-1");
+        await makeItem("todo", "t-2");
+        await makeItem("todo", "t-3");
+
+        const report = await nextItems(workItemsDir, 3);
+        expect(report["in-progress"]).toEqual(["ip-1", "ip-2"]);
+        expect(report.todo).toEqual(["t-1"]);
+    });
+
+    test("todo is empty once in-progress already fills the limit", async () => {
+        await makeItem("in-progress", "ip-1");
+        await makeItem("in-progress", "ip-2");
+        await makeItem("todo", "t-1");
+
+        const report = await nextItems(workItemsDir, 2);
+        expect(report.todo).toEqual([]);
+        expect(report["in-progress"]).toEqual(["ip-1", "ip-2"]);
     });
 
     test("ignores files and only counts item directories", async () => {

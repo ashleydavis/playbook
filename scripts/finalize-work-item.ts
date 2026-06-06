@@ -10,13 +10,14 @@
 // with a clear, machine-readable status.
 //
 // Flow (all against the PROJECT repo at ../project; the worktree is at
-// ../worktrees/<id>):
+// ../project/worktrees/<id>):
 //   1. Rebase the worktree's commits onto the project's current branch.
 //      - clean: continue.
 //      - conflict: abort the rebase (worktree left intact) and report
 //        status "conflict" so the agent can resolve, commit, then re-run.
 //   2. Fast-forward the project branch to the rebased worktree HEAD (the merge).
-//   3. Remove the worktree (`git worktree remove`).
+//   3. Remove the worktree (`git worktree remove`) and delete its per-item
+//      branch (worktrees/<id>), which setup-work-item.ts created.
 //
 // Exit status maps to the reported `status` field:
 //   merged   -> exit 0, worktree removed, changes on the branch.
@@ -89,7 +90,8 @@ export async function teardownItem(
     }
 
     const projectDir = resolve(stateDir, "..", "project");
-    const worktreePath = join(resolve(stateDir, "..", "worktrees"), id);
+    const worktreePath = join(resolve(stateDir, "..", "project", "worktrees"), id);
+    const itemBranch = `worktrees/${id}`;
 
     if (!(await exists(projectDir))) {
         throw new TeardownError(`no project repo at ${projectDir}`);
@@ -123,7 +125,7 @@ export async function teardownItem(
 
     // Nothing to merge: just remove the worktree.
     if (mergedCommits.length === 0) {
-        await removeWorktree(projectDir, worktreePath, runGit);
+        await removeWorktree(projectDir, worktreePath, itemBranch, runGit);
         return {
             id,
             status: "noop",
@@ -168,7 +170,7 @@ export async function teardownItem(
         throw new TeardownError(`fast-forward merge failed: ${ff.stderr}`);
     }
 
-    await removeWorktree(projectDir, worktreePath, runGit);
+    await removeWorktree(projectDir, worktreePath, itemBranch, runGit);
 
     return {
         id,
@@ -199,6 +201,7 @@ async function conflictedPaths(
 async function removeWorktree(
     projectDir: string,
     worktreePath: string,
+    branch: string,
     runGit: GitRunner,
 ): Promise<void> {
     const out = await runGit(projectDir, [
@@ -208,6 +211,12 @@ async function removeWorktree(
     ]);
     if (out.code !== 0) {
         throw new TeardownError(`git worktree remove failed: ${out.stderr}`);
+    }
+    // Delete the per-item branch setup-work-item.ts created; after the merge it
+    // is fully contained in the project branch, so this is a clean delete.
+    const del = await runGit(projectDir, ["branch", "-D", branch]);
+    if (del.code !== 0) {
+        throw new TeardownError(`git branch -D ${branch} failed: ${del.stderr}`);
     }
 }
 
