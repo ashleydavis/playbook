@@ -13,16 +13,19 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
 
 ## Steps
 
-1. Interview the developer about the project:
-   - What does the project do?
-   - What is the tech stack?
-   - What is the coding style (if not already documented)?
-   - How does testing work (if not already set up)?
-   - What other rules should the project conform to?
-   - How is it deployed and how do I run it locally?
-   - What is currently in flight or planned?
-2. Clone the existing project repo into `project/` under the playbook repo, then create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (work-items/ queues, current-state.md, scoped CLAUDE.md files). If you don't know where the project is, ask the user to identity it on Git or locally.
-3. Analyse the project repo to identify what is missing or incomplete:
+1. Clone the existing project repo into `project/` under the playbook repo. If you don't know where the project is, ask the developer to identify it (Git URL or local path).
+2. Learn about the project from the cloned repo. Inspect the code, README, and docs to work out as much as you can:
+   - What the project does
+   - The tech stack
+   - The coding style
+   - How testing works
+   - What other rules the project should conform to
+   - How it is built, run locally, and deployed
+   - What is currently in flight or planned
+
+   Then ask the developer only about what you could not determine from the repo, one question at a time.
+3. Create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (work-items/ queues, current-state.md, scoped CLAUDE.md files).
+4. Analyse the project repo to identify what is missing or incomplete:
    - `CLAUDE.md` at the root (use the shared template as a starting point)
    - `docs/spec/` source of truth
    - `docs/testing-manual/`
@@ -30,9 +33,9 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
    - `docs/roadmap.md`
    - `smoke/` and `e2e/` setup
    - Unit test framework wired up
-4. For each gap, create a work item in `todo/` with acceptance criteria and a test plan. These items are dependencies for most future feature work.
-5. Populate `current-state.md` to reflect where things stand (existing in-flight work, recent commits, known issues).
-6. Begin the development loop, typically starting with `pb:next` to address the bootstrap work items.
+5. For each gap, create a work item in `todo/` with acceptance criteria and a test plan. These items are dependencies for most future feature work.
+6. Populate `current-state.md` to reflect where things stand (existing in-flight work, recent commits, known issues).
+7. Begin the development loop, typically starting with `pb:next` to address the bootstrap work items.
 
 ## Example
 

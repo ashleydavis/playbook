@@ -13,7 +13,7 @@ Bootstrap a greenfield project: create both project/ and state/ repos under the 
 
 TODO: FACTOR OUT THE INTERVIEW PROCESS TO A SEPERATE FILE AND LINK IT INTO EXISTING AND NEW SKILLS
 
-1. Interview the developer:
+1. Interview the developer, asking one question at a time:
    - What does the project do?
    - What is the tech stack?
    - What is the coding style?

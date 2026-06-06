@@ -24,7 +24,7 @@ cd playbook
 ```
 2. Launch Claude Code from the playbook repo root.
 3. Run `/pb:bootstrap:new` (greenfield project) or `/pb:bootstrap:existing` (existing project) to scaffold the project into `project/` and the state into `state/`.
-4. Drive the loop: `/pb:status` → `/pb:plan` or `/pb:add` → `/pb:next` → `/pb:review`. New to it? Run `/pb:help`.
+4. Run `/pb:status` (or `/pb:help` if you're new). It summarises where things stand and recommends what to run next; each skill points you to the following step from there.
 
 > **Permissions warning.** The committed `.claude/settings.json` sets `bypassPermissions`, so Claude Code runs with permission prompts **off** wherever the playbook repo is launched, including your own host. Run it inside a sandbox VM (see [Host + VM](handbook.md#host--vm)) so the blast radius is the VM, not your machine.
 
