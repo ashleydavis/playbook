@@ -6,6 +6,8 @@ This repo contains instructions for a semi-autonomous AI development process.
 
 Claude Code is launched from the root of this repo and these are your standing instructions for this project.
 
+**Never commit unless the developer explicitly asks for it, or the process requires it.** A question is not a command. Do not commit just because changes look ready.
+
 **Never permanently change the working directory.** Always run from the directory you were launched in. Use absolute paths, or `git -C <dir>`, or wrap a directory change in a subshell so it does not persist: `(cd state && bun ../scripts/move.ts …)`. Never run a bare `cd`. Subagents stay locked to their worktree the same way.
 
 **At session start, read `process.md`.** It is the concise description of how the process works: the repos, the queues, the work-item format, the development loop, goals, and the verification rules. 
