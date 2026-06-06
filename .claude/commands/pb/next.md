@@ -19,6 +19,8 @@ Each work item passes through stages: merge, implement, agent-review. The parent
 
 `merge-queue`, `in-progress`, and `agent-review` list every item in those queues; `todo` lists only the actionable items (dependencies resolved), capped at 10. Empty queues come back as empty arrays. To decide what to do, the parent agent runs no other command and reads no other file. It acts only on what the report says.
 
+The repo layout is fixed and known: `state/` and `project/` are siblings under the playbook root where Claude Code was launched. There is nothing to discover, so **do not inspect, list, or explore the filesystem to orient yourself** (no `ls`, no checking that `state/` exists, no reading the tree). The first command you run against the filesystem is the report itself (`bun ../scripts/next-items.ts` from `state/`); never precede it with a directory listing or any other check.
+
 **`current-state.md` is the parent agent's responsibility alone.** Only the parent agent updates it. Sub-agents must never write to it: they run in parallel and a shared-file write would race. A sub-agent's only state changes are to its own item (move its directory with `move.ts`, write its `evidence/`, add a History note to its `detail.md`, commit). The parent reflects those changes into `current-state.md` after the turn.
 
 ## Steps
