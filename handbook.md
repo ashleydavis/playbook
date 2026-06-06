@@ -13,7 +13,7 @@ It uses a work queue as the central source of truth, a set of Claude skills to d
 - **State repo**: per-project process state: the work-item queues and `current-state.md`. Lives outside the project repo.
 - **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `pb:next`). Skills instruct; they do not enforce.
 - **Work item**: a unit of work: a directory (`index.md` and `detail.md` plus an `evidence/` subdir) named by its ID, that travels through the queues.
-- **Queue**: one of six pipeline directories under `state/work-items/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`.
+- **Queue**: one of six pipeline directories under `state/work-items/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`. Plus `blocked/`, a side pen (not a pipeline stage) where items that hit a hard or repeated failure are parked for the developer.
 - **`current-state.md`**: the curated, human-readable summary of where things stand, sitting on top of the queues.
 - **Goal (`/goal`)**: a pass condition checked after every turn; an agent is not "done" until it holds. Goals enforce what skills only instruct.
 - **Goal evaluator**: the mechanism that re-checks a `/goal` against the repos after each turn.
@@ -127,7 +127,8 @@ flowchart TD
 
     RT -->|Pass| AR[("Agent Review Queue")]
     AR --> CHK
-    CHK -->|Fail + Notes| WQ
+    CHK -->|"Fail (retry)"| WQ
+    CHK -->|"3rd failure"| BLK[("Blocked: needs human")]
     CHK -->|Pass| HR[("Human Review Queue")]
     HR --> VIEW
     VIEW -->|Reject + Notes| WQ
@@ -135,10 +136,29 @@ flowchart TD
     MQ --> MA["Merge Agent: Merge Worktree to Main, Run All Tests"]
     MA -->|Tests Fail| FIX["Fix Immediately on Main"]
     FIX --> MA
+    MA -->|"Gives up"| WQ
     MA -->|Tests Pass| DONE(["Work Item Complete"])
+    IMPL -->|"Fail (retry)"| WQ
+    BLK -->|"developer re-admits"| WQ
 ```
 
+Any failure, from any stage or source, routes by the item's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
+
 Each stage is driven by a skill; see [Skills](#skills) for what each one does.
+
+## Handling Failures
+
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug root cause comes back not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
+
+**Every failure is recorded.** Whoever hits it runs `fail-work-item.ts <id>` (from the state repo) to increment the item's `**Failures:**` count in its `index.md`, and writes a History entry in the item's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the item.
+
+**Three strikes parks the item.** Below three failures the item returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `pb:next` never retries a blocked item, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
+
+**One failure never stops the run; a systemic one does.** A single failed item is parked or retried and the loop carries on with the others. But two or more items failing on the same stage or check in one run signals the environment, not the items (shared test fixtures, a contended resource): the loop stops launching new work and hands back. It never works around a failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
+
+**The developer is told through `current-state.md`.** Every block, and any broken-main situation, is recorded in its Blocked section, which the developer reads directly or via `pb:status`.
+
+**Carve-out: broken main.** If a merge lands on main but its post-merge checks then fail, the item still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later item builds on main.
 
 ## Repository Structure
 
@@ -221,6 +241,7 @@ state/
     human-review/     # Items awaiting developer review
     merge-queue/      # Approved items waiting to merge
     done/             # Completed items
+    blocked/          # Parked for the developer after a hard/repeated failure (not a pipeline stage)
 ```
 
 Each queue holds one directory per work item, named by the item's ID. The directory travels between queues as a unit, so the item and its evidence always stay together and lands in together in `done/<id>/`:
@@ -262,7 +283,7 @@ Creates one structured work item in `todo/` for a single, well-understood task. 
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `pb:review`). The per-stage goal text, worktree mechanics, timeout handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### pb:review
 
@@ -397,7 +418,7 @@ The work item's ID is declared inside `index.md` in an `**ID:**` field; the dire
 
 Because the directory name mirrors the ID, listing a queue directory enumerates the IDs of every item in that queue without opening any file. This plays the same role for work items that index files play for features: the full set of IDs is discoverable cheaply.
 
-The item's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, and a one-line description (no status field, since the queue the item sits in is its status). The item's `detail.md` carries the full work item: Description, Acceptance Criteria, Test Plan, Notes, and History sections. For a Debug item, the root-cause write-up lives in `detail.md`. The full shape is in [templates/work-item-template/](templates/work-item-template/) (its `index.md` and `detail.md`).
+The item's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, a `**Failures:**` count (see [Handling Failures](#handling-failures)), and a one-line description (no status field, since the queue the item sits in is its status). The item's `detail.md` carries the full work item: Description, Acceptance Criteria, Test Plan, Notes, and History sections. For a Debug item, the root-cause write-up lives in `detail.md`. The full shape is in [templates/work-item-template/](templates/work-item-template/) (its `index.md` and `detail.md`).
 
 Rules:
 - The work agent must refuse to implement a work item that is missing acceptance criteria.
@@ -405,7 +426,7 @@ Rules:
 - `**Type:**` is free-form. Common values are `Feature`, `Tweak`, `Test coverage`, `Doc`, `Scaffolding`, `Refactor`. Projects can add their own. Type is mostly used for filtering and reporting, not enforcement. The two exceptions are `Debug` and `Fix`, which change how the agent-review stage behaves (see `pb:debug`): a `Debug` item is reviewed for a proven root cause and, on pass, spawns a `Fix` item; a `Fix` item is reviewed for a minimal change that solves the proven problem with evidence.
 - Each work item gets an ID of the form `{feature-id}-{n}`, where `n` increments per feature. Items not tied to a feature use a catch-all ID prefix like `chore`, `fix`, `misc` `infra` or whatever you want.
 - Dependencies reference other work-item IDs. Dependent items cannot be started until their dependencies are merged.
-- Feedback from rejections is appended to the History section in `detail.md`. The item is moved back to `todo/` with those notes intact.
+- A human rejection is not a failure: its feedback is appended to the History section in `detail.md` and the item returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`), a clean slate.
 
 ## Commit Format
 
@@ -421,7 +442,7 @@ The queue directories are the source of truth for the state of things. `current-
 - What is waiting on the developer
 - What is blocked and why
 - What was recently completed
-- Anything that needs developer attention: sub-agent timeouts, repeated failures on the same item, merges left on main in a broken state
+- Anything that needs developer attention: items parked in `blocked/` and why, sub-agent timeouts, repeated failures on the same item, merges left on main in a broken state
 
 Sub-agents update this file whenever a work item changes queue or something significant happens that requires manual rectification. Keep it scannable: short, structured, no prose padding.
 
@@ -468,7 +489,7 @@ A `/goal` is a pass condition declared at the start of a session or sub-agent. A
 
 Every goal has two parts:
 - **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
-- **Abort condition:** a hard stop so a stuck agent does not loop forever (turn count, or a specific failure signal like repeated timeouts).
+- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or a systemic-failure signal (two or more items failing on the same stage or check in one run). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
 
 Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving items between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether an item is finished.
 
@@ -482,7 +503,7 @@ The development loop relies on this in three places:
 
 - `pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
 - Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
-- Timeouts surface to the developer via `current-state.md` rather than by silently failing.
+- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and a systemic failure stops it. See [Handling Failures](#handling-failures).
 
 The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 
@@ -546,6 +567,8 @@ Every agent, at every stage, follows the same sequence before claiming a check p
 5. **Capture** the output to the evidence store (below), then claim the result and point at the evidence.
 
 For a judgement check there is no command to run: the agent reads the rule and the relevant code in place of steps 1-3, then captures its written assessment (the rule named, the verdict, and the reasoning) as the evidence in step 5. The discipline is the same: a verdict reached fresh, recorded as a file the goal evaluator and developer can both see.
+
+Checks run in the foreground. A sub-agent runs each check and blocks until it returns, within its turn budget; it never launches a long check (e.g. e2e) in the background and ends the turn waiting to be woken, which stalls silently and makes no progress. A check either completes in the turn or the agent hits its limit and the item is parked in `blocked/`.
 
 ### The evidence store
 

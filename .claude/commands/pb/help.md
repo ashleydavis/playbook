@@ -38,8 +38,9 @@ todo/ -> in-progress/ -> agent-review/ -> human-review/ -> merge-queue/ -> done/
 - `human-review/`: waiting on you (`pb:review`).
 - `merge-queue/`: approved, waiting for the merge agent to land it on main.
 - `done/`: merged, with its evidence archived alongside.
+- `blocked/`: side pen (not a pipeline stage). An item that hits a hard problem (sub-agent timeout, exhausted budget, unresolvable conflict, or a) is parked here for you, with a History note. `pb:next` never retries it; you re-admit it with `bun ../scripts/move.ts <id> todo` once resolved.
 
-Only `human-review/` needs you. `pb:next` moves items through the rest. Rejections (agent or human) send the item back to `todo/` with notes.
+Only `human-review/` and `blocked/` need you. `pb:next` moves items through the rest. Cheap setbacks retry via `todo/` (a human rejection in `pb:review`, a not-proven Debug, a failed Fix review); a hard or repeated failure parks the item in `blocked/`, where nothing re-enters the loop without you moving it back to `todo/`.
 
 ## Skills
 

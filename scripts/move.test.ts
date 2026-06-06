@@ -34,7 +34,7 @@ async function isFile(path: string): Promise<boolean> {
     }
 }
 
-// Create the six empty queue directories under work-items/.
+// Create the empty queue directories under work-items/.
 async function makeQueues(): Promise<void> {
     for (const queue of QUEUES) {
         await mkdir(join(workItemsDir, queue), { recursive: true });
@@ -118,6 +118,22 @@ describe("move()", () => {
         await expect(move("dup", "agent-review", workItemsDir)).rejects.toThrow(
             /ambiguous/,
         );
+    });
+
+    test("moves a problem item to blocked and a human re-admits it to todo", async () => {
+        await makeItem("in-progress", "stuck-1");
+
+        const blocked = await move("stuck-1", "blocked", workItemsDir);
+        expect(blocked.noop).toBe(false);
+        expect(blocked.to).toBe("blocked");
+        expect(await isDir(join(workItemsDir, "blocked", "stuck-1"))).toBe(true);
+        expect(await isDir(join(workItemsDir, "in-progress", "stuck-1"))).toBe(false);
+
+        const readmitted = await move("stuck-1", "todo", workItemsDir);
+        expect(readmitted.from).toBe("blocked");
+        expect(readmitted.to).toBe("todo");
+        expect(await isDir(join(workItemsDir, "todo", "stuck-1"))).toBe(true);
+        expect(await isDir(join(workItemsDir, "blocked", "stuck-1"))).toBe(false);
     });
 
     test("is a no-op when the item is already in the target queue", async () => {

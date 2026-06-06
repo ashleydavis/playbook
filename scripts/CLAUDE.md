@@ -8,6 +8,8 @@ The helpers:
 - `next-items.ts`: report the items each queue the loop drives should act on.
 - `setup-work-item.ts <id>`: admit an item: move `todo/<id>` to `in-progress/` and create its worktree against `project/` at `project/worktrees/<id>` (on a new branch `worktrees/<id>` at the project's current commit). This is the only supported way to create a work-item worktree; never run `git worktree` by hand.
 - `finalize-work-item.ts <id>`: merge an item's worktree back into the project's current branch (rebase, then fast-forward), remove the worktree, and delete its `worktrees/<id>` branch. On a merge conflict it aborts cleanly, leaves the worktree intact, and exits 2 so the agent can resolve the conflict, commit, and re-run.
+- `fail-work-item.ts <id>`: increment the item's `**Failures:**` count in its `index.md` and print the new count. Called on every failure (any source except a human rejection); three failures park the item in `blocked/`.
+- `reset-failures.ts <id>`: reset the item's `**Failures:**` count to 0. Called by `pb:review` when a human rejects an item back to `todo/`, so rework starts with a clean slate (a rejection is not a failure).
 
 It is deliberately kept separate from the scaffolded `project/` so the Playbook's own tooling and its Jest run never sweep up an app's tests.
 

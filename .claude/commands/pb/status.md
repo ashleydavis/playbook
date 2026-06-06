@@ -9,12 +9,13 @@ Read where the project stands and recommend the next move. This is the usual ses
 
 ## Steps
 
-1. Read `current-state.md` and inspect each queue in `work-items/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, and the most recent entries in `done/`.
+1. Read `current-state.md` and inspect each queue in `work-items/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `blocked/`, and the most recent entries in `done/`.
 2. Summarise three things:
    - **Completed since last session:** the most recent items in `done/`.
    - **In flight / awaiting review:** IDs and the stage each sits at.
-   - **Blocked:** what is stuck and why.
+   - **Blocked:** every item in `blocked/` (these hit a problem and need you), plus anything stuck on an unmet dependency. For each blocked item, read its History note for the reason. Surface this prominently: blocked items are parked and will not move until you act.
 3. Recommend a next step from the queue state:
+   - Items in `blocked/` -> tell the developer to resolve each (read the History note, fix the cause) and re-admit it with `bun ../scripts/move.ts <id> todo` from `state/`.
    - Items in `human-review/` -> suggest `pb:review`.
    - Items in `merge-queue/`, or unblocked items in `todo/` -> suggest `pb:next`.
    - Empty queues with ideas in `docs/roadmap.md` -> suggest `pb:plan`.

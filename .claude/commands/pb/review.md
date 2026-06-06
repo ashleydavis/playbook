@@ -26,7 +26,7 @@ For each item in `human-review/`, prompt the developer to:
    - the roadmap (`docs/roadmap.md`) for forward-looking ideas.
 
 Then the developer approves or rejects. **Rejection requires a note.** Write the outcome into the work item's `detail.md` (rejection notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
-- **Reject:** back to `todo/`, notes appended to History.
+- **Reject:** back to `todo/`, notes appended to History. A rejection is not a failure, it is your explicit decision to rework the item: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Approve:** to `merge-queue/`.
 
 Update `current-state.md` to reflect the move (and any follow-up items queued from the notes above): add or amend only the entries these changes affect, leaving the rest of its existing content intact.

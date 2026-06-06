@@ -22,7 +22,8 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 - [state/current-state.md](state/current-state.md): empty starting state.
 - [state/work-items/CLAUDE.md](state/work-items/CLAUDE.md): queue and work-item rules.
 - [state/work-items/README.md](state/work-items/README.md): work-items orientation.
-- `state/work-items/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six queue directories (empty, with `.gitkeep`).
+- `state/work-items/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).
+- `state/work-items/blocked/`: the side pen for items that hit a problem and need human attention (empty, with `.gitkeep`).
 
 ## Item templates (references, not copied wholesale)
 

@@ -46,9 +46,11 @@ Three repos, each a separate concern:
 
 ## Queues
 
-`state/work-items/` has six queue directories, in pipeline order:
+`state/work-items/` has six pipeline queue directories, in order, plus one side pen:
 
 `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`
+
+`blocked/` is the side pen. It is **not** a pipeline stage: it is where an item lands after its third failure (see **Failures**). A blocked item is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
 
 - Each queue holds one directory per work item, named by its ID (`todo/<id>/`).
 - The item directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the item and its evidence stay together end to end and land in `done/<id>/`.
@@ -65,13 +67,25 @@ Three repos, each a separate concern:
 
 ## Work items
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Notes, History. Shape: [templates/work-item-template/](templates/work-item-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Notes, History. Shape: [templates/work-item-template/](templates/work-item-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Items not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
 - Refuse to implement an item with no acceptance criteria.
 - A Test Plan is required. For items with no testable behaviour, use `N/A: <reason>` with a Manual Verification section. Nothing reaches `merge-queue/` without a check.
 - Dependent items cannot start until their dependencies are merged.
-- Rejection notes are appended to History; the item moves back to `todo/`.
+- A human rejection is not a failure: notes are appended to History and the item returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`).
 - `Debug` and `Fix` are special types that change agent-review behaviour (see `pb:debug`).
+
+## Failures
+
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug root cause is not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. Every failure is handled the same way:
+
+1. **Record it.** Run `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the item's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the item carries a complete deterministic record of everything that went wrong.
+2. **Route by count.** Below three, the item returns to `todo/` and the loop retries it on a later pass. At three it moves to `blocked/`.
+3. **Surface it.** Every block (and any broken main) is recorded in the Blocked section of `current-state.md`, which the developer reads directly or via `pb:status`.
+
+A single failure never aborts the loop; the run continues with the other items. Two or more items failing the same stage or check in one run is a **systemic failure** (the environment, not the items): stop launching new work and hand back. Never work around a failure by switching parallel→serial or re-driving an item by hand.
+
+**Carve-out — broken main:** if a merge lands but its post-merge checks then fail, the item goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later item builds on main.
 
 ## Templates
 
@@ -103,7 +117,9 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 
 `/goal` is a pass condition checked after every turn; the agent is not done until the goal is achieved. Skills instruct; goals enforce. Every goal has a **success condition** (observable state: files in queues, checks green, evidence on disk, commits made) and an **abort condition** (turn count or repeated-failure signal).
 
-`pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-item sub-agent goal for each of merge / implement / agent-review, each run in the item's worktree. Timeouts surface via `current-state.md`, not silent failure. Exact goal text lives in the [pb:next](.claude/commands/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
+`pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-item sub-agent goal for each of merge / implement / agent-review, each run in the item's worktree. Exact goal text lives in the [pb:next](.claude/commands/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
+
+When a sub-agent cannot meet its goal, the item is recorded and routed per **Failures** above, the loop never works around a failure, and a systemic failure (two or more items failing the same stage in one run) stops the whole loop.
 
 ## Checks
 
@@ -141,6 +157,8 @@ Never claim a check passes on confidence. Before claiming, every agent at every 
 For a judgement check there is no command: the agent reads the rule and the code in place of steps 1-3, and captures its written assessment (rule named, verdict, reasoning) as the evidence.
 
 Confidence is not evidence: no claim of pass without a fresh run captured to `evidence/`. Passing earlier ≠ passing now; a sub-agent's report ≠ a verified result. Evidence (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, transcripts) travels in the item directory and is required by sub-agent goals before an item moves on.
+
+**Run checks in the foreground.** A sub-agent runs each check in the foreground and blocks until it returns an exit code, within its turn budget. Never launch a check (especially a long one like e2e) in the background and end the turn waiting to be woken: that stalls silently and makes no progress. Either the check completes this turn, or the agent hits its turn limit and the item is blocked. A stall must become a visible failure, not an idle wait.
 
 ## Commits
 

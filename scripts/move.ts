@@ -10,7 +10,9 @@
 import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-// The six queues, in pipeline order. This is the canonical valid set.
+// The valid queues. The first six are the pipeline, in order. `blocked` is a
+// side pen, not a pipeline stage: any stage moves a problem item here when it
+// needs human attention, and only a human re-admits it (blocked -> todo).
 export const QUEUES = [
     "todo",
     "in-progress",
@@ -18,6 +20,7 @@ export const QUEUES = [
     "human-review",
     "merge-queue",
     "done",
+    "blocked",
 ] as const;
 
 export type Queue = (typeof QUEUES)[number];

@@ -40,7 +40,7 @@ Because nothing is committed, the in-progress goal drops the "changes committed,
 The review agent's job for a Debug item is to assess that the root cause has actually been proven, not merely asserted: the reproduction is present in evidence, the causal chain is supported, and the conclusion follows from it.
 
 - **Proven:** the Debug item moves to `done/` (a debugging session produces no code, so it does not go to human-review or merge), and the review agent creates a new **Fix** work item (`**Type:** Fix`) in `todo/`. The Fix item carries the proven root cause and the failing reproduction in its Description/Notes, and acceptance criteria for the fix (below). It links back to the Debug item's ID.
-- **Not proven:** the Debug item goes back to `todo/` with notes in History saying what is missing or unconvincing.
+- **Not proven:** the review agent records in History what is missing or unconvincing, then runs `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the item's `**Failures:**` count and reads the new count it prints. Below three, it returns the Debug item to `todo/` so a fresh investigation session retries with that feedback (it does not give up on the first miss). At three, it moves the item to `blocked/` for the developer instead. The count is the deterministic gate, not a re-count of History.
 
 ### The Fix item
 
@@ -49,7 +49,7 @@ The Fix item then flows through the full pipeline normally (in-progress -> agent
 - The fix targets the proven root cause, not the symptom.
 - The fix is minimal and simple: the smallest change that solves the problem, no extra scope.
 
-For a Fix item, the agent-review goal additionally verifies that the fix actually solves the proven problem (the reproduction passes), that it is the minimal/simplest change that does so, and that the evidence of the fix working is present. If all hold, the Fix item moves to `human-review/`. Otherwise it goes back to `todo/` with notes.
+For a Fix item, the agent-review goal additionally verifies that the fix actually solves the proven problem (the reproduction passes), that it is the minimal/simplest change that does so, and that the evidence of the fix working is present. If all hold, the Fix item moves to `human-review/`. Otherwise the review agent records what failed in History, runs `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the `**Failures:**` count, and reads it: below three it returns the item to `todo/` for another attempt with that feedback; at three it moves to `blocked/` for the developer.
 
 `pb:debug` is for when the cause is unknown. If no debugging is required because the developer already knows the fix, they skip it entirely and use `pb:add` to queue the fix as an ordinary work item (Type `Fix`, or whatever fits). The two-item Debug-then-Fix flow only applies when the root cause has to be found first.
 

@@ -3,6 +3,7 @@
 **ID:** <id>
 **Type:** <Feature | Tweak | Test coverage | Doc | Scaffolding | Refactor | Debug | Fix>
 **Depends on:** <comma-separated work-item IDs, or remove this line if none>
+**Failures:** 0
 
 <Briefest one-line description of what needs to be done.>
 
@@ -15,6 +16,7 @@ The item is a directory named by its ID, containing this index.md plus detail.md
 The **ID:** field is the source of truth; the directory name mirrors it. New items start in todo/.
 
 - ID form: {feature-id}-{n}, n incrementing per feature. Items not tied to a feature use a misc/infra prefix.
+- **Failures:** starts at 0. pb:next increments it (via fail-work-item.ts) on each failure (any source except a human rejection); an item that fails three times is parked in blocked/.
 
 This file is a reference, not a work item. Copy the shape; replace every placeholder.
 -->
