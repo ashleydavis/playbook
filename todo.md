@@ -1,3 +1,4 @@
 # Todo
 
-- Want to support multiple projects at once.
+- Be cool if there different interviews for different types of projects.
+- Be cool to set the CC status bar to show an overview of current state.

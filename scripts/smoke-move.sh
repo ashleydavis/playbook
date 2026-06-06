@@ -15,18 +15,18 @@ QUEUES=(todo in-progress agent-review human-review merge-queue done)
 
 failures=0
 fail() {
-  echo "  FAIL: $1"
-  failures=$((failures + 1))
+    echo "  FAIL: $1"
+    failures=$((failures + 1))
 }
 
 cleanup() {
-  rm -rf "$FIXTURE"
+    rm -rf "$FIXTURE"
 }
 trap cleanup EXIT
 
 # Build the fixture: six empty queues plus demo-1 in todo/ with contents.
 for q in "${QUEUES[@]}"; do
-  mkdir -p "$FIXTURE/work-items/$q"
+    mkdir -p "$FIXTURE/work-items/$q"
 done
 mkdir -p "$FIXTURE/work-items/todo/demo-1/evidence"
 echo "# demo-1" > "$FIXTURE/work-items/todo/demo-1/index.md"
@@ -34,47 +34,47 @@ echo "pass" > "$FIXTURE/work-items/todo/demo-1/evidence/unit.txt"
 
 # Assert demo-1 (and its evidence) lives only under the given queue.
 assert_only_in() {
-  local queue="$1"
-  for q in "${QUEUES[@]}"; do
-    if [[ "$q" == "$queue" ]]; then
-      [[ -d "$FIXTURE/work-items/$q/demo-1" ]] || fail "demo-1 missing from $q"
-      [[ -f "$FIXTURE/work-items/$q/demo-1/evidence/unit.txt" ]] \
-        || fail "demo-1 evidence missing from $q"
-    else
-      [[ ! -e "$FIXTURE/work-items/$q/demo-1" ]] \
-        || fail "demo-1 unexpectedly present in $q"
-    fi
-  done
+    local queue="$1"
+    for q in "${QUEUES[@]}"; do
+        if [[ "$q" == "$queue" ]]; then
+            [[ -d "$FIXTURE/work-items/$q/demo-1" ]] || fail "demo-1 missing from $q"
+            [[ -f "$FIXTURE/work-items/$q/demo-1/evidence/unit.txt" ]] \
+                || fail "demo-1 evidence missing from $q"
+        else
+            [[ ! -e "$FIXTURE/work-items/$q/demo-1" ]] \
+                || fail "demo-1 unexpectedly present in $q"
+        fi
+    done
 }
 
 # Run the CLI with the fixture as the current working directory.
 run_move() {
-  ( cd "$FIXTURE" && bun "$MOVE" "$@" )
+    ( cd "$FIXTURE" && bun "$MOVE" "$@" )
 }
 
 # Happy path: walk demo-1 through three queues.
 for target in in-progress agent-review human-review; do
-  if run_move demo-1 "$target" > /dev/null; then
-    assert_only_in "$target"
-  else
-    fail "move demo-1 $target exited non-zero"
-  fi
+    if run_move demo-1 "$target" > /dev/null; then
+        assert_only_in "$target"
+    else
+        fail "move demo-1 $target exited non-zero"
+    fi
 done
 
 # Error path: invalid queue must exit non-zero.
 if run_move demo-1 not-a-queue > /dev/null 2>&1; then
-  fail "move demo-1 not-a-queue should have exited non-zero"
+    fail "move demo-1 not-a-queue should have exited non-zero"
 fi
 
 # Error path: unknown id must exit non-zero.
 if run_move ghost-99 todo > /dev/null 2>&1; then
-  fail "move ghost-99 todo should have exited non-zero"
+    fail "move ghost-99 todo should have exited non-zero"
 fi
 
 if [[ "$failures" -eq 0 ]]; then
-  echo "PASS"
-  exit 0
+    echo "PASS"
+    exit 0
 else
-  echo "FAIL ($failures check(s) failed)"
-  exit 1
+    echo "FAIL ($failures check(s) failed)"
+    exit 1
 fi
