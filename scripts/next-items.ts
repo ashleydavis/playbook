@@ -44,7 +44,8 @@ export const LIMIT = 10;
 
 // Pull the dependency IDs out of an index.md's `**Depends on:**` line.
 // Returns [] when the line is absent (the template drops it when there are
-// none) or lists nothing.
+// none), lists nothing, or uses the literal "none" sentinel (some generators
+// write `**Depends on:** none` instead of removing the line).
 export function parseDependsOn(indexMd: string): string[] {
     const match = indexMd.match(/^\*\*Depends on:\*\*(.*)$/m);
     if (!match) {
@@ -53,7 +54,8 @@ export function parseDependsOn(indexMd: string): string[] {
     return match[1]
         .split(",")
         .map((id) => id.trim())
-        .filter((id) => id.length > 0);
+        .filter((id) => id.length > 0)
+        .filter((id) => id.toLowerCase() !== "none");
 }
 
 // List the item directory names in a queue, sorted. Returns [] if the queue

@@ -61,6 +61,17 @@ describe("parseDependsOn()", () => {
     test("returns [] for an empty Depends on line", () => {
         expect(parseDependsOn("**Depends on:**\n")).toEqual([]);
     });
+
+    test("treats the literal 'none' sentinel as no dependencies", () => {
+        expect(parseDependsOn("**Depends on:** none\n")).toEqual([]);
+        expect(parseDependsOn("**Depends on:** None\n")).toEqual([]);
+    });
+
+    test("drops a 'none' sentinel mixed into a list", () => {
+        expect(parseDependsOn("**Depends on:** none, feat-1\n")).toEqual([
+            "feat-1",
+        ]);
+    });
 });
 
 describe("nextItems()", () => {
