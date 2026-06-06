@@ -9,21 +9,48 @@ STATUS: NEEDS REVIEW
 
 Walk the developer through the `human-review/` queue. This is the human approval gate: the one point in the loop where a person decides.
 
+## Responses
+
+The developer drives the walkthrough with two sets of single-letter (or full-word) commands:
+
+- **Work item:** `a`/`approve`, `r`/`reject`, `d`/`defer`. Any one of these **exits the review of the current work item** at any point, even mid-walkthrough (the developer does not have to finish every review step first), and moves on to the next item. See [Resolve](#3-resolve).
+- **Review step:** `n`/`next`. Advances to the next review step within the current item.
+
+Anything else the developer types mid-walkthrough is treated as a **note** (transcribe it, see below) or a question (answer it); stay on the current review step until they send `n` or a work-item command. Never advance a step or an item on your own: present one review step, then wait for the developer's reply.
+
 ## Steps
 
-For each item in `human-review/`, prompt the developer to:
+### 1. Summarise and offer
 
-1. Read the code diff.
-2. Review the captured evidence in the item's `evidence/` subdir (test output, screenshots, command transcripts) as a first pass, before re-running anything by hand.
-3. Run the tests.
-4. Check the UI or CLI output.
-5. Read the updated docs.
-6. Make notes about anything that comes up. Notes can target whatever the developer is thinking about, not just the current item. Transcribe each note to the right place (confirming when it is not obvious):
+Read every item in `human-review/`. Give the developer a **very short, easy-to-read bullet-point summary** of the items ready for review (one line each). Then **offer to step them through the review**.
+
+If they decline, stop here.
+
+### 2. Walk through, one item at a time
+
+If they say yes, **make a todo list of all the items** and work through them **one at a time**. Do not move on to the next item until the current one is resolved (approved, rejected, or deferred).
+
+For each item:
+
+1. **Give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts in the item's `evidence/` subdir).
+
+2. **Step them through their review, one step at a time.** Build a review checklist of **review steps** for the item and take the developer through it **one review step at a time** so they are not overwhelmed. Do not dump the whole list at once: present one step, then wait. The developer sends `n`/`next` to advance to the next step (or a work-item command to exit early). Tailor the steps to the item; draw from:
+   - which **diffs** to look at (name the files),
+   - which **tests** to run,
+   - which **UI or CLI output** to explore,
+   - which **documentation** to read,
+   - anything else specific to the item.
+
+   When the last review step is done, prompt for the work-item resolution (`a`/`r`/`d`).
+
+3. As they review, capture any **notes**. Notes can target whatever the developer is thinking about, not just the current item. Transcribe each note to the right place (confirming when it is not obvious):
    - the current item's Notes section (or its History on rejection),
    - the current feature's Notes, behaviour, acceptance criteria, or open questions in `detail.md`,
    - other features (edits to their specs, or new work items in `todo/` to cover the change),
    - docs (testing manual, user guide, how-it-works),
    - the roadmap (`docs/roadmap.md`) for forward-looking ideas.
+
+### 3. Resolve
 
 Then the developer approves, rejects, or defers. **Rejection requires a note.** Write the outcome into the work item's `detail.md` (rejection notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
 - **Approve:** to `merge-queue/`.

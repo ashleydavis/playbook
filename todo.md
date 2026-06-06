@@ -18,4 +18,3 @@
 - Agent-review seems to add its own evidence that whacks the original evidence. Be better to have separate evidence directories.
 - Review doesn't need to run compile or automated tests if there are no code or configuraton changes.
 - Where possible work items should be numbered in order of execution. So dependent work items should have a higher number.
-- The review skill should prompt the dev through review items in work items on at a time only. Do not look at multiple review steps at once. Do not look at multiple work items at once.
