@@ -15,6 +15,7 @@ Plan or update a feature. The output is an agreed spec and testing manual, optio
 4. Update `docs/testing-manual/` to cover how the developer can manually test it.
 5. Optionally, break the feature into work items in `todo/`, each with acceptance criteria and a test plan derived from the spec. This step can be deferred to a later `pb:plan` session.
 6. Set dependencies between any new work items so they implement in the right order.
+7. If you queued any work items, update `current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate.
 
 ## Example
 

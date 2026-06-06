@@ -29,7 +29,7 @@ Then the developer approves or rejects. **Rejection requires a note.** Write the
 - **Reject:** back to `todo/`, notes appended to History.
 - **Approve:** to `merge-queue/`.
 
-Update `current-state.md` to reflect the move.
+Update `current-state.md` to reflect the move (and any follow-up items queued from the notes above): add or amend only the entries these changes affect, leaving the rest of its existing content intact.
 
 ## Example
 

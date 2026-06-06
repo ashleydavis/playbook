@@ -11,7 +11,8 @@ Write or update documentation. Use this for documentation work that is not the d
 
 1. Ask the developer what documentation needs writing or updating.
 2. Write or update the relevant files in `docs/` (spec, testing manual, how-it-works, or roadmap as appropriate).
-3. If the doc changes imply code or test changes, create work items in `todo/` to cover them.
+3. If the doc changes imply code or test changes, create work items in `todo/` to cover them. When you create more than one, set each item's `**Depends on:**` field to capture the dependencies between them so they implement in the right order.
+4. If you queued any work items, update `current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate.
 
 ## Example
 

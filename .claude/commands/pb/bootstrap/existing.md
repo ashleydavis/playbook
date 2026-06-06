@@ -33,9 +33,10 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
    - `docs/roadmap.md`
    - `smoke/` and `e2e/` setup
    - Unit test framework wired up
-5. For each gap, create a work item in `todo/` with acceptance criteria and a test plan. These items are dependencies for most future feature work.
-6. Populate `current-state.md` to reflect where things stand (existing in-flight work, recent commits, known issues).
-7. Begin the development loop, typically starting with `pb:next` to address the bootstrap work items.
+5. Run the project's full test suite (unit, smoke, e2e: whatever exists) and confirm it passes. A project under this process should always be passing its tests, including the moment it is first imported. If any tests fail, do not start feature work on top of a broken baseline: queue a high-priority work item to get the suite green and make it a dependency of the other bootstrap items, and note the failure in `current-state.md`.
+6. For each gap, create a work item in `todo/` with acceptance criteria and a test plan. These items are dependencies for most future feature work. Explicitly set the `**Depends on:**` field on each item to capture the dependencies between these gap items so they implement in the right order (e.g. the spec before the testing manual, the testing manual before the smoke/e2e setup).
+7. Populate `current-state.md` to reflect where things stand (existing in-flight work, recent commits, known issues, and whether the test suite is currently green).
+8. Begin the development loop, typically starting with `pb:next` to address the bootstrap work items.
 
 ## Example
 
@@ -44,6 +45,7 @@ Project: an Express API. Stack: Node + TypeScript. Tests: Jest (unit only, no sm
 In flight: a rate-limiter branch, half done.
 
 Cloned the project into project/; created state/ (from templates/state/).
+Ran the Jest suite: 84 passing, baseline is green.
 Project repo analysis found gaps:
   - no docs/spec/        -> todo/bootstrap-1 (write the spec from current behaviour)
   - no docs/rules/       -> todo/bootstrap-2 (run pb:customize to seed rules)

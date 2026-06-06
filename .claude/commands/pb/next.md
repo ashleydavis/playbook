@@ -57,7 +57,7 @@ Each per-item stage runs as a sub-agent started with its working directory set t
       - **Debug** items produce no code, only a proven root cause. The review agent assesses that the root cause is proven with evidence. On pass it moves the Debug item to `done/` (not `human-review/`) and creates a `Fix` item in `todo/` carrying the proven root cause. On fail it returns the item to `todo/` with notes.
       - **Fix** items additionally require that the fix solves the proven problem (the reproduction now passes), is the minimal/simplest change that does so, and ships with evidence the fix worked. On pass the Fix item moves to `human-review/` as normal; on fail it returns to `todo/` with notes.
 
-3. After each turn, the `/goal` evaluator checks the condition. When forward progress is exhausted, the goal clears and `pb:next` stops. Items in `human-review/` wait for `pb:review`.
+3. After each turn, update `current-state.md` to reflect the items that moved or were created this turn (not only the abort cases above but the normal forward progress, plus any Fix item spawned from a proven Debug): add or amend only the entries these changes affect, leaving the rest of its existing content intact. Then the `/goal` evaluator checks the condition. When forward progress is exhausted, the goal clears and `pb:next` stops. Items in `human-review/` wait for `pb:review`.
 
 Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 
