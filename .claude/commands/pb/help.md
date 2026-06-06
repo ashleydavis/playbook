@@ -3,9 +3,11 @@ name: pb:help
 description: Invoke when the developer wants to understand this process: what it is, how to bootstrap a project, how to drive work forward, which skills do what, and which queues a work item travels through. The orientation entry point for someone new to the playbook or coming back to it. Keywords: help, how does this work, how do I use this, getting started, what skills, what queues, explain the process, orientation, where do I start, what does pb:next do, pipeline, onboarding.
 ---
 
+STATUS: NEEDS REVIEW
+
 # pb:help
 
-Orient the developer in this process. Answer their actual question directly, then point them at the next step. Do not just dump the whole reference: lead with what they asked, keep it scannable, and link the deeper docs ([process.md](../../process.md), [handbook.md](../../handbook.md), [index.md](../../index.md)) for detail.
+Orient the developer in this process. Answer their actual question directly, then point them at the next step. Do not just dump the whole reference: lead with what they asked, keep it scannable, and link the deeper docs ([process.md](../../../process.md), [handbook.md](../../../handbook.md), [index.md](../../../index.md)) for detail.
 
 If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected items go?"), answer that and stop. If it is open ("how does this work?", "where do I start?"), give the short tour below.
 
@@ -13,7 +15,7 @@ If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected 
 
 **What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and `/goal` pass-conditions stop any agent from claiming "done" without evidence. Three repos: the **playbook** (this repo, shared across all projects: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
 
-**How to start a project (bootstrap, run once).** The playbook must already be installed on the machine (`scripts/install.sh`, one-time). Then:
+**How to start a project (bootstrap, run once).** Launch Claude Code from the playbook repo root, then:
 - New codebase -> `pb:bootstrap:new`: interviews you, creates both repos from `templates/`, writes the initial spec, testing manual, and `docs/rules/`.
 - Existing codebase -> `pb:bootstrap:existing`: creates the state repo, analyses the project repo for gaps, and queues work items to fill them.
 
@@ -57,9 +59,9 @@ Only `human-review/` needs you. `pb:next` moves items through the rest. Rejectio
 
 ## Where to read more
 
-- [process.md](../../process.md): the concise machine-readable process (what Claude reads at session start).
-- [handbook.md](../../handbook.md): the full human reference, section by section.
-- [index.md](../../index.md): the orientation map of what lives where.
+- [process.md](../../../process.md): the concise machine-readable process (what Claude reads at session start).
+- [handbook.md](../../../handbook.md): the full human reference, section by section.
+- [index.md](../../../index.md): the orientation map of what lives where.
 
 ## Example
 

@@ -13,36 +13,36 @@ Each "thing" (feature, work item) is a directory holding two markdown files with
 
 Default to `index.md`; open `detail.md` on demand.
 
-## Install
+## Setup
 
-One-time per machine; wires the playbook into Claude Code. Not the per-project bootstrap. Two modes:
+Clone the playbook for each project you want to work on. 
 
-**Host only** (trying it out; permissions stay on, Claude asks before acting):
-1. Make a working dir and clone the playbook into it. The project repo (and the state repo, created later by bootstrap) live here too, so all three share one tree.
-2. Install prerequisites (`git`, `bun`, Claude Code): `playbook/scripts/install-prereqs.sh`.
-3. Symlink into the dir's local `.claude/`: `CLAUDE.md` → [config/PLAYBOOK-CLAUDE.md](config/PLAYBOOK-CLAUDE.md), `.claude/commands/pb` → `skills/pb`. Do **not** link `config/settings.json` (permissions-off file, VM only).
-4. Launch Claude Code from that dir.
+Launch Claude Code from the root of the playbook repo.
 
-**Host + VM** (autonomous runs; VM disables permissions so `pb:next` runs unattended; repos live on the host, shared into the VM):
-1. On the host, clone the playbook to `~/playbook`.
-2. Spin up the VM (Multipass or similar) and share the host's repos dir into it.
-3. In the VM: `~/playbook/scripts/install-prereqs.sh` (prerequisites).
-4. In the VM: `~/playbook/scripts/install.sh` (wires Claude Code; links `config/settings.json`, turning permission prompts off).
-5. In the VM, install whatever the project needs to build, test, and run.
+**Host only**:
+1. Clone the playbook.
+2. Launch Claude Code from the playbook repo root. (`git`, `bun`, and Claude Code are assumed already installed on the host.)
+
+**Host + VM**:
+1. On the host, clone the playbook.
+2. Spin up the VM (Multipass or similar) and share the host's playbook repo into it.
+3. In the VM: `scripts/install-prereqs.sh` (prerequisites).
+4. In the VM, install whatever the project needs to build, test, and run.
+5. In the VM, launch Claude Code from the playbook repo root.
 
 ## Bootstrap
 
-One-time per project, on host or VM. Already bootstrapped? Don't run it again; start the loop with `pb:status`.
+Once per project, on host or VM. Already bootstrapped? Don't run it again; start the loop with `pb:status` or `pb:next`.
 
-- `pb:bootstrap:new`: greenfield. Interviews the developer, scaffolds both repos, seeds docs (spec, testing manual, `docs/rules/`), leaves empty queues ready to run.
-- `pb:bootstrap:existing`: existing code. Creates the state repo, finds gaps (`CLAUDE.md`, docs, test setup), queues a work item per gap (these become dependencies for future work).
+- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/`, seeds docs (spec, testing manual, `docs/rules/`), leaves empty queues ready to run.
+- `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, finds gaps (`CLAUDE.md`, docs, test setup), queues a work item per gap (these become dependencies for future work).
 
 ## Repos
 
 Three repos, each a separate concern:
-- **Playbook** (`~/playbook/`) describes the AI development process including skills, templates, and scripts that drive every project. The repo this file lives in, shared across all projects, one clone per machine.
-- **Project repo** is the product: the code being built and its docs. Lives in the working dir (not under `~/playbook`). Must contain `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
-- **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the queues and `current-state.md`. Sits beside the project repo (a sibling in the working dir, not inside it) so it stays external to and consistent across worktrees.
+- **Playbook** (the playbook repo root) describes the AI development process including skills, templates, and scripts that drive every project. The repo this file lives in. Playbook is cloned once for each project; launch Claude Code from its root.
+- **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. Must contain `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
+- **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the queues and `current-state.md`. Lives at `state/` under the playbook repo root (a sibling of `project/`, not inside it) so it stays external to and consistent across worktrees.
 
 ## Queues
 
@@ -53,7 +53,7 @@ Three repos, each a separate concern:
 - Each queue holds one directory per work item, named by its ID (`todo/<id>/`).
 - The item directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the item and its evidence stay together end to end and land in `done/<id>/`.
 - List a queue with `ls state/work-items/<queue>/` (e.g. `ls state/work-items/todo/`); the directory names are the IDs, so this shows queue contents without opening files.
-- Move items with `bun ~/playbook/scripts/move.ts <id> <target-queue>`. The agent decides when; the script only moves the directory and the agent updates `current-state.md`.
+- Move items with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). The agent decides when; the script only moves the directory and the agent updates `current-state.md`.
 - `current-state.md` is an overview of the current state of the process and is derived from the state of the queues. The AI or developer can check this file to see progress, state, what's blocked. It's lightweight, easy to read and scan.
 
 ## Spec and docs
@@ -85,7 +85,7 @@ All scaffolding is under [templates/](templates/) ([README.md](templates/README.
 
 ## Development loop
 
-Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `~/playbook/skills/pb/`):
+Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/commands/pb/`):
 
 | Skill | Purpose |
 |---|---|
@@ -103,7 +103,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `~/playbook/sk
 
 `/goal` is a pass condition checked after every turn; the agent is not done until the goal is achieved. Skills instruct; goals enforce. Every goal has a **success condition** (observable state: files in queues, checks green, evidence on disk, commits made) and an **abort condition** (turn count or repeated-failure signal).
 
-`pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-item sub-agent goal for each of merge / implement / agent-review, each run in the item's worktree. Timeouts surface via `current-state.md`, not silent failure. Exact goal text lives in the [pb:next](skills/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
+`pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-item sub-agent goal for each of merge / implement / agent-review, each run in the item's worktree. Timeouts surface via `current-state.md`, not silent failure. Exact goal text lives in the [pb:next](.claude/commands/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
 
 ## Checks
 

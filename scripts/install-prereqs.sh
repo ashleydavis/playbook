@@ -4,10 +4,10 @@
 #
 # Intended for a fresh Ubuntu/Debian VM (Multipass or equivalent). Idempotent:
 # anything already present is left alone. Run this after cloning the playbook
-# (cloning needs git, which is usually already on the image), then run
-# scripts/install.sh to wire the playbook into Claude Code.
+# (cloning needs git, which is usually already on the image), then launch
+# Claude Code from the clone root.
 #
-# Usage: bash ~/playbook/scripts/install-prereqs.sh
+# Usage: bash scripts/install-prereqs.sh
 
 set -euo pipefail
 
@@ -25,8 +25,8 @@ if have apt-get; then
   done
   if [ "${#need[@]}" -gt 0 ]; then
     info "apt-get install: ${need[*]}"
-    sudo apt-get update -y
-    sudo apt-get install -y "${need[@]}"
+    apt-get update -y
+    apt-get install -y "${need[@]}"
   else
     info "ok    git, curl, unzip"
   fi
@@ -55,5 +55,5 @@ else
 fi
 
 echo "Done."
-echo "Open a new shell so PATH picks up bun and claude, then run:"
-echo "  bash ~/playbook/scripts/install.sh"
+echo "Open a new shell so PATH picks up bun and claude, then launch Claude"
+echo "Code from the clone root."

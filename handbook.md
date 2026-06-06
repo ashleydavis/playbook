@@ -4,11 +4,11 @@ STATUS: REVIEWED
 
 The full, human-facing reference for the semi-autonomous AI development process: how it works and how to use it. The concise version Claude reads at session start is [process.md](process.md); the orientation map of what lives where is [index.md](index.md).
 
-This process turns Claude into a development partner. It uses a work queue as the central source of truth, a set of Claude skills to drive each stage, and three repos: a playbook that holds the process and skills (one copy across all projects), and a pair of per-project repos for the code (project repo) and the process state (state repo).
+It uses a work queue as the central source of truth, a set of Claude skills to drive each stage, and three repos: a playbook that holds the process and skills, and nested repos for the project (the project repo) and tracking the state of the process (the state repo).
 
 ## Glossary
 
-- **Playbook**: the repo holding the process, skills, templates, and scripts. One clone per machine, shared by every project.
+- **Playbook**: the repo holding the process, skills, templates, and scripts. One clone of this repo per project with Claude Code launched from the playbook repo root.
 - **Project repo**: the application's own code and docs (spec, rules). Self-contained; knows nothing of the playbook or state repo.
 - **State repo**: per-project process state: the work-item queues and `current-state.md`. Lives outside the project repo.
 - **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `pb:next`). Skills instruct; they do not enforce.
@@ -23,14 +23,20 @@ This process turns Claude into a development partner. It uses a work queue as th
 - **Stop the line**: halt and fix immediately when a check fails, before moving on.
 - **Evidence**: captured proof (test output, screenshots, transcripts) in a work item's `evidence/` subdir; goals require it before an item advances.
 - **Spec**: the source of truth for app behaviour, in `docs/spec/`. Tests, the testing manual, and derived docs all follow from it.
-- **Install**: the one-time, per-machine setup (`scripts/install.sh`) that wires the playbook into Claude Code. Distinct from bootstrap, which is per-project.
-- **Bootstrap**: the one-time, per-project setup (`pb:bootstrap:*`) that scaffolds the repos. Distinct from install, which is per-machine.
+- **Setup**: forking (optional) and cloning the playbook and launching Claude Code from the playbook repo root, so the process applies. One clone per project. Distinct from bootstrap, which scaffolds the per-project repos.
+- **Bootstrap**: the one-time, per-project setup (`pb:bootstrap:*`) that scaffolds the repos. Distinct from setup, which clones the playbook and launches it.
 - **Host**: the developer's own computer, where the repos live and interactive work (planning, review, exploring the UI) runs.
-- **VM**: a lightweight virtual machine that runs Claude with permissions off for autonomous work (`pb:next`); the host's repos are shared into it.
+- **VM**: a lightweight virtual machine that contains the blast radius of autonomous work (`pb:next`). Permissions are off wherever the playbook runs, including the host, so the VM (not a permission prompt) is the safety boundary; the host's repos are shared into it.
 
-## Playbook Installation
+## Setup
 
-One-time setup that wires the playbook into Claude Code: its global instructions and the `/pb:*` skills. Distinct from the per-project `pb:bootstrap:*` skills (next section): install once per machine, bootstrap once per project. Two variants, matching the two run modes (see Running a Session).
+Clone the playbook for each project you want to work on. 
+
+Launch Claude Code from the root of the playbook repo.
+
+TODO: How do I make it so that permission are not disabled on the host. But are on the VM?
+
+> **Permissions warning.** The committed `.claude/settings.json` sets `bypassPermissions`, so Claude Code runs with permission prompts **off** wherever the playbook repo is launched, including your own host. Run it inside the sandbox VM (see Maximising Autonomy > Sandbox VM) so the blast radius is the VM, not your machine.
 
 ### Forking (optional)
 
@@ -38,22 +44,20 @@ The playbook is meant to be customised. To tune the skills, rules, and templates
 
 ### Host only
 
-For trying the process on your own computer, no VM. Permissions stay on, so Claude asks before it acts.
+Try the playbook on your development computer:
 
-1. Make a working directory and, inside it, clone the playbook (or your fork, if you made one) and create your repos, so everything shares one tree.
-2. Install the prerequisites with `playbook/scripts/install-prereqs.sh`: `git`, `bun`, Claude Code.
-3. Wire the playbook into that directory's local `.claude/`: symlink `CLAUDE.md` → `playbook/config/PLAYBOOK-CLAUDE.md` and `.claude/commands/pb` → `playbook/skills/pb`. Do **not** link `config/settings.json` (that is the permissions-off file, for the VM only).
-4. Launch Claude Code from that directory. Start your development session.
+1. Clone the playbook (or your fork, if you made one). 
+2. Launch Claude Code from the playbook repo root to start your development session. (Prerequisites `git`, `bun`, and Claude Code are assumed already installed on the host.)
 
 ### Host + VM
 
-For autonomous runs: the VM disables permissions so `pb:next` works unattended. Repos live on the host and are shared into the VM (see Maximising Autonomy > Sandbox VM).
+For autonomous runs. The VM contains the blast radius so `pb:next` works unattended. Repos live on the host and are shared into the VM (see Maximising Autonomy > Sandbox VM).
 
-1. On the host, clone the playbook (or your fork, if you made one) to `~/playbook`.
-2. Spin up the VM (Multipass or equivalent) and share the host directory holding your repos into it, so the host and the VM see the same files.
-3. In the VM, run `~/playbook/scripts/install-prereqs.sh` to install `git`, `bun`, and Claude Code.
-4. In the VM, run `~/playbook/scripts/install.sh` to wire the playbook into the VM's Claude Code (this links `config/settings.json`, turning permission prompts off).
-5. In the VM, install whatever the project itself needs to build, test, and run.
+1. On the host, clone the playbook (or your fork, if you made one).
+2. Spin up the VM (Multipass or equivalent) and share the host's playbook repo into it, so the host and the VM see the same files.
+3. In the VM, run `scripts/install-prereqs.sh` to install `git`, `bun`, and Claude Code (if not already installed).
+4. In the VM, install whatever the project itself needs to build, test, and run.
+5. In the VM, launch Claude Code from the playbook repo root. 
 
 ## Project Bootstrap
 
@@ -61,11 +65,11 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `docs/rules/`) from the answers. Leaves you with an empty `current-state.md` and queues, ready to run the loop. Full steps are in the [skill](skills/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `docs/rules/`) from the answers. Leaves you with an empty `current-state.md` and queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`pb:bootstrap:existing`)
 
-Interviews the developer, creates the state repo (leaving the project repo in place), then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a work item to fill each gap. These items become dependencies for most future feature work. Full steps are in the [skill](skills/pb/bootstrap/existing.md).
+Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a work item to fill each gap. These items become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
 
 ## Running a Session
 
@@ -142,18 +146,20 @@ Three repos: one shared across all projects, two per project. The split keeps ev
 
 ### Playbook
 
-Lives in a known location on the host (e.g. `~/playbook/`). One clone per machine, not per project: every project on that machine points at this same clone, so an improvement made here is picked up by all of them at once. It is a normal git repo, so you fork or clone it and customise the process, skills, and templates to your own needs, pulling in upstream improvements when you want them.
+Clone this repo once for each project you are working on. Clone it wherever you like: the project and state repos nest inside it, and Claude Code is launched from the repo root. It is a normal git repo, so you fork or clone it and customise the process, skills, and templates to your own needs.
 
 ```bash
 playbook/
+  CLAUDE.md           # Standing instructions, loaded when Claude Code launches from here.
   README.md
   handbook.md         # This handbook. The full process described for humans.
   process.md          # The concise process to read by the AI.
   index.md            # Orientation map: what lives where across the three repos.
-  config/             # Machine-level Claude config, symlinked into ~/.claude/ by install.sh.
-  skills/             # The playbook AI skills library.
+  .claude/            # Claude Code config: commands/pb/ (the skills) and settings.json (permissions off).
   templates/          # Various templates for creating repos and files.
-  scripts/            # install.sh (wire in the playbook) and move.ts (move a work item between queues).
+  scripts/            # install-prereqs.sh (install git/bun/Claude Code) and move.ts (move a work item between queues).
+  project/            # The project repo (created by bootstrap).
+  state/              # The state repo (created by bootstrap).
 ```
 
 See the playbook [README.md](README.md) for the full file-by-file layout.
@@ -232,39 +238,39 @@ todo/
 
 ## Skills
 
-Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `pb:help`, `pb:status`, `pb:plan`, `pb:docs`, `pb:add`, `pb:next`, `pb:review`, `pb:debug`, `pb:customize`, and the one-time `pb:bootstrap:new` / `pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind, with the at-a-glance list in the [Skills Reference](#skills-reference); the full procedure for each lives in its skill file under [skills/pb/](skills/pb/), which this section does not restate.
+Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `pb:help`, `pb:status`, `pb:plan`, `pb:docs`, `pb:add`, `pb:next`, `pb:review`, `pb:debug`, `pb:customize`, and the one-time `pb:bootstrap:new` / `pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind, with the at-a-glance list in the [Skills Reference](#skills-reference); the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
 
 ### pb:status
 
-Reads `current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [skills/pb/status.md](skills/pb/status.md).
+Reads `current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
 
 ### pb:plan
 
-Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered work items in `todo/`. Design work, not implementation. See [skills/pb/plan.md](skills/pb/plan.md).
+Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered work items in `todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
 
 ### pb:docs
 
-Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing work items in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `pb:plan`). See [skills/pb/docs.md](skills/pb/docs.md).
+Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing work items in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
 
 ### pb:add
 
-Creates one structured work item in `todo/` for a single, well-understood task. See [skills/pb/add.md](skills/pb/add.md).
+Creates one structured work item in `todo/` for a single, well-understood task. See [.claude/commands/pb/add.md](.claude/commands/pb/add.md).
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `pb:review`). The per-stage goal text, worktree mechanics, timeout handling, and the Debug/Fix exceptions are in [skills/pb/next.md](skills/pb/next.md).
+Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `pb:review`). The per-stage goal text, worktree mechanics, timeout handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### pb:review
 
-The human approval gate. Walks the developer through each item in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the item to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). See [skills/pb/review.md](skills/pb/review.md).
+The human approval gate. Walks the developer through each item in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the item to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
 
 ### pb:debug
 
-The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two work items so each is reviewed on its own: a **Debug** item proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** item that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix items are in [skills/pb/debug.md](skills/pb/debug.md).
+The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two work items so each is reviewed on its own: a **Debug** item proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** item that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix items are in [.claude/commands/pb/debug.md](.claude/commands/pb/debug.md).
 
 ### pb:customize
 
-Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every work item from then on. See [skills/pb/customize.md](skills/pb/customize.md).
+Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every work item from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
 
 ## Skills Reference
 
@@ -419,7 +425,7 @@ Sub-agents update this file whenever a work item changes queue or something sign
 
 ### CLAUDE.md files
 
-`CLAUDE.md` files give Claude directory-scoped rules, auto-loaded by Claude Code when it works in or below that directory. Each repo carries its own, shipped as a template and copied in at bootstrap: the playbook's `PLAYBOOK-CLAUDE.md` (symlinked to the global `~/.claude/CLAUDE.md` at install), the project repo's root `CLAUDE.md` and `docs/spec/CLAUDE.md`, and the state repo's root `CLAUDE.md` and `work-items/CLAUDE.md`. Keep each one small and scoped to the rules that matter in that tree; the files themselves are the source of truth, so this handbook does not restate their contents.
+`CLAUDE.md` files give Claude directory-scoped rules, auto-loaded by Claude Code when it works in or below that directory. Each repo carries its own, shipped as a template and copied in at bootstrap: the playbook's root `CLAUDE.md` (loaded when Claude Code launches from the playbook repo root), the project repo's root `CLAUDE.md` and `docs/spec/CLAUDE.md`, and the state repo's root `CLAUDE.md` and `work-items/CLAUDE.md`. Keep each one small and scoped to the rules that matter in that tree; the files themselves are the source of truth, so this handbook does not restate their contents.
 
 #### Rule set: `docs/rules/`
 
@@ -448,7 +454,7 @@ The goal is for Claude to operate without interruption except at the human appro
 
 ### Skills
 
-Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [skills/](skills/), exposed to Claude Code as a slash command by the commands-directory symlink set up during install (see Installing the Playbook). The full set is in the Skills Reference table above.
+Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills Reference table above.
 
 Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement belongs in goals.
 
@@ -464,7 +470,7 @@ Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two
 
 Goals cover both responsibilities that hooks would otherwise handle:
 
-- **Queue transitions.** The success condition names the target queue ("the work item directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ~/playbook/scripts/move.ts <id> <target-queue>`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
+- **Queue transitions.** The success condition names the target queue ("the work item directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
 - **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass. Because the goal evaluator re-checks after each turn, the agent cannot pretend it is done.
 - **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the item's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
 
@@ -474,7 +480,7 @@ The development loop relies on this in three places:
 - Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
 - Timeouts surface to the developer via `current-state.md` rather than by silently failing.
 
-The full goal text used at each stage is in [skills/pb/next.md](skills/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
+The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 
 ### Sandbox VM (Multipass or similar)
 
@@ -485,8 +491,8 @@ Pre-approving specific commands in `.claude/settings.json` (test runners, linter
 The answer is to turn permissions off and run Claude inside a VM, while sharing the repos between the host and the VM so the developer keeps full, live visibility:
 
 1. Spin up a lightweight Ubuntu VM with Multipass (or equivalent).
-2. Create and clone the repos on the host: the playbook, and per project the project and state repos. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
-3. In the VM, install the prerequisites and run `bash ~/playbook/scripts/install.sh` to wire the playbook into the VM's Claude Code (see Installing the Playbook). The symlinked settings run with permission prompts off, so `pb:next` never stalls waiting for approval.
+2. Clone the playbook repo on the host; bootstrap creates the project and state repos inside it. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
+3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `pb:next` never stalls waiting for approval.
 4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
 
 What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.

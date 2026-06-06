@@ -3,11 +3,13 @@ name: pb:next
 description: Invoke to drive the development loop forward without human input: merge any approved items, then implement the next batch of up to 10 unblocked items through to human review. Run it once and let it drain the queues; you do not run it again until the developer has unblocked something (e.g. by completing reviews). Keywords: next, work next, run the loop, drive the pipeline, implement, merge, drain the queue, autonomous, batch, keep going, do the work.
 ---
 
+STATUS: NEEDS REVIEW
+
 # pb:next
 
 Drain every item the queues can move without human input. `pb:next` sets a `/goal` for itself and keeps running turns until the queues stop making forward progress, so a single invocation is enough. You do not run it again until the developer has unblocked something (e.g. by completing reviews in `pb:review`).
 
-Each per-item stage runs as a sub-agent started with its working directory set to the item's worktree, so it cannot touch the main project repo by accident. The sub-agent moves the item directory itself with `bun ~/playbook/scripts/move.ts <id> <target-queue>` when its goal is met.
+Each per-item stage runs as a sub-agent started with its working directory set to the item's worktree, so it cannot touch the main project repo by accident. The sub-agent moves the item directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its goal is met.
 
 ## Steps
 
