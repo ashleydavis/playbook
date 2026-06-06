@@ -2,7 +2,7 @@
     "type": "module",
     "scripts": {
         "test": "jest",
-        "smoke": "bash scripts/smoke-move.sh"
+        "smoke": "bash smoke-move.sh && bash smoke-next-items.sh"
     },
     "dependencies": {},
     "devDependencies": {

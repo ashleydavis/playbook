@@ -9,7 +9,11 @@ STATUS: NEEDS REVIEW
 
 Drain every item the queues can move without human input. `pb:next` sets a `/goal` for itself and keeps running turns until the queues stop making forward progress, so a single invocation is enough. You do not run it again until the developer has unblocked something (e.g. by completing reviews in `pb:review`).
 
-Each per-item stage runs as a sub-agent started with its working directory set to the item's worktree, so it cannot touch the main project repo by accident. The sub-agent moves the item directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its goal is met.
+Each work item passes through stages: merge, implement, agent-review. The parent agent does none of this work itself. For each item at each stage it spawns a sub-agent, started with its working directory set to that item's worktree so it cannot touch the main project repo by accident. The sub-agent moves the item directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its goal is met.
+
+Keep the parent agent's context narrow: the only command it runs to find the next work is `bun ../scripts/next-items.ts`, and the only file it reads is `current-state.md`. It runs no other commands and reads no other files.
+
+**`current-state.md` is the parent agent's responsibility alone.** Only the parent agent updates it. Sub-agents must never write to it: they run in parallel and a shared-file write would race. A sub-agent's only state changes are to its own item (move its directory with `move.ts`, write its `evidence/`, add a History note to its `detail.md`, commit). The parent reflects those changes into `current-state.md` after the turn.
 
 ## Steps
 
@@ -33,7 +37,7 @@ Each per-item stage runs as a sub-agent started with its working directory set t
 
       Timeout (abort): update `current-state.md` so the developer sees the stuck item, and exit `pb:next` (clear the parent `/goal`). The directory tells the developer the state of main: still in `merge-queue/` means the merge never happened (main is clean); already in `done/` means the merge happened but post-merge checks did not all pass (main may be broken). Do not keep pushing more items. The developer resolves the failure before invoking `pb:next` again.
 
-   2. **Read `todo/`,** find items with no unmet dependencies, take up to 10. For each, move the directory from `todo/` to `in-progress/` and create a git worktree named after the work item's ID. The worktree uses the project repo's current branch directly (no new branch).
+   2. **List the actionable items in `todo/`** by running `bun ../scripts/next-items.ts` from `state/`. It returns a JSON array of up to 10 work-item IDs whose dependencies are all actioned (it scans only `todo/`, treating any dependency no longer in `todo/` as done); take them as-is without opening their files. For each, move the directory from `todo/` to `in-progress/` and create a git worktree named after the work item's ID. The worktree uses the project repo's current branch directly (no new branch).
 
    3. **For each item in `in-progress/`,** spawn a sub-agent in parallel with:
 
