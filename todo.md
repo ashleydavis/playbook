@@ -10,4 +10,8 @@
 - Need a reset skill. Moves in prog work back to todo, deletes worktrees and branches.
 - /goal doesn't seem to be set for the parent agent by /next
     - Possibly not set for subagents either.
+    - Seems like only a human can type the /goal in? That sounds wierd. Needs research.
 - Some tasks take way longer than others and the parent agent won't start new tasks. Maybe part of the goal should be to keep 10 tasks in flight as long as possible. Like when any task completes try and replace it with another (assuming deps are satisfied).
+- I still need planning!
+    - So official support for new plans, done plans. Each plan should be a sequence of work items that can be scheduled at a later date.
+    - The thing is to check how much of the plan is still relevant given that code and docs might have changed since the plan was created.
