@@ -15,3 +15,4 @@
 - I still need planning!
     - So official support for new plans, done plans. Each plan should be a sequence of work items that can be scheduled at a later date.
     - The thing is to check how much of the plan is still relevant given that code and docs might have changed since the plan was created.
+- Agent-review seems to add its own evidence that whacks the original evidence. Be better to have separate evidence directories.
