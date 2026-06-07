@@ -52,6 +52,8 @@ Three repos, each a separate concern:
 
 `blocked/` is the side pen. It is **not** a pipeline stage: it is where an item lands after its third failure (see **Failures**). A blocked item is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
 
+The arrow above is an item's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved items on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so items keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](.claude/commands/pb/next.md) skill.
+
 - Each queue holds one directory per work item, named by its ID (`todo/<id>/`).
 - The item directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the item and its evidence stay together end to end and land in `done/<id>/`.
 - List a queue with `ls state/work-items/<queue>/` (e.g. `ls state/work-items/todo/`); the directory names are the IDs, so this shows queue contents without opening files.

@@ -5,10 +5,11 @@
 //   bun playbook/scripts/next-items.ts
 //
 // Prints a JSON object keyed by the four queues pb:next drives, each value the
-// list of item IDs to act on in that queue (sorted by ID):
+// list of item IDs to act on in that queue (sorted by ID). The keys are in the
+// order pb:next processes them each turn (merge-queue, then agent-review, then
+// todo, then in-progress: finish work nearest to done before starting new work):
 //
-//   merge-queue, agent-review: every item in the queue.
-//   in-progress: every item in the queue.
+//   merge-queue, agent-review, in-progress: every item in the queue.
 //   todo: only the actionable items (dependencies resolved), capped so that
 //         todo + in-progress together never exceed LIMIT items in flight.
 //
@@ -26,12 +27,14 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-// The queues pb:next drives, in pipeline order. Reported in this key order.
+// The queues pb:next drives, in the order it processes them each turn
+// (finish work nearest to done before starting anything new). Reported in this
+// key order.
 export const QUEUES = [
     "merge-queue",
+    "agent-review",
     "todo",
     "in-progress",
-    "agent-review",
 ] as const;
 
 export type ReportedQueue = (typeof QUEUES)[number];
@@ -112,9 +115,9 @@ export async function nextItems(
 
     return {
         "merge-queue": await listQueue(join(workItemsDir, "merge-queue")),
+        "agent-review": await listQueue(join(workItemsDir, "agent-review")),
         todo: todoReady,
         "in-progress": inProgress,
-        "agent-review": await listQueue(join(workItemsDir, "agent-review")),
     };
 }
 
