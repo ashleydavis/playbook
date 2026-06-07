@@ -9,11 +9,12 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [handbook.md](handbook.md): full process description (human reference).
 - [process.md](process.md): concise version Claude reads at session start.
 - [CLAUDE.md](CLAUDE.md): standing instructions, loaded when Claude Code launches from the playbook repo root.
-- [.claude/commands/pb/](.claude/commands/pb/): help, status, plan, docs, add, next, review, debug, customize.
+- [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan, docs, add, next, review, debug, customize, reset.
 - [.claude/commands/pb/bootstrap/](.claude/commands/pb/bootstrap/): new, existing. Run once per project (`pb:bootstrap:*`).
 - [.claude/settings.json](.claude/settings.json): Claude Code settings for the playbook repo (permission prompts off).
 - [templates/](templates/): all templates, with its own [README.md](templates/README.md) and [index.md](templates/index.md). `project/` and `state/` are scaffolded into new projects by `pb:bootstrap:*`; `feature-template/` and `work-item-template/` are copied per item by `pb:plan`/`pb:add`; `commit-template/` is registered in place via `git config commit.template`.
 - [scripts/move.ts](scripts/move.ts): moves a work item between queues.
+- [scripts/reset-loop.ts](scripts/reset-loop.ts): unwinds a run (in-progress -> todo, tears down worktrees). Used by `pb:reset`.
 - [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code.
 
 ## In a project repo (project-specific)

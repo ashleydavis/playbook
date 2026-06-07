@@ -109,6 +109,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 |---|---|
 | `pb:help` | Explain the process, bootstrap, the loop, skills, and queues |
 | `pb:status` | Summarise queue state, recommend next skill |
+| `pb:board` | Bare listing of every queue and its items (no narrative) |
 | `pb:plan` | Update spec, docs, testing manual; queue items |
 | `pb:docs` | Write/update docs; queue items |
 | `pb:add` | Create a work item in `todo/` |
@@ -116,6 +117,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:review` | Walk the developer through `human-review/` |
 | `pb:debug` | File a Debug item to prove a root cause, then spawn a Fix item |
 | `pb:customize` | Tune the project's enforced rules in `docs/rules/` |
+| `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |
 
 ## Goals
 

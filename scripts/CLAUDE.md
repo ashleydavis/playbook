@@ -10,6 +10,7 @@ The helpers:
 - `finalize-work-item.ts <id>`: merge an item's worktree back into the project's current branch (rebase, then fast-forward), remove the worktree, and delete its `worktrees/<id>` branch. On a merge conflict it aborts cleanly, leaves the worktree intact, and exits 2 so the agent can resolve the conflict, commit, and re-run.
 - `fail-work-item.ts <id>`: increment the item's `**Failures:**` count in its `index.md` and print the new count. Called on every failure (any source except a human rejection); three failures park the item in `blocked/`.
 - `reset-failures.ts <id>`: reset the item's `**Failures:**` count to 0. Called by `pb:review` when a human rejects an item back to `todo/`, so rework starts with a clean slate (a rejection is not a failure).
+- `reset-loop.ts`: unwind an interrupted or abandoned run back to a clean slate. Moves every `in-progress/` item back to `todo/`, then force-removes every worktree under `project/worktrees/`, deletes its `worktrees/<id>` branch, and prunes stale worktree records. Discards unmerged work; does not merge. Called by `pb:reset`.
 
 It is deliberately kept separate from the scaffolded `project/` so the Playbook's own tooling and its Jest run never sweep up an app's tests.
 
