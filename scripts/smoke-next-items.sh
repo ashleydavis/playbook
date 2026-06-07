@@ -60,7 +60,7 @@ output="$(run_next)"
 if [[ $? -ne 0 ]]; then
     fail "next-items exited non-zero on a valid work-items/"
 fi
-expected='{"merge-queue":["auth-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"],"agent-review":["search-4","search-5"]}'
+expected='{"merge-queue":["auth-5"],"agent-review":["search-4","search-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
 if [[ "$output" != "$expected" ]]; then
     fail "expected $expected, got $output"
 fi
@@ -69,7 +69,7 @@ fi
 EMPTY="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-empty.XXXXXX")"
 mkdir -p "$EMPTY/work-items"
 empty_out="$( cd "$EMPTY" && bun "$NEXT" )"
-empty_expected='{"merge-queue":[],"todo":[],"in-progress":[],"agent-review":[]}'
+empty_expected='{"merge-queue":[],"agent-review":[],"todo":[],"in-progress":[]}'
 if [[ "$empty_out" != "$empty_expected" ]]; then
     fail "expected $empty_expected for empty queues, got $empty_out"
 fi
