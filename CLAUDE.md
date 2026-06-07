@@ -12,6 +12,8 @@ Claude Code is launched from the root of this repo and these are your standing i
 
 **At session start, read `process.md`.** It is the concise description of how the process works: the repos, the queues, the work-item format, the development loop, goals, and the verification rules. 
 
+**Do not use jargon or made-up words.** Communicate in plain English. This repo has a standard set of terms; when you need to know the correct terminology, read `glossary.md` and use those terms when talking to the developer. Do not invent your own words for things the glossary already names.
+
 The full reference only to be ready by the human  is `handbook.md`.
 
 Read `index.md` to orient yourself in the project.
