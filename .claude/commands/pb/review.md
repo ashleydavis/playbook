@@ -22,7 +22,9 @@ Anything else the developer types mid-walkthrough is treated as a **note** (tran
 
 ### 1. Summarise and offer
 
-Read every item in `human-review/`. Give the developer a **very short, easy-to-read bullet-point summary** of the items ready for review (one line each). Then **offer to step them through the review**.
+List the items in `human-review/`. For the one-line summary, **read only each item's `index.md`**, which already holds the title and a one-line summary. **Do not read `detail.md` here** (its History and evidence logs run to thousands of lines and must not be slurped). Then **offer to step them through the review**.
+
+Defer the deep read: `detail.md` (History, Issues, acceptance criteria) and the `evidence/` tree for a given item are only read in Step 2, lazily, when you reach that item, never all up front.
 
 If they decline, stop here.
 
@@ -32,7 +34,7 @@ If they say yes, **make a todo list of all the items** and work through them **o
 
 For each item:
 
-1. **Give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts). Evidence is captured per pass under `evidence/` (`implementation-N/`, `review-N/`); the highest-numbered `implementation-N/` and `review-N/` reflect the current state, with earlier pairs showing prior rejected rounds.
+1. **Now read this one item in full** (its `detail.md` and the relevant `evidence/` files) and **give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts). This is the point to read the whole `detail.md`, not before. Evidence is captured per pass under `evidence/` (`implementation-N/`, `review-N/`); the highest-numbered `implementation-N/` and `review-N/` reflect the current state, with earlier pairs showing prior rejected rounds, so read the latest pass first and only go back if needed.
 
 2. **Step them through their review, one step at a time.** Build a review checklist of **review steps** for the item and take the developer through it **one review step at a time** so they are not overwhelmed. Do not dump the whole list at once: present one step, then wait. The developer sends `n`/`next` to advance to the next step (or a work-item command to exit early). Tailor the steps to the item; draw from:
    - which **diffs** to look at (name the files),
@@ -54,7 +56,7 @@ For each item:
 
 Then the developer approves, rejects, or defers. **Rejection requires a note.** Write the outcome into the work item's `detail.md` (rejection notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
 - **Approve:** to `merge-queue/`.
-- **Reject with notes:** back to `todo/`, notes appended to History. A rejection is not a failure, it is your explicit decision to rework the item: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
+- **Reject with notes:** back to `todo/`, notes appended to History. **Record every issue the developer raises as a new unticked checkbox in the item's `## Issues` section** (create the section if absent), in addition to the History note, so `pb:next`'s implement agent must fix each one and tick it, and its review agent fails the item until every box is genuinely resolved. A human rejection is not a failure, it is their explicit decision to rework the item: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Defer:** leave it in `human-review/` to return to later. No move, no note required. Skip to the next item.
 
 Update `current-state.md` to reflect the move (and any follow-up items queued from the notes above): add or amend only the entries these changes affect, leaving the rest of its existing content intact.
