@@ -36,10 +36,18 @@ For each item:
 
 1. **Now read this one item in full** (its `detail.md` and the relevant `evidence/` files) and **give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts). This is the point to read the whole `detail.md`, not before. Evidence is captured per pass under `evidence/` (`implementation-N/`, `review-N/`); the highest-numbered `implementation-N/` and `review-N/` reflect the current state, with earlier pairs showing prior rejected rounds, so read the latest pass first and only go back if needed.
 
-2. **Step them through their review, one step at a time.** Build a review checklist of **review steps** for the item and take the developer through it **one review step at a time** so they are not overwhelmed. Do not dump the whole list at once: present one step, then wait. The developer sends `n`/`next` to advance to the next step (or a work-item command to exit early). Tailor the steps to the item; draw from:
+2. **Step them through their review, one step at a time.** Build a review checklist of **review steps** for the item and take the developer through it **one review step at a time** so they are not overwhelmed. Do not dump the whole list at once: present one step, then wait. The developer sends `n`/`next` to advance to the next step (or a work-item command to exit early).
+
+   Order the steps by what matters most. The first two steps are fixed:
+
+   1. **Show the UI screenshots first** (if the item's evidence contains any), before anything else.
+   2. **Let the developer experience the app themselves.** This is the most important step after the screenshots. The developer wants to run the part of the app that changed and walk through it. Cover both kinds of running, choosing what fits the change:
+      - **Run it by hand.** Work out which part of the app this item changed (from its `detail.md` and diff), then tell the developer exactly how to launch and walk through that part: the command(s) to run and the steps to follow. Point them to the **relevant section of the testing manual** (`docs/testing-manual/`) that covers this area, naming the file and section so they can read the manual walkthrough for themselves, and offer to launch the app for them (the `run` skill) so they can drive it.
+      - **Run the automated tests** that exercise the change, fresh in the foreground: unit, smoke, and/or e2e, picking the levels that match what changed (read the item's Test Plan in `detail.md` for which tests apply). Show them the output.
+
+   Then tailor the remaining steps to the item; draw from:
    - which **diffs** to look at (name the files),
-   - which **tests** to run,
-   - which **UI or CLI output** to explore,
+   - any further **UI or CLI output** to explore,
    - which **documentation** to read,
    - anything else specific to the item.
 
