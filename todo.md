@@ -22,4 +22,5 @@
 - Anything in process.md that the agent doesn't need to know? If so remove.
 - Are process, handbook and skills all in aligment? Are there inconsistencies?
 - How can I know if the goals are working or not?
-- This entire repo is about "## Maximising Autonomy" so want to minimize that section in the handbook or remove it and integrate it's content into the rest of the doc.
+- How do I make it so that permission are not disabled on the host. But are on the VM?
+- Should "work item" be renamed to "task" ? I'm not so sure about this, but "task" would be less cumbersome.

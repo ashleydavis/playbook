@@ -85,7 +85,7 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 A single failure never aborts the loop; the run continues with the other items. Two or more items failing the same stage or check in one run is a **systemic failure** (the environment, not the items): stop launching new work and hand back. Never work around a failure by switching parallel→serial or re-driving an item by hand.
 
-**Carve-out — broken main:** if a merge lands but its post-merge checks then fail, the item goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later item builds on main.
+**Exception (broken main):** if a merge lands but its post-merge checks then fail, the item goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later item builds on main.
 
 ## Templates
 

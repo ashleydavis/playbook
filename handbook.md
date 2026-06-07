@@ -11,13 +11,13 @@ It uses a work queue as the central source of truth, a set of Claude skills to d
 - **Playbook**: the repo holding the process, skills, templates, and scripts. One clone of this repo per project with Claude Code launched from the playbook repo root.
 - **Project repo**: the application's own code and docs (spec, rules). Self-contained; knows nothing of the playbook or state repo.
 - **State repo**: per-project process state: the work-item queues and `current-state.md`. Lives outside the project repo.
-- **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `pb:next`). Skills instruct; they do not enforce.
+- **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `/pb:next`). Skills instruct; they do not enforce.
 - **Work item**: a unit of work: a directory (`index.md` and `detail.md` plus an `evidence/` subdir) named by its ID, that travels through the queues.
 - **Queue**: one of six pipeline directories under `state/work-items/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`. Plus `blocked/`, a side pen (not a pipeline stage) where items that hit a hard or repeated failure are parked for the developer.
 - **`current-state.md`**: the curated, human-readable summary of where things stand, sitting on top of the queues.
 - **Goal (`/goal`)**: a pass condition checked after every turn; an agent is not "done" until it holds. Goals enforce what skills only instruct.
 - **Goal evaluator**: the mechanism that re-checks a `/goal` against the repos after each turn.
-- **Sub-agent**: an agent `pb:next` spawns to take one work item through one stage, running in that item's worktree. The pipeline diagram's **Work / Review / Merge Agent** are sub-agents at the implement, agent-review, and merge stages.
+- **Sub-agent**: an agent `/pb:next` spawns to take one work item through one stage, running in that item's worktree. The pipeline diagram's **Work / Review / Merge Agent** are sub-agents at the implement, agent-review, and merge stages.
 - **Worktree**: a git working tree per work item, so parallel items do not collide and a sub-agent cannot touch the main repo by accident.
 - **Check**: any pass/fail verification of the work, either deterministic (a command: compile, lint, unit, smoke, e2e) or judgement (an agent analysing against a rule). See the Checks section.
 - **Stop the line**: halt and fix immediately when a check fails, before moving on.
@@ -26,15 +26,25 @@ It uses a work queue as the central source of truth, a set of Claude skills to d
 - **Setup**: forking (optional) and cloning the playbook and launching Claude Code from the playbook repo root, so the process applies. One clone per project. Distinct from bootstrap, which scaffolds the per-project repos.
 - **Bootstrap**: the one-time, per-project setup (`pb:bootstrap:*`) that scaffolds the repos. Distinct from setup, which clones the playbook and launches it.
 - **Host**: the developer's own computer, where the repos live and interactive work (planning, review, exploring the UI) runs.
-- **VM**: a lightweight virtual machine that contains the blast radius of autonomous work (`pb:next`). Permissions are off wherever the playbook runs, including the host, so the VM (not a permission prompt) is the safety boundary; the host's repos are shared into it.
+- **VM**: a lightweight virtual machine that contains the blast radius of autonomous work (`/pb:next`). Permissions are off wherever the playbook runs, including the host, so the VM (not a permission prompt) is the safety boundary; the host's repos are shared into it.
+
+## The Human in the Loop
+
+This process is semi-autonomous, not autonomous. Claude does the labour (planning detail, implementation, tests, documentation, and automated reviews), but a person stays in control at the points that matter: what gets built, and whether the result is good enough to keep. The aim is to take the mechanical work off the developer while never letting unreviewed code reach `main`.
+
+The developer is in the loop at the two ends of the pipeline, and out of it in the middle:
+
+- **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
+- **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every item. The developer can watch `current-state.md`, but nothing requires them to.
+- **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or defers. Nothing merges without that explicit yes.
+
+Two other moments need a human and only a human: a blocked item (parked after repeated failure) re-enters the loop only when the developer moves it back to `todo/`, and a broken `main` is handed back for the developer to fix. Everywhere else the process runs itself. The automated agent-review gate exists precisely so the developer's review time is spent only on work that has already passed the mechanical checks.
 
 ## Setup
 
 Clone the playbook for each project you want to work on. 
 
 Launch Claude Code from the root of the playbook repo.
-
-TODO: How do I make it so that permission are not disabled on the host. But are on the VM?
 
 > **Permissions warning.** The committed `.claude/settings.json` sets `bypassPermissions`, so Claude Code runs with permission prompts **off** wherever the playbook repo is launched, including your own host. Run it inside the sandbox VM (see Maximising Autonomy > Sandbox VM) so the blast radius is the VM, not your machine.
 
@@ -51,7 +61,7 @@ Try the playbook on your development computer:
 
 ### Host + VM
 
-For autonomous runs. The VM contains the blast radius so `pb:next` works unattended. Repos live on the host and are shared into the VM (see Maximising Autonomy > Sandbox VM).
+For autonomous runs. The VM contains the blast radius so `/pb:next` works unattended. Repos live on the host and are shared into the VM (see Maximising Autonomy > Sandbox VM).
 
 1. On the host, clone the playbook (or your fork, if you made one).
 2. Spin up the VM (Multipass or equivalent) and share the host's playbook repo into it, so the host and the VM see the same files.
@@ -61,13 +71,13 @@ For autonomous runs. The VM contains the blast radius so `pb:next` works unatten
 
 ## Project Bootstrap
 
-Run the bootstrap once per project, on the host or in the VM. A project that has already been bootstrapped skips this entirely; open it and go straight to the loop with `pb:status`.
+Run the bootstrap once per project, on the host or in the VM. A project that has already been bootstrapped skips this entirely; open it and go straight to the loop with `/pb:status`.
 
-### Greenfield Project (`pb:bootstrap:new`)
+### Greenfield Project (`/pb:bootstrap:new`)
 
 Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `docs/rules/`) from the answers. Leaves you with an empty `current-state.md` and queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
-### Existing Project (`pb:bootstrap:existing`)
+### Existing Project (`/pb:bootstrap:existing`)
 
 Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a work item to fill each gap. These items become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
 
@@ -76,23 +86,23 @@ Interviews the developer, clones the project into `project/` and creates the sta
 Start Claude Code and check where the project stands, then pick a skill. There are two ways to run the process:
 
 - **Host only:** every skill runs on the developer's computer. The simplest way to try it; you answer Claude's permission prompts as they come.
-- **Host + VM:** interactive skills (planning, documentation, review, running tests, exploring the UI) run on the developer's computer; skills that spawn sub-agents (`pb:next`) run in the VM, where permissions are off so Claude works autonomously without stopping to ask.
+- **Host + VM:** interactive skills (planning, documentation, review, running tests, exploring the UI) run on the developer's computer; skills that spawn sub-agents (`/pb:next`) run in the VM, where permissions are off so Claude works autonomously without stopping to ask.
 
 A typical session (the host/VM labels apply only in host + VM mode; in host only, everything runs on the host):
 
-1. Check where things stand: read `current-state.md` directly, or run `pb:status` (host) for a summary and a recommended next skill.
-2. `pb:plan`, `pb:docs`, or `pb:add` (host) to get work into `todo/`.
-3. `pb:next` (VM) to implement everything unblocked through to human review.
-4. `pb:review` (host) to approve or reject the items waiting for you; approved items merge.
-5. Back to `pb:status`, and repeat.
+1. Check where things stand: read `current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
+2. `/pb:plan`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
+3. `/pb:next` (VM) to implement everything unblocked through to human review.
+4. `/pb:review` (host) to approve or reject the items waiting for you; approved items merge.
+5. Back to `/pb:status`, and repeat.
 
-New to the process? Run `pb:help`.
+New to the process? Run `/pb:help`.
 
 ## The Development Loop
 
 The loop has a simple rhythm: check where things stand, run a skill that prompts you through the substantive work (planning, reviewing, testing, reading docs, exploring the UI, etc.), then repeat. The skill is what gets invoked, but most of the actual work happens outside Claude. The skills and goals keep Claude on the rails.
 
-`current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `pb:status` to have Claude summarise the state and recommend a skill to run next. 
+`current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
 
 The full pipeline a work item travels through, from session start to merge:
 
@@ -148,21 +158,21 @@ Each stage is driven by a skill; see [Skills](#skills) for what each one does.
 
 ## Handling Failures
 
-A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug root cause comes back not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug item back with no proven root cause, a Fix item doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
 
-**Every failure is recorded.** Whoever hits it runs `fail-work-item.ts <id>` (from the state repo) to increment the item's `**Failures:**` count in its `index.md`, and writes a History entry in the item's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the item.
+**Every failure is recorded.** Whichever agent hits the failure runs `fail-work-item.ts <id>` to increment the item's `**Failures:**` count in its `index.md`, and writes a History entry in the item's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the item.
 
-**Three strikes parks the item.** Below three failures the item returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `pb:next` never retries a blocked item, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
+**Three strikes parks the item.** Below three failures the item returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked item, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
 
-**One failure never stops the run; a systemic one does.** A single failed item is parked or retried and the loop carries on with the others. But two or more items failing on the same stage or check in one run signals the environment, not the items (shared test fixtures, a contended resource): the loop stops launching new work and hands back. It never works around a failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
+**One failure never stops the run; a systemic one does.** A single failed item is parked or retried and the development loop carries on with the others. But two or more items failing on the same stage or check in one run signals the environment, not the items (shared test fixtures, a contended resource): the development loop stops launching new work and hands back to the developer. It never works around a failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
 
-**The developer is told through `current-state.md`.** Every block, and any broken-main situation, is recorded in its Blocked section, which the developer reads directly or via `pb:status`.
+**The developer is told through `current-state.md`.** Every block, and any broken-main situation, is recorded in its Blocked section, which the developer reads directly or via `/pb:status`.
 
-**Carve-out: broken main.** If a merge lands on main but its post-merge checks then fail, the item still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later item builds on main.
+**Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the item still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later item builds on main.
 
 ## Repository Structure
 
-Three repos: one shared across all projects, two per project. The split keeps everything generic (the process, the skills, reusable templates and scripts) in one place so improvements flow to every project, while everything project-specific (the code, the queues, the current state, the rules for contributing to the project) stays scoped to its project.
+Three repos: the generic playbook (cloned once per project) plus the two per-project repos nested inside it. The split keeps everything generic (the process, the skills, reusable templates and scripts) in the playbook, while everything project-specific (the code, the queues, the current state, the rules for contributing to the project) stays scoped to its project.
 
 ### Playbook
 
@@ -257,13 +267,13 @@ todo/
       screenshots/
 ```
 
-### Your remotes are your responsibility
+### Pushing code is your responsibility
 
 Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **not** create GitHub repositories or push anything. Create a remote for each yourself and push periodically (the state repo too, so your queues and `current-state.md` are backed up). Playbook will not do this for you.
 
 ## Skills
 
-Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `pb:help`, `pb:status`, `pb:plan`, `pb:docs`, `pb:add`, `pb:next`, `pb:review`, `pb:debug`, `pb:customize`, and the one-time `pb:bootstrap:new` / `pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind, with the at-a-glance list in the [Skills Reference](#skills-reference); the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
+Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:plan`, `/pb:docs`, `/pb:add`, `/pb:next`, `/pb:review`, `/pb:debug`, `/pb:customize`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
 
 ### pb:status
 
@@ -275,7 +285,7 @@ Plans or revises a feature: brainstorms the design with the developer when it is
 
 ### pb:docs
 
-Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing work items in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
+Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing work items in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
 
 ### pb:add
 
@@ -283,7 +293,7 @@ Creates one structured work item in `todo/` for a single, well-understood task. 
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn processes `merge-queue/` first, picks up to 10 unblocked `todo/` items into worktrees, and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### pb:review
 
@@ -291,27 +301,11 @@ The human approval gate. Walks the developer through each item in `human-review/
 
 ### pb:debug
 
-The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two work items so each is reviewed on its own: a **Debug** item proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** item that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix items are in [.claude/commands/pb/debug.md](.claude/commands/pb/debug.md).
+The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two work items so each is reviewed on its own: a **Debug** item proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** item that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `/pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix items are in [.claude/commands/pb/debug.md](.claude/commands/pb/debug.md).
 
 ### pb:customize
 
 Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every work item from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
-
-## Skills Reference
-
-| Skill | Purpose |
-|---|---|
-| `pb:help` | Explain the process to the developer: what it is, how to bootstrap, how to drive the development loop, which skills do what, and which queues a work item travels through |
-| `pb:bootstrap:new` | Bootstrap a greenfield project: interview the developer, create the project repo boilerplate and the state repo, write the initial spec, testing manual, and the rule set in `docs/rules/` |
-| `pb:bootstrap:existing` | Bootstrap an existing project: interview the developer, create the state repo, analyse the project repo for gaps, and queue work items to fill them |
-| `pb:status` | Read `current-state.md`, summarise recent and in-flight work, and recommend the next skill to invoke based on queue state |
-| `pb:plan` | Plan or update a feature: updates the spec, docs, and testing manual, then queues work items |
-| `pb:docs` | Write or update documentation: updates spec, docs, and testing manual, then queues work items |
-| `pb:add` | Add a single work item described by the developer, with type, dependencies, acceptance criteria, and test plan |
-| `pb:next` | Drive the full pipeline: merge any approved items, then implement the next batch of up to 10 unblocked items through to human review |
-| `pb:review` | Walk the developer through reviewing and approving items in the human review queue |
-| `pb:debug` | File a Debug item that proves the bug's root cause (four-phase method, no fix); on review it spawns a Fix item, both running through the normal pipeline |
-| `pb:customize` | Interview the developer and tune the project's enforced rules: coding style, required documents, testing rules, and standing process rules |
 
 ## Templates
 
@@ -348,7 +342,7 @@ docs/spec/
 - Sub-features follow the same pattern recursively. There is no depth limit.
 - The split lets tooling enumerate features and IDs by reading only `index.md` files. The heavier `detail.md` is loaded only when the full spec is actually needed.
 
-The conventions, ID rules, and templates for these files ship as the project template in [templates/project/docs/spec/](templates/project/docs/spec/) (its `README.md` and `CLAUDE.md`); bootstrap copies them into a new project. Per-feature `index.md`/`detail.md` files are created per project by `pb:plan`, not shipped as static content; their shape is in [templates/feature-template/](templates/feature-template/) (`index.md` and `detail.md`).
+The conventions, ID rules, and templates for these files ship as the project template in [templates/project/docs/spec/](templates/project/docs/spec/) (its `README.md` and `CLAUDE.md`); bootstrap copies them into a new project. Per-feature `index.md`/`detail.md` files are created per project by `/pb:plan`, not shipped as static content; their shape is in [templates/feature-template/](templates/feature-template/) (`index.md` and `detail.md`).
 
 ### Feature Format
 
@@ -408,7 +402,7 @@ This applies on the first iteration as much as on the hundredth:
 - **First iteration, spec-first.** Write the spec (behaviour, acceptance criteria) directly, then expand into docs and the testing manual. Good when the behaviour is already clear and you want to pin down the contract before writing prose.
 - **Ongoing edits, from anywhere.** Touch the spec, a derived doc, the testing manual, or the code. The AI fans the change out: a spec edit propagates to code, tests, manual, and docs; a doc or testing-manual edit reconciles back into the spec and then out to the rest; a code edit updates the spec and manual to reflect the new behaviour.
 
-`pb:plan` and `pb:docs` both accept changes from any entry point and walk through the affected artifacts.
+`/pb:plan` and `/pb:docs` both accept changes from any entry point and walk through the affected artifacts.
 
 ## Work Item Format
 
@@ -423,7 +417,7 @@ The item's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `
 Rules:
 - The work agent must refuse to implement a work item that is missing acceptance criteria.
 - A Test Plan is required, but for items with no testable behaviour (pure scaffolding, doc-only changes, dependency bumps, etc.) the Test Plan may be `N/A: <reason>` and must be paired with a Manual Verification section listing the steps the developer will run during human review (look at the file, run the linter, render the doc, etc.). Code never reaches `merge-queue/` without some check, automated or manual.
-- `**Type:**` is free-form. Common values are `Feature`, `Tweak`, `Test coverage`, `Doc`, `Scaffolding`, `Refactor`. Projects can add their own. Type is mostly used for filtering and reporting, not enforcement. The two exceptions are `Debug` and `Fix`, which change how the agent-review stage behaves (see `pb:debug`): a `Debug` item is reviewed for a proven root cause and, on pass, spawns a `Fix` item; a `Fix` item is reviewed for a minimal change that solves the proven problem with evidence.
+- `**Type:**` is free-form. Common values are `Feature`, `Tweak`, `Test coverage`, `Doc`, `Scaffolding`, `Refactor`. Projects can add their own. Type is mostly used for filtering and reporting, not enforcement. The two exceptions are `Debug` and `Fix`, which change how the agent-review stage behaves (see `/pb:debug`): a `Debug` item is reviewed for a proven root cause and, on pass, spawns a `Fix` item; a `Fix` item is reviewed for a minimal change that solves the proven problem with evidence.
 - Each work item gets an ID of the form `{feature-id}-{n}`, where `n` increments per feature. Items not tied to a feature use a catch-all ID prefix like `chore`, `fix`, `misc` `infra` or whatever you want.
 - Dependencies reference other work-item IDs. Dependent items cannot be started until their dependencies are merged.
 - A human rejection is not a failure: its feedback is appended to the History section in `detail.md` and the item returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`), a clean slate.
@@ -432,7 +426,7 @@ Rules:
 
 Every commit follows one template, so history stays uniform and each commit traces back to the work item that produced it. The subject is `<id>: <imperative summary>`; the body carries the prose, an optional `Acceptance criteria:` list, and `Type:` / `Work-item:` trailers tooling can grep by.
 
-The template lives at [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). The `pb:next` sub-agents make the commits using this template.
+The template lives at [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). The `/pb:next` sub-agents make the commits using this template.
 
 ## Current State Format
 
@@ -454,12 +448,12 @@ Sub-agents update this file whenever a work item changes queue or something sign
 
 #### Rule set: `docs/rules/`
 
-The project's enforced rules live in `docs/rules/`. The agent-review goal (see `pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview fills in the starting rules; `pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no goal edit needed.
+The project's enforced rules live in `docs/rules/`. The agent-review goal (see `/pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview fills in the starting rules; `/pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no goal edit needed.
 
 The directory ships with three rule files plus a `README.md`, all in [templates/project/docs/rules/](templates/project/docs/rules/); projects add more as needed:
 
 - `coding-style.md`: project-specific style (naming, formatting, file layout, idioms) filled in during bootstrap, plus the default minimalism rules (keep it minimal, minimise complexity, don't overengineer, keep it as simple as possible) that ship with every project.
-- `testing.md`: which kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows), coverage expectations, and how to run each suite. Filled in during bootstrap and revised with `pb:customize`.
+- `testing.md`: which kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows), coverage expectations, and how to run each suite. Filled in during bootstrap and revised with `/pb:customize`.
 - `documentation.md`: which documents the project requires beyond the always-required set (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`), and the rules for keeping them current. The agent-review goal checks this file, so a required doc that is missing or stale fails review.
 
 ### process.md (playbook)
@@ -486,12 +480,12 @@ The two are interchangeable in the pipeline. A judgement check is not "softer" t
 
 ### Who evaluates them, and when
 
-Checks run inside the `pb:next` sub-agents, in the work item's worktree, never against the main repo:
+Checks run inside the `/pb:next` sub-agents, in the work item's worktree, never against the main repo:
 
 - The **implement** and **merge** sub-agents run the deterministic checks (compile, lint, the test suites) and capture their output.
 - The **agent-review** sub-agent is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
 - The **goal evaluator** re-checks after every turn and requires the evidence on disk, so neither kind of check can be claimed on confidence.
-- The **developer** sees the same evidence in `pb:review` and can re-run or re-judge any of it.
+- The **developer** sees the same evidence in `/pb:review` and can re-run or re-judge any of it.
 
 ### What a check result records
 
@@ -514,7 +508,7 @@ For each review pass N it:
 3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the item, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
 4. **Resolves**, writing only to the item's state: on **pass** (every check passes and every change is justified) it moves the item from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-work-item.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
 
-Debug and Fix items vary step 4 (see `pb:debug`).
+Debug and Fix items vary step 4 (see `/pb:debug`).
 
 ## Verification and Evidence
 
@@ -557,11 +551,11 @@ An agent allocates its subdir by taking one more than the highest existing numbe
 - **Screenshots.** For any change that affects the UI, before/after images or the relevant Playwright screenshots, in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the item's `evidence/` dir or a temp dir, and is discarded.
 - **Command transcripts.** For anything else a claim rests on (a build log, a migration run, a manual reproduction of a bug), the captured command and its output.
 
-The store is append-only within a run and overwritten on the next run of the same check, so it always reflects the latest verified state. It is the developer's first stop in `pb:review`: read the captured evidence before re-running anything by hand, and only dig deeper where the evidence is missing or unconvincing.
+The store is append-only within a run and overwritten on the next run of the same check, so it always reflects the latest verified state. It is the developer's first stop in `/pb:review`: read the captured evidence before re-running anything by hand, and only dig deeper where the evidence is missing or unconvincing.
 
 ### Where it is enforced
 
-The capture is written into the success condition of every sub-agent goal in `pb:next` (implement, agent-review, merge), so an item cannot move to the next queue until its evidence is on disk. `pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
+The capture is written into the success condition of every sub-agent goal in `/pb:next` (implement, agent-review, merge), so an item cannot move to the next queue until its evidence is on disk. `/pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
 
 ## Maximising Autonomy
 
@@ -569,7 +563,7 @@ The goal is for Claude to operate without interruption except at the human appro
 
 ### Skills
 
-Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills Reference table above.
+Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `/pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills section above.
 
 Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement belongs in goals.
 
@@ -591,7 +585,7 @@ Goals cover both responsibilities that hooks would otherwise handle:
 
 The development loop relies on this in three places:
 
-- `pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
+- `/pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
 - Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
 - A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and a systemic failure stops it. See [Handling Failures](#handling-failures).
 
@@ -599,7 +593,7 @@ The full goal text used at each stage is in [.claude/commands/pb/next.md](.claud
 
 ### Sandbox VM (Multipass or similar)
 
-By default Claude Code asks for a command approval before running shell commands, writing files, or calling tools. Every approval halts `pb:next` until the developer answers it, which defeats the point of an unattended loop.
+By default Claude Code asks for a command approval before running shell commands, writing files, or calling tools. Every approval halts `/pb:next` until the developer answers it, which defeats the point of an unattended loop.
 
 Pre-approving specific commands in `.claude/settings.json` (test runners, linter, formatter, git, smoke scripts) sounds reasonable but does not scale: Claude reliably finds new command shapes that fall outside the allowlist (a new flag, a piped variant, a command nested inside `bash -c`), and each one halts the loop. Maintaining the allowlist becomes its own task, and approval requests still keep slipping through whenever Claude reaches for a command no one anticipated.
 
@@ -607,8 +601,8 @@ The answer is to turn permissions off and run Claude inside a VM, while sharing 
 
 1. Spin up a lightweight Ubuntu VM with Multipass (or equivalent).
 2. Clone the playbook repo on the host; bootstrap creates the project and state repos inside it. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
-3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `pb:next` never stalls waiting for approval.
+3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `/pb:next` never stalls waiting for approval.
 4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
 
-What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.
+What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `/pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.
 
