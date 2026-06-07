@@ -13,8 +13,8 @@ The developer plans the work, Claude builds and self-reviews it, the developer r
 ```mermaid
 flowchart LR
     DEV["Developer:<br/>plan / add work"] --> Q[("Work queue")]
-    Q --> AI["Claude, autonomous:<br/>implement, test, review"]
-    AI --> REV{"Developer:<br/>review"}
+    Q --> AI["Claude:<br/>implement, test, review"]
+    AI --> REV{"Developer:<br/>review, test, read"}
     REV -->|approve| DONE(["merged"])
     REV -->|reject, with notes| Q
 ```
