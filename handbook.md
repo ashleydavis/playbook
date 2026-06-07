@@ -28,6 +28,19 @@ It uses a work queue as the central source of truth, a set of Claude skills to d
 - **Host**: the developer's own computer, where the repos live and interactive work (planning, review, exploring the UI) runs.
 - **VM**: a lightweight virtual machine that contains the blast radius of autonomous work (`/pb:next`). Permissions are off wherever the playbook runs, including the host, so the VM (not a permission prompt) is the safety boundary; the host's repos are shared into it.
 
+## The loop at a glance
+
+The developer plans the work, Claude builds and self-reviews it, the developer reviews and approves or rejects.
+
+```mermaid
+flowchart LR
+    DEV["Developer:<br/>plan / add work"] --> Q[("Work queue")]
+    Q --> AI["Claude, autonomous:<br/>implement, test, review"]
+    AI --> REV{"Developer:<br/>review"}
+    REV -->|approve| DONE(["merged"])
+    REV -->|reject, with notes| Q
+```
+
 ## The Human in the Loop
 
 This process is semi-autonomous, not autonomous. Claude does the labour (planning detail, implementation, tests, documentation, and automated reviews), but a person stays in control at the points that matter: what gets built, and whether the result is good enough to keep. The aim is to take the mechanical work off the developer while never letting unreviewed code reach `main`.

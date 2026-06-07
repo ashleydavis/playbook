@@ -6,6 +6,19 @@ Playbook is a semi-autonomous AI development process centered around human plann
 
 This repo describes the development process and has skills that the human uses to drive development forward.
 
+## The loop at a glance
+
+The developer plans the work, Claude builds and self-reviews it, the developer review and approves or rejects.
+
+```mermaid
+flowchart LR
+    DEV["Developer:<br/>plan / add work"] --> Q[("Work queue")]
+    Q --> AI["Claude, autonomous:<br/>implement, test, review"]
+    AI --> REV{"Developer:<br/>review"}
+    REV -->|approve| DONE(["merged"])
+    REV -->|reject, with notes| Q
+```
+
 ## Prerequisites
 
 [`git`](https://git-scm.com/downloads), [`bun`](https://bun.sh/docs/installation), and [Claude Code](https://docs.claude.com/en/docs/claude-code/setup), installed on your machine.
