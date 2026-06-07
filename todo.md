@@ -1,11 +1,9 @@
 # Todo
 
-- Be cool if there different interviews for different types of projects.
+- Be cool if there are different interviews for different types of projects.
 - Be cool to set the CC status bar to show an overview of current state.
 - /status command is already used. Need a better name.
 - Review output of /pb:help
-- The state repo actually needs to be commited after each change so we can see the history. Make the process manage it.
-- I'm going to need some kind of audit log to understand what has happened. Another script can do this.
 - Needs skills to list queues.
 - Need a reset skill. Moves in prog work back to todo, deletes worktrees and branches.
 - /goal doesn't seem to be set for the parent agent by /next
@@ -15,7 +13,6 @@
     - So official support for new plans, done plans. Each plan should be a sequence of work items that can be scheduled at a later date.
     - The thing is to check how much of the plan is still relevant given that code and docs might have changed since the plan was created.
 - Review doesn't need to run compile or automated tests if there are no code or configuraton changes.
-- Where possible work items should be numbered in order of execution. So dependent work items should have a higher number.
 - How can I know if the goals are working or not?
 - How do I make it so that permission are not disabled on the host. But are on the VM?
 - Should "work item" be renamed to "task" ? I'm not so sure about this, but "task" would be less cumbersome.

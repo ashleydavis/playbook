@@ -69,6 +69,7 @@ Three repos, each a separate concern:
 
 - `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Notes, History. Shape: [templates/work-item-template/](templates/work-item-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Items not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
+- Where possible, number `n` in order of execution: a dependent item gets a higher number than the items it depends on. The number is a hint at reading order, not the enforcement mechanism. `**Depends on:**` is what actually gates execution.
 - Refuse to implement an item with no acceptance criteria.
 - A Test Plan is required. For items with no testable behaviour, use `N/A: <reason>` with a Manual Verification section. Nothing reaches `merge-queue/` without a check.
 - Dependent items cannot start until their dependencies are merged.
@@ -81,10 +82,12 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 1. **Record it.** Run `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the item's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the item carries a complete deterministic record of everything that went wrong.
 2. **Route by count.** Below three, the item returns to `todo/` and the loop retries it on a later pass. At three it moves to `blocked/`.
-3. **Surface it.** Every block (and any broken main) is recorded in the Blocked section of `current-state.md`, which the developer reads directly or via `pb:status`.
+3. **Surface it.** Every block, systemic failure, and broken main is recorded in the top `⚠ Needs your action` section of `current-state.md`, which the developer reads directly or via `pb:status`. That section leads the file so anything needing the developer is the first thing seen; routine progress sits below it.
 4. **Reconcile before the turn ends (invariant).** When a `pb:next` turn ends, `in-progress/` is empty: every item the parent admitted sits in a terminal queue (`agent-review/` on success, `todo/` or `blocked/` on failure). A sub-agent records and routes its own failure when it is alive to do so, but one that times out, dies, or returns a bare failure verdict cannot, so recording can never depend on it. The parent therefore re-runs `next-items.ts` as the final act of every turn: any item the report still shows in `in-progress/` (no sub-agent is working it now) is by definition an un-recorded failure, so the parent runs `fail-work-item.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. An item is never left mid-stage.
 
 A single failure never aborts the loop; the run continues with the other items. Two or more items failing the same stage or check in one run is a **systemic failure** (the environment, not the items): reconcile every failed item first (point 4), then stop launching new work and hand back. Handing back never means leaving items mid-stage. Never work around a failure by switching parallel→serial or re-driving an item by hand.
+
+A systemic failure must leave a durable record of its cause, because the items it hit usually return to `todo/` (under three failures) and so leave no per-item trace of why the run stopped. Before handing back, the parent writes a `Run halted: systemic failure` entry in the top `⚠ Needs your action` section of `current-state.md` naming the shared stage or check, the items involved, the suspected environmental cause, and the evidence path. That is what the developer reads (directly or via `pb:status`) to find and fix the cause before the next run.
 
 **Exception (broken main):** if a merge lands but its post-merge checks then fail, the item goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later item builds on main.
 
