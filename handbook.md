@@ -473,55 +473,6 @@ An `index.md` is a lightweight index: it names what lives in its directory and l
 - The playbook's top-level [index.md](index.md) is the orientation map for Claude: what lives where across the playbook and a project's project/state repos. Cheap to load, enough to navigate without reading this handbook end to end.
 - In `docs/spec/` and `docs/testing-manual/`, each directory's `index.md` lists its features/sub-features with their IDs, so tooling resolves the full set without loading every `detail.md` (see Spec Format, Testing Manual Format).
 
-## Maximising Autonomy
-
-The goal is for Claude to operate without interruption except at the human approval gate. Three things make this possible.
-
-### Skills
-
-Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills Reference table above.
-
-Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement belongs in goals.
-
-### Goals
-
-A `/goal` is a pass condition declared at the start of a session or sub-agent. After each turn, the goal evaluator checks the condition against the current state of the repos. The session is not "done" until the condition holds. This is what makes autonomous operation safe: the agent cannot claim completion by accident, by drift, or by skipping steps under time pressure. If the condition is not met, the agent is told to keep working.
-
-Every goal has two parts:
-- **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
-- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or a systemic-failure signal (two or more items failing on the same stage or check in one run). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
-
-Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving items between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether an item is finished.
-
-Goals cover both responsibilities that hooks would otherwise handle:
-
-- **Queue transitions.** The success condition names the target queue ("the work item directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
-- **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass. Because the goal evaluator re-checks after each turn, the agent cannot pretend it is done.
-- **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the item's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
-
-The development loop relies on this in three places:
-
-- `pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
-- Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
-- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and a systemic failure stops it. See [Handling Failures](#handling-failures).
-
-The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
-
-### Sandbox VM (Multipass or similar)
-
-By default Claude Code asks for a command approval before running shell commands, writing files, or calling tools. Every approval halts `pb:next` until the developer answers it, which defeats the point of an unattended loop.
-
-Pre-approving specific commands in `.claude/settings.json` (test runners, linter, formatter, git, smoke scripts) sounds reasonable but does not scale: Claude reliably finds new command shapes that fall outside the allowlist (a new flag, a piped variant, a command nested inside `bash -c`), and each one halts the loop. Maintaining the allowlist becomes its own task, and approval requests still keep slipping through whenever Claude reaches for a command no one anticipated.
-
-The answer is to turn permissions off and run Claude inside a VM, while sharing the repos between the host and the VM so the developer keeps full, live visibility:
-
-1. Spin up a lightweight Ubuntu VM with Multipass (or equivalent).
-2. Clone the playbook repo on the host; bootstrap creates the project and state repos inside it. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
-3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `pb:next` never stalls waiting for approval.
-4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
-
-What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.
-
 ## Checks
 
 A **check** is any pass/fail verification of the work. Every check produces a boolean result; they differ only in how that verdict is reached.
@@ -611,3 +562,53 @@ The store is append-only within a run and overwritten on the next run of the sam
 ### Where it is enforced
 
 The capture is written into the success condition of every sub-agent goal in `pb:next` (implement, agent-review, merge), so an item cannot move to the next queue until its evidence is on disk. `pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
+
+## Maximising Autonomy
+
+The goal is for Claude to operate without interruption except at the human approval gate. Three things make this possible.
+
+### Skills
+
+Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills Reference table above.
+
+Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement belongs in goals.
+
+### Goals
+
+A `/goal` is a pass condition declared at the start of a session or sub-agent. After each turn, the goal evaluator checks the condition against the current state of the repos. The session is not "done" until the condition holds. This is what makes autonomous operation safe: the agent cannot claim completion by accident, by drift, or by skipping steps under time pressure. If the condition is not met, the agent is told to keep working.
+
+Every goal has two parts:
+- **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
+- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or a systemic-failure signal (two or more items failing on the same stage or check in one run). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
+
+Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving items between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether an item is finished.
+
+Goals cover both responsibilities that hooks would otherwise handle:
+
+- **Queue transitions.** The success condition names the target queue ("the work item directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
+- **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass. Because the goal evaluator re-checks after each turn, the agent cannot pretend it is done.
+- **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the item's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
+
+The development loop relies on this in three places:
+
+- `pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
+- Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
+- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and a systemic failure stops it. See [Handling Failures](#handling-failures).
+
+The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
+
+### Sandbox VM (Multipass or similar)
+
+By default Claude Code asks for a command approval before running shell commands, writing files, or calling tools. Every approval halts `pb:next` until the developer answers it, which defeats the point of an unattended loop.
+
+Pre-approving specific commands in `.claude/settings.json` (test runners, linter, formatter, git, smoke scripts) sounds reasonable but does not scale: Claude reliably finds new command shapes that fall outside the allowlist (a new flag, a piped variant, a command nested inside `bash -c`), and each one halts the loop. Maintaining the allowlist becomes its own task, and approval requests still keep slipping through whenever Claude reaches for a command no one anticipated.
+
+The answer is to turn permissions off and run Claude inside a VM, while sharing the repos between the host and the VM so the developer keeps full, live visibility:
+
+1. Spin up a lightweight Ubuntu VM with Multipass (or equivalent).
+2. Clone the playbook repo on the host; bootstrap creates the project and state repos inside it. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
+3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `pb:next` never stalls waiting for approval.
+4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
+
+What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.
+
