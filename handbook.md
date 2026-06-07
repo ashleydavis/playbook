@@ -128,7 +128,7 @@ flowchart TD
     end
 
     subgraph ReviewAgent ["Review Agent"]
-        CHK["Check: Rules, Style, Test Coverage, Docs Updated"]
+        CHK["Review only (no edits): Re-run checks (lint, format, tests) + Rules, Style, Docs current + Every change justified by the work item"]
     end
 
     subgraph DevReview ["Developer Review: pb:review"]
@@ -200,7 +200,7 @@ The actual project code. Whatever app you are building!
 
 The project repo is fully self-contained: nothing in it (code, docs, rules, or templates) references, connects to, or relates to anything outside the project. It knows nothing of the playbook or the state repo. The project repo itself is an ordinary project that just happens to keep a spec in `docs/spec/` and a set of rules in `docs/rules/`.
 
-The layout of code, tests, and project-specific docs is up to the developer and not prescribed. Want test-first, good for you. Wnat test-last, that's great too. You do you. 
+The layout of code, tests, and project-specific docs is up to the developer and not prescribed. Want test-first, good for you. Want test-last, that's great too. You do you. 
 
 The process only requires that a handful of things exist *somewhere* in the repo and are findable: `CLAUDE.md` at the root, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, and a `docs/roadmap.md`. Everything else (where source lives, how tests are organised, what other docs exist) is the developer's call.
 
@@ -261,10 +261,9 @@ todo/
   <id>/         # Named by the work item's ID
     index.md    # Brief: ID, type, depends-on, one-line description.
     detail.md   # The full work item.
-    evidence/   # Evidence the implementation was successful.
-      unit.txt
-      smoke.txt
-      screenshots/
+    evidence/   # Proof, one subdir per pass (see Verification and Evidence)
+      implementation-1/
+      review-1/
 ```
 
 ### Pushing code is your responsibility

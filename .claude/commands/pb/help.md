@@ -13,7 +13,7 @@ If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected 
 
 ## The short tour
 
-**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and `/goal` pass-conditions stop any agent from claiming "done" without evidence. Three repos: the **playbook** (this repo, shared across all projects: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
+**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and `/goal` pass-conditions stop any agent from claiming "done" without evidence. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
 
 **How to start a project (bootstrap, run once).** Launch Claude Code from the playbook repo root, then:
 - New codebase -> `pb:bootstrap:new`: interviews you, creates both repos from `templates/`, writes the initial spec, testing manual, and `docs/rules/`.
@@ -38,7 +38,7 @@ todo/ -> in-progress/ -> agent-review/ -> human-review/ -> merge-queue/ -> done/
 - `human-review/`: waiting on you (`pb:review`).
 - `merge-queue/`: approved, waiting for the merge agent to land it on main.
 - `done/`: merged, with its evidence archived alongside.
-- `blocked/`: side pen (not a pipeline stage). An item that hits a hard problem (sub-agent timeout, exhausted budget, unresolvable conflict, or a) is parked here for you, with a History note. `pb:next` never retries it; you re-admit it with `bun ../scripts/move.ts <id> todo` once resolved.
+- `blocked/`: side pen (not a pipeline stage). An item that hits a hard problem (sub-agent timeout, exhausted budget, unresolvable conflict, or a third failure) is parked here for you, with a History note. `pb:next` never retries it; you re-admit it with `bun ../scripts/move.ts <id> todo` once resolved.
 
 Only `human-review/` and `blocked/` need you. `pb:next` moves items through the rest. Cheap setbacks retry via `todo/` (a human rejection in `pb:review`, a not-proven Debug, a failed Fix review); a hard or repeated failure parks the item in `blocked/`, where nothing re-enters the loop without you moving it back to `todo/`.
 
