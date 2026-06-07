@@ -18,3 +18,8 @@
 - Agent-review seems to add its own evidence that whacks the original evidence. Be better to have separate evidence directories.
 - Review doesn't need to run compile or automated tests if there are no code or configuraton changes.
 - Where possible work items should be numbered in order of execution. So dependent work items should have a higher number.
+- Anything in handbook.md that the human doesn't need to know? If so remove.
+- Anything in process.md that the agent doesn't need to know? If so remove.
+- Are process, handbook and skills all in aligment? Are there inconsistencies?
+- How can I know if the goals are working or not?
+- This entire repo is about "## Maximising Autonomy" so want to minimize that section in the handbook or remove it and integrate it's content into the rest of the doc.

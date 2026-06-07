@@ -26,12 +26,12 @@ The item then flows through `pb:next` like any other, but the two pipeline stage
 
 The agent experiments freely, writing no production code that needs to last:
 
-1. **Root cause investigation.** Read the error in full. Reproduce the failure consistently and capture the reproduction to `evidence/`. Review recent changes. Trace the data flow backward to where the problem originates.
+1. **Root cause investigation.** Read the error in full. Reproduce the failure consistently and capture the reproduction to this pass's `evidence/implementation-N/` subdir. Review recent changes. Trace the data flow backward to where the problem originates.
 2. **Pattern analysis.** Find similar working code in the same codebase. Compare working against broken, line by line. Identify every difference, however small, and the assumptions each side makes.
 3. **Hypothesis and testing.** State a specific theory of the root cause. Test it with throwaway experiments (logging, probes, toggling the suspected cause), one variable at a time. Confirm it, or discard it and form a new one.
 4. **Conclusion.** Write the proven root cause into `detail.md` with the supporting evidence, then discard the worktree's code changes. No fix is written here.
 
-Because nothing is committed, the in-progress goal drops the "changes committed, code lints clean" conditions. Its success condition is only that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/`, and the item has moved to `agent-review/`.
+Because nothing is committed, the in-progress goal drops the "changes committed, code lints clean" conditions. Its success condition is only that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/implementation-N/`, and the item has moved to `agent-review/`.
 
 **Escalation rule:** if three or more hypotheses fail to land, stop. That signals the design is wrong, not a single line. Surface it via `current-state.md` and raise it in `pb:plan` rather than continuing to probe.
 

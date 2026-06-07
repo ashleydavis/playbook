@@ -32,7 +32,7 @@ If they say yes, **make a todo list of all the items** and work through them **o
 
 For each item:
 
-1. **Give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts in the item's `evidence/` subdir).
+1. **Give a short, simple summary** of the work done and the evidence collected (test output, screenshots, command transcripts). Evidence is captured per pass under `evidence/` (`implementation-N/`, `review-N/`); the highest-numbered `implementation-N/` and `review-N/` reflect the current state, with earlier pairs showing prior rejected rounds.
 
 2. **Step them through their review, one step at a time.** Build a review checklist of **review steps** for the item and take the developer through it **one review step at a time** so they are not overwhelmed. Do not dump the whole list at once: present one step, then wait. The developer sends `n`/`next` to advance to the next step (or a work-item command to exit early). Tailor the steps to the item; draw from:
    - which **diffs** to look at (name the files),
@@ -64,7 +64,7 @@ Update `current-state.md` to reflect the move (and any follow-up items queued fr
 ```
 Reviewing search-3 (debounced search input).
 
-Evidence: unit.txt (12 passed), smoke.txt (exit 0), screenshots/results.png.
+Evidence (review-1/): unit.txt (12 passed), smoke.txt (exit 0), screenshots/results.png.
 Diff: src/search/input.tsx (+44 -3).
 
 Developer: Looks good, but the placeholder text should say "Search docs".

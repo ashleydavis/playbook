@@ -11,6 +11,8 @@ Drain every item the queues can move without human input. `pb:next` sets a `/goa
 
 Each work item passes through stages: merge, implement, agent-review. The parent agent does none of this work itself. For each item at each stage it spawns a sub-agent, started with its working directory set to that item's worktree so it cannot touch the main project repo by accident. The sub-agent moves the item directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its goal is met.
 
+Every check a sub-agent runs follows the verification rule: run fresh in the foreground (never backgrounded to be woken later), read in full, and captured to the item's current evidence subdir (`implementation-N/`, `review-N/`, or `merge/`) before any pass is claimed. A check that cannot finish within the turn's budget becomes a failure, not an idle wait.
+
 `bun ../scripts/next-items.ts` (run from `state/`) is the parent agent's single source of truth for what to do. One call returns a JSON object keyed by the queues pb:next drives, each value the list of item IDs to act on:
 
 ```json
@@ -41,7 +43,7 @@ The one carve-out is a **broken main**: if a merge lands on main but its post-me
 1. Set the overall goal for this turn of the development loop:
 
    ```
-   /goal Forward progress is exhausted: merge-queue/ is empty, agent-review/ is empty, and every unblocked item in todo/ has moved downstream. Remaining items are in human-review/, done/, blocked/, or blocked by unmet dependencies. Or abort early: two or more items fail on the same stage or check during this run (a systemic failure), or 50 turns have elapsed. A single failure does not abort the loop: the failed item is recorded with fail-work-item.ts and routed by its count (back to todo/ to retry, or to blocked/ on its third failure), and the loop continues with the rest. Every item that lands in blocked/, and any broken main, is recorded in current-state.md's Blocked section. On a systemic abort the loop stops launching new work and hands back to the developer. Never work around a failure by switching from parallel to serial or re-driving a failed item by hand.
+   /goal Forward progress is exhausted: merge-queue/ and agent-review/ are empty, and every unblocked item in todo/ has moved downstream (what remains is in human-review/, done/, blocked/, or blocked by unmet dependencies). Abort early if two or more items fail the same stage or check in one run (a systemic failure), or after 50 turns; a single failure does not abort the loop.
    ```
 
 2. Each turn, work the queues in pipeline order. **Begin every step by re-running `bun ../scripts/next-items.ts`**, because the step before it may have moved items into this step's queue (the todo step feeds `in-progress`; the implement sub-agents feed `agent-review`). It is cheap and deterministic, so always act on a freshly generated report, never a stale one:
@@ -49,7 +51,7 @@ The one carve-out is a **broken main**: if a merge lands on main but its post-me
    1. **Run the report, then process its `merge-queue` list first.** For each ID, spawn a sub-agent with:
 
       ```
-      /goal <id>'s changes are merged into main, the work item directory is in done/, and every post-merge check passes on main: compile, lint, unit tests, smoke tests, e2e (Playwright) tests. Each check is run fresh in the foreground (never backgrounded while the turn ends) and its full output captured to the item's evidence/ subdir as proof; completion is claimed only with that evidence present (see Verification and Evidence). Any commits made (post-merge fixes on main) follow the commit template (see Commit Format). Or stop after 15 turns.
+      /goal <id> is merged into main and its directory is in done/, with every post-merge check (compile, lint, unit, smoke, e2e) passing on main and its output captured to evidence/merge/. Or stop after 15 turns.
       ```
 
       The sub-agent merges with `bun ../scripts/finalize-work-item.ts <id>` (run from `state/`), which rebases the item's worktree onto the project's current branch, fast-forwards the merge, and removes the worktree. **Never run `git worktree` or the merge by hand**; the script resolves the paths and handles the cleanup. Its exit status drives what happens next:
@@ -63,20 +65,20 @@ stop
    3. **Run the report, then for each ID in its `in-progress` list** (the items just admitted from `todo/`, plus any left from an interrupted earlier run), spawn a sub-agent in parallel with:
 
       ```
-      /goal <id>'s acceptance criteria are all implemented in its worktree. Every test in the work item's Test Plan is written and passes: unit tests, smoke tests, and e2e (Playwright) tests where applicable. The code compiles and lints clean. Each check is run fresh in the foreground (never backgrounded while the turn ends) and its full output captured to the item's evidence/ subdir as proof, including screenshots of any UI the change affects; completion is claimed only with that evidence present (see Verification and Evidence). The relevant docs are updated: matching acceptance criteria boxes ticked in the feature's detail.md, the testing manual updated, and any other docs the change touches. The changes are committed following the commit template (see Commit Format). The work item directory has been moved from in-progress/ to agent-review/. Or stop after 20 turns.
+      /goal <id>'s acceptance criteria are implemented in its worktree, with every Test Plan test (unit, smoke, and e2e where applicable) passing, the code compiling and linting clean, and every check's output plus any UI screenshots captured to evidence/implementation-N/ (N one more than the highest existing implementation-N). The relevant docs are updated, only the changes that implement the item are committed, and the directory has moved from in-progress/ to agent-review/. Or stop after 20 turns.
       ```
 
-      The sub-agent implements the code, writes tests, updates docs, commits per the commit template, and moves the directory to `agent-review/` only once every check in the goal passes. Problem (timeout, exhausted budget, check failure): the parent handles it as a failure, recording it and routing the item by its count, then continues with the rest (see **When anything fails**).
+      The sub-agent implements the code, writes tests, and updates docs (ticking the matching acceptance-criteria boxes in the feature's `detail.md`, the testing manual, and any other docs the change touches). It captures every check's fresh output, plus screenshots of any UI the change affects, to the pass's `evidence/implementation-N/`, collecting evidence however works but **committing no capture code to `project/`** (see Verification and Evidence). It commits only the changes that implement the item, per the commit template, and moves the directory to `agent-review/` once every completion criterion is met. Problem (timeout, exhausted budget, check failure): the parent handles it as a failure, recording it and routing the item by its count, then continues with the rest (see **When anything fails**).
 
       A **Debug** item is the exception (see `pb:debug`): it is a throwaway investigation, not an implementation. Its goal drops the commit/compile/lint conditions; the agent experiments freely, and its only success condition is that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/`, and the item has moved to `agent-review/`. The worktree's code changes are discarded.
 
    4. **Run the report, then for each ID in its `agent-review` list,** spawn a sub-agent with:
 
       ```
-      /goal <id>'s implementation conforms to every rule in the repo's rule set: every file in docs/rules/, plus the root CLAUDE.md and any scoped CLAUDE.md files for directories touched. The documents required by docs/rules/documentation.md exist and are up to date. All agent review checks pass in its worktree: lint, format, unit tests, smoke tests, and any other project checks. Each check is run fresh in the foreground (never backgrounded while the turn ends) and its full output captured to the item's evidence/ subdir as proof; completion is claimed only with that evidence present (see Verification and Evidence). Any fixes are committed following the commit template (see Commit Format). The work item directory has been moved from agent-review/ to human-review/. Or stop after 10 turns.
+      /goal <id> has passed agent review and moved from agent-review/ to human-review/, with this pass's checks and diff review captured to evidence/review-N/ (N one more than the highest existing review-N) — or it has been rejected back to todo/ as a failure. Or stop after 10 turns.
       ```
 
-      The sub-agent runs the review checks, fixes anything that fails (committing each fix per the commit template), and moves the directory to `human-review/` once everything passes. Problem (timeout, exhausted budget, check failure): the parent handles it as a failure, recording it and routing the item by its count, then continues with the rest (see **When anything fails**).
+      The sub-agent **reviews only**: it makes no code changes and writes nothing but the item's own state. It re-runs the deterministic checks fresh (lint, format, unit, smoke, and any others), runs the judgement checks (every file in `docs/rules/`, the touched `CLAUDE.md` files, and `documentation.md`), and reviews the committed diff hunk by hunk against the acceptance criteria, capturing all of it to `evidence/review-N/`. Every change must be required by the item; any that is not (committed evidence-collection code being the leading example) fails the review. On a clean pass it moves the item to `human-review/`; on any fault it rejects the item back to `todo/` as a failure (routed per **When anything fails**), never fixing the work it judges. It does not write `current-state.md` itself (that would race with the other sub-agents); the parent reflects the outcome there after the turn (step 3). Problem (timeout, exhausted budget): the parent handles it the same way, recording it and routing the item by its count, then continues with the rest.
 
       Two item types change the agent-review behaviour (see `pb:debug` for the full flow):
       - **Debug** items produce no code, only a proven root cause. The review agent assesses that the root cause is proven with evidence. On pass it moves the Debug item to `done/` (not `human-review/`) and creates a `Fix` item in `todo/` carrying the proven root cause. On fail it returns the item to `todo/` with notes.
@@ -95,6 +97,6 @@ todo/: 3 unblocked items (search-3, search-4, infra-5). Took all 3.
   -> moved to in-progress/, worktrees created.
   -> 3 implement sub-agents running in parallel.
 search-3, infra-5 passed implementation -> agent-review/ -> human-review/.
-search-4 timed out in agent-review/ (lint loop); History note added, current-state.md updated, skipped.
+search-4 failed agent-review (committed a change unrelated to the item); reviewer recorded a History note and returned it to todo/; current-state.md updated by the parent, loop continued.
 Forward progress exhausted. Goal cleared. search-3 and infra-5 await pb:review.
 ```

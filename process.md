@@ -133,7 +133,7 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 **Who evaluates, and when.** Checks run inside the `pb:next` sub-agents, in the item's worktree:
 
 - Implement and merge stages run the deterministic checks (compile, lint, tests).
-- Agent-review runs the judgement checks: every rule in `docs/rules/`, the touched `CLAUDE.md` files, and the docs required by `documentation.md`.
+- Agent-review is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
 - The goal evaluator confirms the evidence exists before the item moves on; the developer sees the same evidence in `pb:review`.
 
 **Every check result records the same fields**, whatever its kind:
@@ -144,6 +144,19 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 - **Basis**: why, the output read or the reasoning that decided it.
 - **Fix notes**: on fail, what to change.
 
+## Agent review
+
+Agent-review is the automated gate before human review. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the work item's own state (move the item directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
+
+For each review pass N it:
+
+1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
+2. **Runs the judgement checks:** reads every rule in `docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and the docs required by `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
+3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the item, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
+4. **Resolves**, writing only to the item's state: on **pass** (every check passes and every change is justified) it moves the item from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note in `detail.md`, runs `bun ../scripts/fail-work-item.ts <id>` (from `state/`), and routes per **Failures** (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
+
+Debug and Fix items vary step 4 (see `pb:debug`).
+
 ## Verification and evidence
 
 Never claim a check passes on confidence. Before claiming, every agent at every stage:
@@ -152,11 +165,28 @@ Never claim a check passes on confidence. Before claiming, every agent at every 
 2. **Run** it fresh (never reuse a prior or cached run).
 3. **Read** the full output, including exit code and failure count.
 4. **Confirm** the output supports the claim.
-5. **Capture** the output to the item's `evidence/` subdir, then claim and point at it.
+5. **Capture** the output to the current pass's evidence subdir (`evidence/implementation-N/` while implementing, `evidence/review-N/` while reviewing), then claim and point at it.
 
 For a judgement check there is no command: the agent reads the rule and the code in place of steps 1-3, and captures its written assessment (rule named, verdict, reasoning) as the evidence.
 
 Confidence is not evidence: no claim of pass without a fresh run captured to `evidence/`. Passing earlier ≠ passing now; a sub-agent's report ≠ a verified result. Evidence (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, transcripts) travels in the item directory and is required by sub-agent goals before an item moves on.
+
+**One evidence subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so the full round-trip history is preserved rather than overwritten:
+
+```
+<work-item>/
+  evidence/
+    implementation-1/   # first implement pass
+    review-1/           # first review pass
+    implementation-2/   # re-implemented after review-1 rejected it
+    review-2/           # second review pass
+    ...
+    merge/              # post-merge checks on main
+```
+
+An agent allocates its subdir by taking one more than the highest existing number for its kind: the first implement pass writes `implementation-1/`, the next `implementation-2/`, and likewise for `review-N/`. The merge stage captures its post-merge checks to `evidence/merge/`. Within a subdir the files are as before (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, judgement write-ups, transcripts).
+
+**Evidence never enters `project/`.** Evidence is a process artefact: it lives only in the item's `evidence/` subdir in the state repo, never in the project repo. Collect it however works (ad-hoc scripts, throwaway specs, manual runs) so long as it needs **no committed change to `project/`**. Never produce a screenshot by committing a test, a helper, or env plumbing (e.g. a `*_EVIDENCE_DIR` switch) to the project tree, and never commit capture code. Any capture script you write lives outside the project tree (in the item's `evidence/` dir or a temp dir) and is discarded. A `project/` commit contains only the changes that implement the work item; agent-review enforces this by diffing the commits (see **Checks**).
 
 **Run checks in the foreground.** A sub-agent runs each check in the foreground and blocks until it returns an exit code, within its turn budget. Never launch a check (especially a long one like e2e) in the background and end the turn waiting to be woken: that stalls silently and makes no progress. Either the check completes this turn, or the agent hits its turn limit and the item is blocked. A stall must become a visible failure, not an idle wait.
 

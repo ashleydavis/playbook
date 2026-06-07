@@ -538,7 +538,7 @@ The two are interchangeable in the pipeline. A judgement check is not "softer" t
 Checks run inside the `pb:next` sub-agents, in the work item's worktree, never against the main repo:
 
 - The **implement** and **merge** sub-agents run the deterministic checks (compile, lint, the test suites) and capture their output.
-- The **agent-review** sub-agent runs the judgement checks: it reads every rule in `docs/rules/`, the `CLAUDE.md` files scoping the directories touched, and `documentation.md`, and decides pass or fail against each.
+- The **agent-review** sub-agent is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
 - The **goal evaluator** re-checks after every turn and requires the evidence on disk, so neither kind of check can be claimed on confidence.
 - The **developer** sees the same evidence in `pb:review` and can re-run or re-judge any of it.
 
@@ -551,6 +551,19 @@ Whatever its kind, every check result carries the same fields, so deterministic 
 - **Result**: pass or fail.
 - **Basis**: what the verdict rests on, the captured output that was read, or the reasoning that decided a judgement.
 - **Fix notes**: on failure, what needs to change to make it pass.
+
+## Agent review
+
+Agent-review is the automated gate between implementation and the human review queue. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the work item's own state (move the item directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
+
+For each review pass N it:
+
+1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
+2. **Runs the judgement checks:** reads every rule in `docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
+3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the item, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
+4. **Resolves**, writing only to the item's state: on **pass** (every check passes and every change is justified) it moves the item from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-work-item.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
+
+Debug and Fix items vary step 4 (see `pb:debug`).
 
 ## Verification and Evidence
 
@@ -572,10 +585,25 @@ Checks run in the foreground. A sub-agent runs each check and blocks until it re
 
 ### The evidence store
 
-Proof for each work item lives in the `evidence/` subdir of the item's own directory. Because evidence travels inside the item directory, it survives every queue move and is archived self-contained when the item reaches `done/<id>/`. What goes in:
+Proof for each work item lives in the `evidence/` subdir of the item's own directory. Because evidence travels inside the item directory, it survives every queue move and is archived self-contained when the item reaches `done/<id>/`.
+
+**One subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so a rejected-and-redone item keeps the full round-trip history rather than overwriting it:
+
+```
+<work-item>/
+  evidence/
+    implementation-1/   # first implement pass
+    review-1/           # first review pass
+    implementation-2/   # re-implemented after review-1 rejected it
+    review-2/           # second review pass
+    ...
+    merge/              # post-merge checks on main
+```
+
+An agent allocates its subdir by taking one more than the highest existing number for its kind (the first implement pass writes `implementation-1/`, the next `implementation-2/`, and likewise for `review-N/`); the merge stage writes to `evidence/merge/`. What goes in each subdir:
 
 - **Test output.** The full captured run for each suite: `unit.txt`, `smoke.txt`, `e2e.txt` (or per-run files). Exit code visible. Plus any other artefacts the run produces.
-- **Screenshots.** For any change that affects the UI, before/after images or the relevant Playwright screenshots, in a `screenshots/` subdirectory.
+- **Screenshots.** For any change that affects the UI, before/after images or the relevant Playwright screenshots, in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the item's `evidence/` dir or a temp dir, and is discarded.
 - **Command transcripts.** For anything else a claim rests on (a build log, a migration run, a manual reproduction of a bug), the captured command and its output.
 
 The store is append-only within a run and overwritten on the next run of the same check, so it always reflects the latest verified state. It is the developer's first stop in `pb:review`: read the captured evidence before re-running anything by hand, and only dig deeper where the evidence is missing or unconvincing.
