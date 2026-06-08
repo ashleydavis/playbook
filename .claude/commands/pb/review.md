@@ -67,7 +67,9 @@ Then the developer approves, rejects, or defers. **Rejection requires a note.** 
 - **Reject with notes:** back to `todo/`, notes appended to History. **Record every issue the developer raises as a new unticked checkbox in the item's `## Issues` section** (create the section if absent), in addition to the History note, so `pb:next`'s implement agent must fix each one and tick it, and its review agent fails the item until every box is genuinely resolved. A human rejection is not a failure, it is their explicit decision to rework the item: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Defer:** leave it in `human-review/` to return to later. No move, no note required. Skip to the next item.
 
-Update `current-state.md` to reflect the move (and any follow-up items queued from the notes above): add or amend only the entries these changes affect, leaving the rest of its existing content intact.
+The `move.ts` (approve/defer-then-later) and `reset-failures.ts` + `move.ts` (reject) calls above commit their own state change automatically, item-scoped, so the History note and `## Issues` edits you wrote into the item's `detail.md` before the move ride in that commit. For any **follow-up work item** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" work-items/todo/<id>` (from `state/`).
+
+Then update `current-state.md` to reflect the move (and any follow-up items queued from the notes above): add or amend only the entries these changes affect, leaving the rest of its existing content intact. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example
 

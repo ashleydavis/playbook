@@ -10,8 +10,8 @@ Create one structured work item in `todo/`. For a single, well-understood task. 
 ## Steps
 
 1. Ask the developer for the work item's details: description, acceptance criteria, test plan, dependencies, and type.
-2. Create the work item directory `state/work-items/todo/<id>/` with two files, following the Work Item Format (see the handbook): a brief `index.md` (ID, Type, Depends on, one-line description) and a full `detail.md` (Description, Acceptance Criteria, Test Plan, Notes, History). The directory name must equal the `**ID:**` declared in `index.md` (the source of truth). Acceptance criteria are always required; a Test Plan is required but may be `N/A: <reason>` paired with a Manual Verification section for items with no testable behaviour (these live in `detail.md`).
-3. Update `current-state.md` to reflect the new item: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate.
+2. Create the work item directory `state/work-items/todo/<id>/` with two files, following the Work Item Format (see the handbook): a brief `index.md` (ID, Type, Depends on, one-line description) and a full `detail.md` (Description, Acceptance Criteria, Test Plan, Notes, History). The directory name must equal the `**ID:**` declared in `index.md` (the source of truth). Acceptance criteria are always required; a Test Plan is required but may be `N/A: <reason>` paired with a Manual Verification section for items with no testable behaviour (these live in `detail.md`). Then commit the new item to the state repo: `bun ../scripts/commit-state.ts "add <id>" work-items/todo/<id>` (from `state/`).
+3. Update `current-state.md` to reflect the new item: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example
 

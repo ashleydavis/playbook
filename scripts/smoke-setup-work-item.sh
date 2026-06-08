@@ -36,6 +36,13 @@ done
 mkdir -p "$ROOT/state/work-items/todo/feat-1/evidence"
 echo "# feat-1" > "$ROOT/state/work-items/todo/feat-1/index.md"
 
+# Make the state repo a git repo so setup-work-item.ts's auto-commit can run.
+git -C "$ROOT/state" init -q
+git -C "$ROOT/state" config user.email smoke@test
+git -C "$ROOT/state" config user.name smoke
+git -C "$ROOT/state" add -A
+git -C "$ROOT/state" commit -qm "scaffold state repo"
+
 # Build the project repo: one commit on main.
 git -C "$ROOT" init -q project
 git -C "$ROOT/project" config user.email smoke@test
@@ -63,8 +70,10 @@ if run_setup feat-1 > /dev/null; then
     # The worktree must belong to the project repo, never the state repo.
     git -C "$ROOT/project" worktree list | grep -q "worktrees/feat-1" \
         || fail "worktree not registered in project repo"
-    [[ ! -d "$ROOT/state/.git" ]] \
-        || fail "state repo unexpectedly became a git repo"
+    # The admit auto-committed in the state repo with the expected message.
+    admit_msg="$(git -C "$ROOT/state" log -1 --pretty=%s)"
+    [[ "$admit_msg" == "admit feat-1 to in-progress" ]] \
+        || fail "admit commit message wrong: '$admit_msg'"
     # On a new branch worktrees/feat-1 at the project's current commit.
     WT_SHA="$(git -C "$ROOT/project/worktrees/feat-1" rev-parse HEAD)"
     [[ "$WT_SHA" == "$MAIN_SHA" ]] \

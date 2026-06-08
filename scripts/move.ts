@@ -8,7 +8,9 @@
 // narrative remains the responsibility of the invoking agent.
 
 import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
+
+import { commitState } from "./commit-state";
 
 // The valid queues. The first six are the pipeline, in order. `blocked` is a
 // side pen, not a pipeline stage: any stage moves a problem item here when it
@@ -134,6 +136,19 @@ async function main(argv: string[]): Promise<void> {
             console.log(`${id} is already in ${result.to} (no-op)`);
         } else {
             console.log(`moved ${id}: ${result.fromPath} -> ${result.toPath}`);
+            // Commit the state change. The commit lives here in main(), not in
+            // the exported move() core, so unit tests stay commit-free; the
+            // commit path is covered by smoke-move.sh. Item-scoped pathspecs (the
+            // old and new dirs) let the -A add pick up both the deletion at the
+            // old path and the new directory with any evidence/History the agent
+            // wrote before the move.
+            await commitState(
+                process.cwd(),
+                `move ${id} ${result.from} -> ${result.to}`,
+                [result.fromPath, result.toPath].map((p) =>
+                    relative(process.cwd(), p),
+                ),
+            );
         }
     } catch (err) {
         if (err instanceof MoveError) {

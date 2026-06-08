@@ -24,7 +24,7 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
    - What is currently in flight or planned
 
    Then ask the developer only about what you could not determine from the repo, one question at a time.
-3. Create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (work-items/ queues, current-state.md, scoped CLAUDE.md files).
+3. Create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (work-items/ queues, current-state.md, scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `process.md`).
 4. Analyse the project repo to identify what is missing or incomplete:
    - `CLAUDE.md` at the root (use the shared template as a starting point)
    - `docs/spec/` source of truth

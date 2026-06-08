@@ -34,6 +34,13 @@ printf '# demo-1\n\n**ID:** demo-1\n**Type:** Fix\n' \
 
 INDEX="$FIXTURE/work-items/agent-review/demo-1/index.md"
 
+# Make the state fixture a git repo so fail-work-item.ts's auto-commit can run.
+git -C "$FIXTURE" init -q
+git -C "$FIXTURE" config user.email smoke@test
+git -C "$FIXTURE" config user.name smoke
+git -C "$FIXTURE" add -A
+git -C "$FIXTURE" commit -qm "scaffold state repo"
+
 run_fail() {
     ( cd "$FIXTURE" && bun "$FAIL" "$@" )
 }
@@ -42,6 +49,10 @@ run_fail() {
 out="$(run_fail demo-1)"
 [[ "$out" == "1" ]] || fail "first failure should print 1, got '$out'"
 grep -q "^\*\*Failures:\*\* 1$" "$INDEX" || fail "index.md should record Failures: 1"
+# The failure auto-committed with the expected message and count.
+fail_msg="$(git -C "$FIXTURE" log -1 --pretty=%s)"
+[[ "$fail_msg" == "record failure for demo-1 (count 1)" ]] \
+    || fail "failure commit message wrong: '$fail_msg'"
 
 # Second failure: prints 2, increments in place.
 out="$(run_fail demo-1)"

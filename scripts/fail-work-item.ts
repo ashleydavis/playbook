@@ -18,6 +18,7 @@
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { commitState } from "./commit-state";
 import { QUEUES } from "./move";
 
 // Raised for any expected, user-facing failure (missing id, unknown id, no
@@ -140,6 +141,15 @@ async function main(argv: string[]): Promise<void> {
         const result = await recordFailure(id, workItemsDir);
         // Print the new count on its own line so the caller can read it directly.
         console.log(result.count);
+        // Commit the state change here in main(), not in the exported
+        // recordFailure() core, so unit tests stay commit-free; the commit path
+        // is covered by smoke-fail-work-item.sh. Item-scoped so it captures the
+        // index.md bump and any History note already written for this failure.
+        await commitState(
+            process.cwd(),
+            `record failure for ${id} (count ${result.count})`,
+            ["work-items/" + result.queue + "/" + id],
+        );
     } catch (err) {
         if (err instanceof FailError) {
             console.error(err.message);

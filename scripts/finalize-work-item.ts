@@ -23,6 +23,11 @@
 //   merged   -> exit 0, worktree removed, changes on the branch.
 //   conflict -> exit 2, nothing changed, agent must resolve and re-run.
 //   noop     -> exit 0, worktree had no commits to merge; removed.
+//
+// This script does NOT commit the state repo: it operates on the project repo
+// (rebase/merge/worktree removal) and does not move the state directory. The
+// state-repo commit for this transition happens via the agent's follow-up
+// `move.ts <id> done`, which auto-commits. Do not add a state commit here.
 
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";

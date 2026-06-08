@@ -59,6 +59,7 @@ The arrow above is an item's **lifecycle** (the queues it travels through), not 
 - List a queue with `ls state/work-items/<queue>/` (e.g. `ls state/work-items/todo/`); the directory names are the IDs, so this shows queue contents without opening files.
 - Move items with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). The agent decides when; the script only moves the directory and the agent updates `current-state.md`.
 - `current-state.md` is an overview of the current state of the process and is derived from the state of the queues. The AI or developer can check this file to see progress, state, what's blocked. It's lightweight, easy to read and scan.
+- The state repo is a git repo and every significant change is committed, so its history is an audit log of how each item moved through the pipeline. The mutation scripts (`move`, `setup-work-item`, `fail-work-item`, `reset-failures`) commit automatically (item-scoped, lock-safe). For a hand edit (a `current-state.md` update, a newly created work item) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are item-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
 
 ## Spec and docs
 

@@ -2,7 +2,7 @@
     "type": "module",
     "scripts": {
         "test": "jest",
-        "smoke": "bash smoke-move.sh && bash smoke-next-items.sh && bash smoke-setup-work-item.sh && bash smoke-finalize-work-item.sh && bash smoke-fail-work-item.sh && bash smoke-reset-failures.sh && bash smoke-reset-loop.sh"
+        "smoke": "bash smoke-commit-state.sh && bash smoke-move.sh && bash smoke-next-items.sh && bash smoke-setup-work-item.sh && bash smoke-finalize-work-item.sh && bash smoke-fail-work-item.sh && bash smoke-reset-failures.sh && bash smoke-reset-loop.sh"
     },
     "dependencies": {},
     "devDependencies": {

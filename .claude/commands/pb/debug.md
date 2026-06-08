@@ -16,7 +16,7 @@ Create a Debug work item in `todo/` with these acceptance criteria:
 - The root cause is found and proven, not guessed: evidence shows the causal chain from root cause to symptom (a trace, a diff against working code, a minimal experiment that toggles the behaviour).
 - A written root-cause analysis is recorded in the item's `detail.md`.
 
-After creating the Debug item, update `current-state.md` to reflect it: add or amend only the entries this change affects, leaving the rest of its existing content intact.
+After writing the Debug item directory, commit it to the state repo: `bun ../scripts/commit-state.ts "add <id>" work-items/todo/<id>` (from `state/`). Then update `current-state.md` to reflect it: add or amend only the entries this change affects, leaving the rest of its existing content intact, and commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md`.
 
 A Debug item is a pure investigation. **Any amount of experimentation on the code is allowed:** add logging, hack in instrumentation, comment things out, try ten different changes. None of it is kept. A Debug item produces no commits and its worktree is thrown away when the investigation ends, so the experimentation cannot reach main and does not need to be clean. The only output that survives is the write-up in `detail.md` plus the evidence.
 
@@ -39,7 +39,7 @@ Because nothing is committed, the in-progress goal drops the "changes committed,
 
 The review agent's job for a Debug item is to assess that the root cause has actually been proven, not merely asserted: the reproduction is present in evidence, the causal chain is supported, and the conclusion follows from it.
 
-- **Proven:** the Debug item moves to `done/` (a debugging session produces no code, so it does not go to human-review or merge), and the review agent creates a new **Fix** work item (`**Type:** Fix`) in `todo/`. The Fix item carries the proven root cause and the failing reproduction in its Description/Notes, and acceptance criteria for the fix (below). It links back to the Debug item's ID.
+- **Proven:** the Debug item moves to `done/` (a debugging session produces no code, so it does not go to human-review or merge), and the review agent creates a new **Fix** work item (`**Type:** Fix`) in `todo/`. The Fix item carries the proven root cause and the failing reproduction in its Description/Notes, and acceptance criteria for the fix (below). It links back to the Debug item's ID. This spawn happens inside a `pb:next` agent-review sub-agent, so the review agent commits the new Fix item item-scoped: `bun ../scripts/commit-state.ts "add <fix-id>" work-items/todo/<fix-id>` (from `state/`). It does not touch `current-state.md` (parent-only).
 - **Not proven:** the review agent records in History what is missing or unconvincing, then runs `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the item's `**Failures:**` count and reads the new count it prints. Below three, it returns the Debug item to `todo/` so a fresh investigation session retries with that feedback (it does not give up on the first miss). At three, it moves the item to `blocked/` for the developer instead. The count is the deterministic gate, not a re-count of History.
 
 ### The Fix item

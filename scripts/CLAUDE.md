@@ -11,6 +11,9 @@ The helpers:
 - `fail-work-item.ts <id>`: increment the item's `**Failures:**` count in its `index.md` and print the new count. Called on every failure (any source except a human rejection); three failures park the item in `blocked/`.
 - `reset-failures.ts <id>`: reset the item's `**Failures:**` count to 0. Called by `pb:review` when a human rejects an item back to `todo/`, so rework starts with a clean slate (a rejection is not a failure).
 - `reset-loop.ts`: unwind an interrupted or abandoned run back to a clean slate. Moves every `in-progress/` item back to `todo/`, then force-removes every worktree under `project/worktrees/`, deletes its `worktrees/<id>` branch, and prunes stale worktree records. Discards unmerged work; does not merge. Called by `pb:reset`.
+- `commit-state.ts <message> [pathspec...]`: commit a change in the state repo (item-scoped and lock-safe) so its git history is an audit log. Used by agents for free-form edits (a `current-state.md` update, a newly created work item); skips with a warning if the state repo is not a git repo.
+
+`move`, `setup-work-item`, `fail-work-item`, and `reset-failures` now commit their own state change automatically (item-scoped, lock-safe) via `commit-state.ts`, so concurrent `pb:next` sub-agents never produce a muddled cross-item commit. `finalize-work-item` does not commit the state repo: the agent's follow-up `move <id> done` commits that transition.
 
 It is deliberately kept separate from the scaffolded `project/` so the Playbook's own tooling and its Jest run never sweep up an app's tests.
 

@@ -13,6 +13,7 @@
 import { join } from "node:path";
 import { readdir, writeFile } from "node:fs/promises";
 
+import { commitState } from "./commit-state";
 import { FailError, locateItem, setFailures } from "./fail-work-item";
 
 // Core logic: find the item and set its failure count to 0.
@@ -47,6 +48,12 @@ async function main(argv: string[]): Promise<void> {
     try {
         const result = await resetFailures(id, workItemsDir);
         console.log(result.count);
+        // Commit the state change here in main(), not in the exported
+        // resetFailures() core, so unit tests stay commit-free; the commit path
+        // is covered by smoke-reset-failures.sh. Item-scoped to the reset item.
+        await commitState(process.cwd(), `reset failures for ${id}`, [
+            "work-items/" + result.queue + "/" + id,
+        ]);
     } catch (err) {
         if (err instanceof FailError) {
             console.error(err.message);

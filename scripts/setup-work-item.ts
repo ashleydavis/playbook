@@ -25,6 +25,7 @@
 import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+import { commitState } from "./commit-state";
 import { move, type MoveResult } from "./move";
 
 // Raised for any expected, user-facing failure (missing id, no project repo,
@@ -134,6 +135,19 @@ async function main(argv: string[]): Promise<void> {
             ? `worktree ${result.worktreePath}`
             : `worktree ${result.worktreePath} (already existed)`;
         console.log(`admitted ${id}: ${result.move.toPath}, ${note}`);
+        // Commit the state change here in main(), not in the exported
+        // setupItem() core, so unit tests stay commit-free; the commit path is
+        // covered by smoke-setup-work-item.sh. The worktree it creates lives in
+        // the project repo and is irrelevant to the state commit. Item-scoped to
+        // the admitted item's old and new dirs. Skip on an idempotent re-run
+        // (the move was a no-op): there is nothing to commit, and the now-gone
+        // todo/ pathspec would make `git add` error on a non-matching pathspec.
+        if (!result.move.noop) {
+            await commitState(stateDir, `admit ${id} to in-progress`, [
+                "work-items/in-progress/" + id,
+                "work-items/todo/" + id,
+            ]);
+        }
     } catch (err) {
         if (err instanceof SetupError) {
             console.error(err.message);

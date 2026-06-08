@@ -607,5 +607,10 @@ The answer is to turn permissions off and run Claude inside a VM, while sharing 
 3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `/pb:next` never stalls waiting for approval.
 4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
 
-What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed, reviewable in `/pb:review`, and revertible. The developer never has to leave the host to see what Claude is doing.
+What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed and revertible, and changes surface in `/pb:review` before they land. The developer never has to leave the host to see what Claude is doing.
+
+This applies to both repos, by two distinct mechanisms:
+
+- **Project repo.** Code changes happen in a per-item worktree and are committed there using the commit template (`templates/commit-template/`). `finalize-work-item.ts` rebases and merges that worktree back onto the project branch.
+- **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, an item admitted, a failure recorded, a failure reset, an item created, a `current-state.md` update) is committed as its own item-scoped commit. The mutation scripts (`move`, `setup-work-item`, `fail-work-item`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Item-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-item trail of how each work item moved through the pipeline, and any state change can be reverted.
 
