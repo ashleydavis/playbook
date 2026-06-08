@@ -15,3 +15,8 @@ changes.
 - How do I make it so that permission are not disabled on the host. But are on the VM?
 - Should "work item" be renamed to "task" ? I'm not so sure about this, but "task" would be less cumbersome.
 - In the review, be able to pick a particular item to start with.
+- Feel like I need multiple Claude's open:
+    - Planning
+    - Review
+    - Work
+    - If I do this will they corrupt each others state?

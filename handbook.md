@@ -159,11 +159,19 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 **Three strikes parks the item.** Below three failures the item returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked item, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
 
-**One failure never stops the run; a systemic one does.** A single failed item is parked or retried and the development loop carries on with the others. But two or more items failing on the same stage or check in one run signals the environment, not the items (shared test fixtures, a contended resource): the development loop stops launching new work and hands back to the developer. It never works around a failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
+**One failure never stops the run; an environmental one does.** A single failed item is parked or retried and the development loop carries on with the others. Two or more items failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
-**The developer is told through `current-state.md`.** Anything that needs the developer (a block, a broken main, or a systemic failure) is recorded in the top `⚠ Needs your action` section of `current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it. A systemic failure is recorded as a `Run halted: systemic failure` entry naming the shared stage or check, the items involved, the suspected environmental cause, and the evidence path: the items it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
+**The developer is told through `current-state.md`.** Anything that needs the developer (a block, a broken main, or an environmental failure) is recorded in the top `⚠ Needs your action` section of `current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it.
 
 **Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the item still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later item builds on main.
+
+### Environmental failure
+
+An **environmental failure** is two or more items failing the same stage or check in one run. The cause is the environment, not the items (shared test fixtures, a contended resource, a broken tool), so retrying the items will not help and the run must stop.
+
+The loop reconciles every failed item first (recording and routing each by its count), then stops launching new work and hands back to the developer. It never works around the failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
+
+The cause is recorded as a `Run halted: environmental failure` entry in the top `⚠ Needs your action` section of `current-state.md`, naming the shared stage or check, the items involved, the suspected cause, and the evidence path. The items it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
 
 ## Repository Structure
 
@@ -543,7 +551,7 @@ Proof for each work item lives in the `evidence/` subdir of the item's own direc
 An agent allocates its subdir by taking one more than the highest existing number for its kind (the first implement pass writes `implementation-1/`, the next `implementation-2/`, and likewise for `review-N/`); the merge stage writes to `evidence/merge/`. What goes in each subdir:
 
 - **Test output.** The full captured run for each suite: `unit.txt`, `smoke.txt`, `e2e.txt` (or per-run files). Exit code visible. Plus any other artefacts the run produces.
-- **Screenshots.** For any change that affects the UI, before/after images or the relevant Playwright screenshots, in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the item's `evidence/` dir or a temp dir, and is discarded.
+- **Screenshots.** For any change that affects the UI, a screenshot of each affected view in **both light and dark mode** (every UI screenshot exists in both modes), in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the item's `evidence/` dir or a temp dir, and is discarded.
 - **Command transcripts.** For anything else a claim rests on (a build log, a migration run, a manual reproduction of a bug), the captured command and its output.
 
 The store is append-only within a run and overwritten on the next run of the same check, so it always reflects the latest verified state. It is the developer's first stop in `/pb:review`: read the captured evidence before re-running anything by hand, and only dig deeper where the evidence is missing or unconvincing.
@@ -568,7 +576,7 @@ A `/goal` is a pass condition declared at the start of a session or sub-agent. A
 
 Every goal has two parts:
 - **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
-- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or a systemic-failure signal (two or more items failing on the same stage or check in one run). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
+- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or an environmental-failure signal (see [Handling Failures](#handling-failures)). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
 
 Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving items between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether an item is finished.
 
@@ -582,7 +590,7 @@ The development loop relies on this in three places:
 
 - `/pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
 - Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
-- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and a systemic failure stops it. See [Handling Failures](#handling-failures).
+- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
 
 The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 

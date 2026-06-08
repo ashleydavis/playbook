@@ -84,14 +84,22 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 1. **Record it.** Run `bun ../scripts/fail-work-item.ts <id>` (from `state/`) to increment the item's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the item carries a complete deterministic record of everything that went wrong.
 2. **Route by count.** Below three, the item returns to `todo/` and the loop retries it on a later pass. At three it moves to `blocked/`.
-3. **Surface it.** Every block, systemic failure, and broken main is recorded in the top `⚠ Needs your action` section of `current-state.md`, which the developer reads directly or via `pb:status`. That section leads the file so anything needing the developer is the first thing seen; routine progress sits below it.
+3. **Surface it.** Every block, environmental failure, and broken main is recorded in the top `⚠ Needs your action` section of `current-state.md`, which the developer reads directly or via `pb:status`. That section leads the file so anything needing the developer is the first thing seen; routine progress sits below it.
 4. **Reconcile before the turn ends (invariant).** When a `pb:next` turn ends, `in-progress/` is empty: every item the parent admitted sits in a terminal queue (`agent-review/` on success, `todo/` or `blocked/` on failure). A sub-agent records and routes its own failure when it is alive to do so, but one that times out, dies, or returns a bare failure verdict cannot, so recording can never depend on it. The parent therefore re-runs `next-items.ts` as the final act of every turn: any item the report still shows in `in-progress/` (no sub-agent is working it now) is by definition an un-recorded failure, so the parent runs `fail-work-item.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. An item is never left mid-stage.
 
-A single failure never aborts the loop; the run continues with the other items. Two or more items failing the same stage or check in one run is a **systemic failure** (the environment, not the items): reconcile every failed item first (point 4), then stop launching new work and hand back. Handing back never means leaving items mid-stage. Never work around a failure by switching parallel→serial or re-driving an item by hand.
-
-A systemic failure must leave a durable record of its cause, because the items it hit usually return to `todo/` (under three failures) and so leave no per-item trace of why the run stopped. Before handing back, the parent writes a `Run halted: systemic failure` entry in the top `⚠ Needs your action` section of `current-state.md` naming the shared stage or check, the items involved, the suspected environmental cause, and the evidence path. That is what the developer reads (directly or via `pb:status`) to find and fix the cause before the next run.
+A single failure never aborts the loop; the run continues with the other items. Two or more items failing the same stage or check in one run is an **environmental failure** and stops the run (see [Environmental failure](#environmental-failure)). Never work around a failure by switching parallel→serial or re-driving an item by hand.
 
 **Exception (broken main):** if a merge lands but its post-merge checks then fail, the item goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later item builds on main.
+
+## Environmental failure
+
+An **environmental failure** is two or more items failing the same stage or check in one run. The shared cause is the environment, not the items (shared test fixtures, a contended resource, a broken tool), so retrying the items will not help: the run must stop and hand back.
+
+Handle it in this order:
+
+1. **Reconcile every failed item first** (record and route each by count, per **Failures** point 4). Handing back never means leaving an item mid-stage.
+2. **Stop launching new work and hand back** to the developer. Never work around it by switching parallel→serial or re-driving items by hand.
+3. **Record the cause** in the top `⚠ Needs your action` section of `current-state.md` as a `Run halted: environmental failure` entry naming the shared stage or check, the items involved, the suspected cause, and the evidence path. The items it hit usually return to `todo/` and leave no per-item trace, so this entry is the only record of why the run stopped.
 
 ## Templates
 
@@ -127,7 +135,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 
 `pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-item sub-agent goal for each of merge / implement / agent-review, each run in the item's worktree. Exact goal text lives in the [pb:next](.claude/commands/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
 
-When a sub-agent cannot meet its goal, the item is recorded and routed per **Failures** above, the loop never works around a failure, and a systemic failure (two or more items failing the same stage in one run) stops the whole loop.
+When a sub-agent cannot meet its goal, the item is recorded and routed per **Failures** above, the loop never works around a failure, and an environmental failure stops the whole loop (see [Environmental failure](#environmental-failure)).
 
 ## Checks
 
