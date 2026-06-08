@@ -5,6 +5,29 @@ The state repo (`state/`) is described as a "repo" and the handbook claims "ever
 
 The chosen mechanism (decided with the developer): **auto-commit inside the mutation scripts**, plus a shared lock-safe helper (`commit-state.ts`) that the scripts and the agents reuse for free-form edits. This is the only approach that makes the *process* manage committing rather than relying on an agent remembering to do it each turn. Commits are **item-scoped** (each commit stages only the affected item's directory, or `current-state.md`) so that the up-to-10 sub-agents `pb:next` runs in parallel never produce a muddled cross-item commit, and a retry-on-lock loop serialises the concurrent commits safely against the single shared git index. Granularity is **per significant change/addition** (a stage transition, an item creation, a failure recorded, a `current-state.md` update), not per individual file write.
 
+## Commit Message Format
+
+State-repo commits use a single-line message and no body. The message is a plain English statement of what changed, in the form `<verb> <id> [detail]`. No type prefix, no scope tag.
+
+The fixed messages each script/skill produces:
+
+| Action | Script / skill | Message |
+| --- | --- | --- |
+| Move an item between queues | `move.ts` | `move <id> <from> -> <to>` |
+| Admit an item to in-progress | `setup-work-item.ts` | `admit <id> to in-progress` |
+| Record a failure | `fail-work-item.ts` | `record failure for <id> (count <N>)` |
+| Reset an item's failures | `reset-failures.ts` | `reset failures for <id>` |
+| Create a new work item | item-creating skills | `add <id>` |
+| Per-turn narrative update | `pb:next` parent | `<turn summary>` (one line, the parent's summary of the turn) |
+| Initial scaffold | bootstrap | `scaffold state repo` |
+
+Rules:
+
+- **One line only.** Every commit is `git commit -m <message>`; there is no description/body.
+- **No prefix.** Messages start with the verb (`move`, `admit`, `add`, ...), not a `state:`/`feat:` tag.
+- **Item-scoped where possible.** The message names the affected `<id>` so `git log --oneline` reads as a per-item audit trail.
+- This format applies to the **state repo only**. Project-repo commits keep using `templates/commit-template/` unchanged.
+
 ## Issues
 <Leave empty — populated later by plan:check>
 
@@ -23,13 +46,13 @@ The chosen mechanism (decided with the developer): **auto-commit inside the muta
    - Export `async function runGitWithLockRetry(...)` (or inline helper) that wraps a single git invocation: if the result is non-zero and stderr matches `/index\.lock|Unable to create .*\.lock|Another git process/`, sleep a short backoff (e.g. `attempt * 100ms`) and retry, up to ~10 attempts, then give up and return the last failed result. `commitState` routes its `add` and `commit` calls through this wrapper so parallel committers serialise on the shared index instead of failing.
    - Add a thin CLI `main(argv)`: usage `commit-state.ts <message> [pathspec...]`, `stateDir = process.cwd()`, guard that `work-items/` exists (same guard the other scripts use). Print `committed <short-sha>` on success, a clear skip line on `nothing-staged`, and a visible warning on `not-a-repo`. Map `CommitError` to a non-zero exit. Gate the CLI behind `if (process.argv[1] === __filename)` exactly like the other scripts.
 
-2. **Auto-commit in `scripts/move.ts`.** In the CLI `main()` only (not the exported `move()` core, so unit tests stay commit-free), after a successful non-noop move, call `commitState(process.cwd(), `state: move ${id} ${result.from} -> ${result.to}`, [result.fromPath, result.toPath].map(rel))` where the pathspecs are made relative to `stateDir`. The `-A` add picks up both the deletion at the old path and the new directory (with any evidence/History the agent wrote before the move). Skip the commit on a noop move.
+2. **Auto-commit in `scripts/move.ts`.** In the CLI `main()` only (not the exported `move()` core, so unit tests stay commit-free), after a successful non-noop move, call `commitState(process.cwd(), `move ${id} ${result.from} -> ${result.to}`, [result.fromPath, result.toPath].map(rel))` where the pathspecs are made relative to `stateDir`. The `-A` add picks up both the deletion at the old path and the new directory (with any evidence/History the agent wrote before the move). Skip the commit on a noop move.
 
-3. **Auto-commit in `scripts/setup-work-item.ts`.** In `main()` after `setupItem` succeeds, call `commitState(stateDir, `state: admit ${id} to in-progress`, ["work-items/in-progress/" + id, "work-items/todo/" + id])`. (The worktree it creates lives in the *project* repo and is irrelevant to the state commit.) Do not commit inside the exported `setupItem()`; the internal `move()` core call must not commit so unit tests stay clean.
+3. **Auto-commit in `scripts/setup-work-item.ts`.** In `main()` after `setupItem` succeeds, call `commitState(stateDir, `admit ${id} to in-progress`, ["work-items/in-progress/" + id, "work-items/todo/" + id])`. (The worktree it creates lives in the *project* repo and is irrelevant to the state commit.) Do not commit inside the exported `setupItem()`; the internal `move()` core call must not commit so unit tests stay clean.
 
-4. **Auto-commit in `scripts/fail-work-item.ts`.** In `main()` after `recordFailure` succeeds, call `commitState(stateDir, `state: record failure for ${id} (count ${result.count})`, ["work-items/" + result.queue + "/" + id])`. Item-scoped so it captures the index.md bump (and any History note already written for this failure).
+4. **Auto-commit in `scripts/fail-work-item.ts`.** In `main()` after `recordFailure` succeeds, call `commitState(stateDir, `record failure for ${id} (count ${result.count})`, ["work-items/" + result.queue + "/" + id])`. Item-scoped so it captures the index.md bump (and any History note already written for this failure).
 
-5. **Auto-commit in `scripts/reset-failures.ts`.** In `main()` after the reset succeeds, call `commitState(stateDir, `state: reset failures for ${id}`, ["work-items/" + queue + "/" + id])`.
+5. **Auto-commit in `scripts/reset-failures.ts`.** In `main()` after the reset succeeds, call `commitState(stateDir, `reset failures for ${id}`, ["work-items/" + queue + "/" + id])`.
 
 6. **Leave `scripts/finalize-work-item.ts` unchanged for state commits.** It operates on the *project* repo (rebase/merge/worktree removal) and does not move the state directory; the agent's subsequent `move.ts <id> done` produces the state commit. Add a one-line comment in its header noting that the state-repo commit happens via the agent's follow-up `move.ts`, so a future reader does not add a redundant commit here.
 
@@ -41,13 +64,13 @@ The chosen mechanism (decided with the developer): **auto-commit inside the muta
 
 10. **Tighten `current-state.md` committing in `.claude/commands/pb/next.md`.**
     - Line ~26: the sub-agent state-change sentence currently ends "...add a History note to its `detail.md`, commit". Clarify it: the sub-agent's `move.ts` call is what commits its item's state transition (auto, item-scoped), and it writes evidence/History *before* the move so they ride in that commit; it must never run `commit-state.ts` against `current-state.md` (parent-only).
-    - Step 3.2 (record state): after the parent updates `current-state.md`, add an explicit final action: `bun ../scripts/commit-state.ts "state: <turn summary>" current-state.md` so each turn's narrative update is its own commit. Make clear the parent is the sole committer of `current-state.md`.
+    - Step 3.2 (record state): after the parent updates `current-state.md`, add an explicit final action: `bun ../scripts/commit-state.ts "<turn summary>" current-state.md` so each turn's narrative update is its own commit. Make clear the parent is the sole committer of `current-state.md`.
 
-11. **Add the commit step to the item-creating skills.** For each skill that writes a new work item into `todo/` from a template, add a step: after writing the item directory, commit it with `bun ../scripts/commit-state.ts "state: add <id>" work-items/todo/<id>`. Skills to update: `.claude/commands/pb/add.md`, `.claude/commands/pb/plan.md` (when it breaks a feature into items), `.claude/commands/pb/docs.md` (when it queues items), and `.claude/commands/pb/debug.md` (the Fix item spawned from a proven Debug — note this spawn happens inside a `pb:next` agent-review sub-agent, so the commit step belongs wherever the Fix item is created).
+11. **Add the commit step to the item-creating skills.** For each skill that writes a new work item into `todo/` from a template, add a step: after writing the item directory, commit it with `bun ../scripts/commit-state.ts "add <id>" work-items/todo/<id>`. Skills to update: `.claude/commands/pb/add.md`, `.claude/commands/pb/plan.md` (when it breaks a feature into items), `.claude/commands/pb/docs.md` (when it queues items), and `.claude/commands/pb/debug.md` (the Fix item spawned from a proven Debug — note this spawn happens inside a `pb:next` agent-review sub-agent, so the commit step belongs wherever the Fix item is created).
 
 12. **Add the `current-state.md` commit step to skills that edit it by hand.** In `.claude/commands/pb/review.md` (approve/reject/defer transcribes notes and moves items — the `move.ts`/`reset-failures.ts` calls auto-commit, but any direct `current-state.md` edit needs `commit-state.ts current-state.md`) and any other skill that edits `current-state.md` directly, add the `commit-state.ts ... current-state.md` step after the edit. `pb:status` is read-only — confirm it makes no edits and add no commit there.
 
-13. **`git init` the state repo in bootstrap.** In `.claude/commands/pb/bootstrap/new.md` (step 3, after copying `templates/state/`) and `.claude/commands/pb/bootstrap/existing.md` (the equivalent state-repo creation step), add: initialise the state repo as a git repo (`git init` in `state/`) and make an initial commit of the scaffolded contents (e.g. `state: scaffold state repo`). Note that all subsequent state changes are committed automatically (cross-reference the **Queues** audit-log paragraph in `process.md`).
+13. **`git init` the state repo in bootstrap.** In `.claude/commands/pb/bootstrap/new.md` (step 3, after copying `templates/state/`) and `.claude/commands/pb/bootstrap/existing.md` (the equivalent state-repo creation step), add: initialise the state repo as a git repo (`git init` in `state/`) and make an initial commit of the scaffolded contents (e.g. `scaffold state repo`). Note that all subsequent state changes are committed automatically (cross-reference the **Queues** audit-log paragraph in `process.md`).
 
 14. **Note the audit log in `templates/state/CLAUDE.md`.** Add a sentence: this repo is a git repo whose history is an audit log of the process; every significant change is committed (automatically by the helper scripts, or via `commit-state.ts` for hand edits). Do not instruct anything that conflicts with `process.md`; keep it a pointer.
 
@@ -65,10 +88,10 @@ The chosen mechanism (decided with the developer): **auto-commit inside the muta
 ## Smoke Tests
 
 - **`scripts/smoke-commit-state.sh`** (new): create a throwaway git repo with a `work-items/` dir, write a file, run `commit-state.ts "msg" <path>`, assert exit 0 and that `git log` shows the commit touching only that path; run it again with no changes and assert the `nothing-staged` skip (exit 0, no new commit); run it in a non-git directory and assert the `not-a-repo` skip is reported without a hard failure.
-- **Extend `scripts/smoke-move.sh`**: after a move in a throwaway git-backed state repo, assert a new commit exists whose message matches `state: move <id> ...` and whose diff is scoped to the item's from/to paths.
-- **Extend `scripts/smoke-setup-work-item.sh`**: assert an admit produces a `state: admit <id> to in-progress` commit.
-- **Extend `scripts/smoke-fail-work-item.sh`**: assert a failure produces a `state: record failure for <id> (count N)` commit.
-- **Extend `scripts/smoke-reset-failures.sh`**: assert a reset produces a `state: reset failures for <id>` commit.
+- **Extend `scripts/smoke-move.sh`**: after a move in a throwaway git-backed state repo, assert a new commit exists whose message matches `move <id> ...` and whose diff is scoped to the item's from/to paths.
+- **Extend `scripts/smoke-setup-work-item.sh`**: assert an admit produces a `admit <id> to in-progress` commit.
+- **Extend `scripts/smoke-fail-work-item.sh`**: assert a failure produces a `record failure for <id> (count N)` commit.
+- **Extend `scripts/smoke-reset-failures.sh`**: assert a reset produces a `reset failures for <id>` commit.
 - (Smoke tests that don't currently init a git repo must `git init` the throwaway state repo and set a throwaway `user.email`/`user.name` so commits succeed in CI.)
 
 ## Verify
