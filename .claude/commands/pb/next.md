@@ -60,7 +60,7 @@ A goal is met only when the evidence proving it is on disk. Each sub-agent goal 
 **What counts as sufficient evidence:**
 
 - **Check output.** The full, fresh output of every check the goal names (compile, lint, unit, smoke, e2e, and any judgement check), with its exit code visible, one file per suite. Captured per the verification rule (run fresh, in the foreground, read in full).
-- **UI screenshots.** Any change that affects the UI must be captured as a screenshot of each affected view in **both light and dark mode** (every UI screenshot exists in both modes). Capture them however works, but never by committing capture code to `project/`: the capture script lives in the item's `evidence/` or a temp dir and is discarded (see Agent cleanup).
+- **UI screenshots.** Any change that affects the UI must be captured as a screenshot of **every** affected view in **both light and dark mode** (every UI screenshot exists in both modes). A single representative page is not enough: if the change is applied to several pages (e.g. pods, nodes, deployments, statefulsets, daemonsets), capture each one, in both modes. Capture them however works, but never by committing capture code to `project/`: the capture script lives in the item's `evidence/` or a temp dir and is discarded (see Agent cleanup).
 - **Command transcripts.** For anything else a claim rests on (a build log, a bug reproduction), the captured command and its output.
 
 Sufficient means enough that the developer can confirm every part of the goal from the files alone, without re-running anything.
