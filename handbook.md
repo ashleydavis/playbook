@@ -31,7 +31,7 @@ The developer is in the loop at the two ends of the pipeline, and out of it in t
 
 - **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
 - **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch `current-state.md`, but nothing requires them to.
-- **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or defers. Nothing merges without that explicit yes.
+- **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or skips. Nothing merges without that explicit yes.
 
 Two other moments need a human and only a human: a blocked ticket (parked after repeated failure) re-enters the loop only when the developer moves it back to `todo/`, and a broken `main` is handed back for the developer to fix. Everywhere else the process runs itself. The automated agent-review gate exists precisely so the developer's review time is spent only on work that has already passed the mechanical checks.
 
@@ -127,7 +127,7 @@ flowchart TD
     end
 
     subgraph DevReview ["Developer Review: pb:review (review loop)"]
-        VIEW["Pick a ticket by number, Review Code, Tests and UI, then Approve or Reject. Repeat for the next pick"]
+        VIEW["Select a ticket by number, Review Code, Tests and UI, then Approve or Reject. Repeat for the next selection"]
     end
 
     RT -->|Pass| AR[("Agent Review Queue")]
@@ -306,37 +306,51 @@ Drains the queues as far as possible until human input is required. It sets a to
 
 ### pb:review
 
-The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). The developer can also **abort** a ticket (`ab`): it moves to `aborted/` with an optional reason in its History, the work is abandoned, and it is dropped from `current-state.md`. A deferred ticket stays in `human-review/` for later. See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
+The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). The developer can also **abort** a ticket (`ab`): it moves to `aborted/` with an optional reason in its History, the work is abandoned, and it is dropped from `current-state.md`. A skipped ticket stays in `human-review/` for later. See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
 
-**The review loop.** The developer is not marched through the tickets in a fixed order. Instead `/pb:review` runs a loop: it prints the reviewable tickets **numbered from 1** and asks "Which ticket do you want to review?". The developer picks one by **number or name**, is walked through it, and resolves it (approve, reject, skip/defer, or abort). Then the same numbered list and question come back, with the resolved ticket gone (a skipped one stays, so it reappears). The loop repeats until the developer stops (`q`/`quit`/`stop`) or no reviewable tickets remain. This lets the developer choose what to review first and stop whenever they like, rather than being forced through every ticket in queue order.
+**The review loop.** The developer is not marched through the tickets in a fixed order. Instead `/pb:review` runs a loop: it prints the reviewable tickets **numbered from 1** and asks "Which ticket do you want to review?". The developer selects one by **number or name**, is walked through it, and resolves it (approve, reject, skip, or abort). Then the same numbered list and question come back, with the resolved ticket gone (a skipped one stays, so it reappears). The loop repeats until the developer stops (`q`/`quit`/`stop`) or no reviewable tickets remain. This lets the developer choose what to review first and stop whenever they like, rather than being forced through every ticket in queue order.
 
-The developer drives the loop with these commands. Each has a short alias and a full-word form; both are accepted.
+**The inspect loop (a loop within the loop).** Walking through the currently selected ticket is itself a loop. `/pb:review` prints a numbered **inspect menu** of ways to examine the work and the developer picks them **in any order, one at a time**:
+
+1. Show the screenshots
+2. Run it by hand (Claude shows you how)
+3. Start it for you (Claude launches the app, you explore it)
+4. Run the automated tests
+5. Show the doc changes (Claude shows you the diff)
+6. Read the docs yourself (Claude points you to them)
+7. Show the code diff (Claude shows you the diff)
+8. View the code diff yourself (Claude shows you how)
+
+For each pick Claude either **shows the developer how** to do it themselves (e.g. naming the screenshot paths, the testing-manual commands to run the app by hand, the doc files to read, or the `git show` command to view the diff), or **does it for them** (opening the screenshots, starting the app, running the tests, showing a diff), printing a one-line description of what it will do first. When Claude starts the app it only launches it and says what to look at: it does not drive or navigate, and the developer closes it themselves. Then it reprints the menu and waits. The menu is tailored per ticket: a non-UI ticket has no screenshots, so option 1 is dropped, and so on. The developer leaves the inspect loop only by resolving the ticket. So the review loop (select a ticket) contains the inspect loop (examine that ticket).
+
+#### Commands
+
+The developer drives both loops with these commands. Each has a short alias and a full-word form; both are accepted.
 
 | Command | Aliases | When | Does |
 |---|---|---|---|
-| Pick | `<number>`, `<ticket name>` | At the list | Picks the ticket to review (e.g. `1`, or `search-3`). |
-| Next | `n`, `next` | In a walkthrough | Moves to the next review step for the current ticket. |
-| Approve | `a`, `approve` | In a walkthrough | Approves the ticket; it moves to `merge-queue/`. |
-| Reject | `r`, `reject` | In a walkthrough | Rejects with notes (a note is required); it returns to `todo/`. |
-| Skip (defer) | `s`, `skip`, `d`, `defer` | In a walkthrough | Leaves the ticket in `human-review/` for later; no note needed. |
-| Abort | `ab`, `abort` | In a walkthrough | Kills the ticket; it moves to `aborted/` (optional reason). |
-| Stop | `q`, `quit`, `stop` | At the list | Ends the review loop. |
+| Select | `<number>`, `<ticket name>` | At the ticket list | Selects the ticket to review (e.g. `1`, or `search-3`). |
+| Inspect | `<number>` | At the inspect menu | Runs that menu option; Claude shows you how or does it for you, then reprints the menu. |
+| Approve | `a`, `approve` | In a ticket | Approves the ticket; it moves to `merge-queue/`. |
+| Reject | `r`, `reject` | In a ticket | Rejects with notes (a note is required); it returns to `todo/`. |
+| Skip | `s`, `skip` | In a ticket | Leaves the ticket in `human-review/` for later; no note needed. |
+| Abort | `ab`, `abort` | In a ticket | Kills the ticket; it moves to `aborted/` (optional reason). |
+| Stop | `q`, `quit`, `stop` | At the ticket list | Ends the review loop. |
+
+#### The review and inspect loops
 
 ```mermaid
 flowchart TD
-    LIST["List tickets in human-review/, numbered from 1<br/>Ask: Which ticket do you want to review?"]
-    LIST -->|"number or name"| WALK["Walk through the chosen ticket:<br/>screenshots, run it, diffs, docs, notes"]
-    LIST -->|"stop (q / quit / stop)"| END(["End review"])
-    LIST -->|"list empty"| END
-    WALK --> RESOLVE{"Resolve"}
-    RESOLVE -->|"approve (a)"| MQ[("merge-queue/")]
-    RESOLVE -->|"reject + notes (r)"| TODO[("todo/")]
-    RESOLVE -->|"abort (ab)"| ABORT[("aborted/")]
-    RESOLVE -->|"skip / defer (s / d)"| STAY["stays in human-review/"]
-    MQ --> LIST
-    TODO --> LIST
-    ABORT --> LIST
-    STAY --> LIST
+    LIST["List tickets in human-review/"]
+    LIST -->|"stop / list empty"| END(["End review"])
+    LIST -->|"select a ticket"| MENU["Inspect menu (per ticket):<br/>screenshots · run · tests · docs · diff"]
+    MENU -->|"select an option"| DO["Show how, or do it<br/>(describe first), then reprint menu"]
+    DO --> MENU
+    MENU -->|"resolve"| RESOLVE{"Resolve"}
+    RESOLVE -->|"approve"| MQ[("merge-queue/")]
+    RESOLVE -->|"reject + notes"| TODO[("todo/")]
+    RESOLVE -->|"abort"| ABORT[("aborted/")]
+    RESOLVE -->|"next ticket (skip stays in human-review/)"| LIST
 ```
 
 ### pb:debug

@@ -17,5 +17,4 @@ changes.
     - Review
     - Work
     - If I do this will they corrupt each others state?
-- Give the user concise steps to run the app and review (inc. fixtures)
-
+- In the "inspect loop" is there a way to check off the ones the developer has already one?
