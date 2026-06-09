@@ -23,4 +23,4 @@ changes.
     - If I do this will they corrupt each others state?
 - Really want less waffle in the review.
 - Give the user concise steps to run the app and review (inc. fixtures)
-- Screenshots should always go under a screenshots directory.
+
