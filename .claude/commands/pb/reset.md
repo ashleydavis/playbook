@@ -9,6 +9,10 @@ Unwind the loop back to a clean slate after a run was interrupted, or when you w
 
 **Destructive.** Any commits or uncommitted changes in a ticket worktree are discarded. `pb:reset` does not merge: use it to recover or abandon, never to land work. It touches only `in-progress/` and the worktrees; it leaves tickets already past `in-progress/` (`agent-review/`, `human-review/`, `merge-queue/`, `done/`, `blocked/`) where they are.
 
+## Output style
+
+Bullet points, not prose. No preamble. Show what will be reset as a short list, then report what was reset. Nothing more.
+
 ## Steps
 
 1. Show the developer what will be reset before doing anything: list the tickets in `in-progress/` (the IDs that will return to `todo/`) and the worktrees under `project/worktrees/` (which will be force-removed). Confirm they want to proceed, since unmerged work is discarded.

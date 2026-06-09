@@ -9,6 +9,10 @@ STATUS: REVIEWED
 
 Bootstrap a greenfield project: create both project/ and state/ repos under the playbook repo, where Claude Code is launched, from the playbook templates and seed the docs from an interview. For an existing codebase, use `pb:bootstrap:existing` instead.
 
+## Output style
+
+Bullet points, not prose. No preamble. Interview one question at a time. Report results as a short list: repos created, docs written, next step.
+
 ## Steps
 
 TODO: FACTOR OUT THE INTERVIEW PROCESS TO A SEPERATE FILE AND LINK IT INTO EXISTING AND NEW SKILLS

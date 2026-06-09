@@ -11,6 +11,10 @@ Bootstrap an existing project: clone the project into `project/`, create the sta
 
 Both repos are nested under the playbook repo, where Claude Code is launched. For a brand-new project with no code, use `pb:bootstrap:new` instead.
 
+## Output style
+
+Bullet points, not prose. No preamble. Interview one question at a time. Report results as a short list: repos created, gaps found, tickets queued, next step.
+
 ## Steps
 
 1. Clone the existing project repo into `project/` under the playbook repo. If you don't know where the project is, ask the developer to identify it (Git URL or local path).

@@ -7,6 +7,15 @@ description: Invoke at session start, or any time you want to know where the pro
 
 Read where the project stands and recommend the next move. This is the usual session-start skill and the default "what now?" entry point.
 
+## Output style
+
+Bullet points, not prose. No preamble, no narration, no explaining the queues or the process.
+
+- One ticket per bullet: ID + one-line description + what it needs (if anything).
+- Group under the fixed headings below; drop any heading that is empty.
+- The recommendation is one line: the skill to run and why, in a few words.
+- Report the state. Do not editorialise or pad.
+
 ## Steps
 
 1. Read `current-state.md` and inspect each queue in `tickets/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `blocked/`, and the most recent entries in `done/`.
@@ -30,16 +39,17 @@ Read where the project stands and recommend the next move. This is the usual ses
 ## Example
 
 ```
-⚠ Needs you:
-- Awaiting review: 2 tickets in human-review/ (auth-1 login endpoint, auth-2 session store). Run pb:review.
-- Blocked: search-4 waits on search-3 passing review.
-(no systemic failures)
+⚠ Needs you
+- auth-1 — login endpoint — awaiting review
+- auth-2 — session store — awaiting review
+- search-4 — blocked, waits on search-3
 
-In flight:
-- search-3  in agent-review/  (review checks running)
+In flight
+- search-3 — agent-review (checks running)
 
-Since last session: shipped infra-2 (CI pipeline).
+Done since last session
+- infra-2 — CI pipeline
 
-Recommendation: run pb:review to clear the two waiting tickets, then pb:next.
+Recommendation: pb:review to clear auth-1, auth-2, then pb:next.
 What would you like to do?
 ```

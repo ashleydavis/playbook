@@ -9,6 +9,10 @@ A quick read of the board: which ticket sits in which queue, right now. Lighter 
 
 Use it when you only want to see where tickets are. For "what should I do next?", use `pb:status`.
 
+## Output style
+
+Bullet points, not prose. Print the board and nothing else: queue name + count, one line per ticket. No preamble, no summary, no recommendation.
+
 ## Steps
 
 1. List each queue under `state/tickets/`, in pipeline order, then the side pen and recent done:

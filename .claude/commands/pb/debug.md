@@ -9,6 +9,10 @@ The process is built around forward feature work; `pb:debug` is the path for "so
 
 `pb:debug` does not investigate inline. It creates a **Debug** ticket (`**Type:** Debug`) in `todo/` describing the symptom. The Debug ticket's job is to **find the root cause and then prove it.**
 
+## Output style
+
+Bullet points, not prose. No preamble. Confirm the Debug ticket in a few lines: ID, the symptom, where it landed. Report any investigation outcome the same way.
+
 ## Steps
 
 Create a Debug ticket in `todo/` with these acceptance criteria:

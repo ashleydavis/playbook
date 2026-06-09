@@ -7,6 +7,10 @@ description: Invoke when you want to plan a new feature or revise an existing on
 
 Plan or update a feature. The output is an agreed spec and testing manual, optionally broken into queued tickets. This is design work, not implementation.
 
+## Output style
+
+Bullet points, not prose. No preamble. Brainstorm one question at a time. When done, report what changed in a few lines: spec/manual sections updated, tickets queued and their dependencies.
+
 ## Steps
 
 1. Ask the developer what feature they want to plan or update.

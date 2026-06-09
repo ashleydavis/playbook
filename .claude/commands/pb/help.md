@@ -11,6 +11,10 @@ Orient the developer in this process. Answer their actual question directly, the
 
 If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected tickets go?"), answer that and stop. If it is open ("how does this work?", "where do I start?"), give the short tour below.
 
+## Output style
+
+Bullet points, not prose. No preamble. Answer the question asked, then stop. Keep it scannable; link the deeper docs rather than pasting them.
+
 ## The short tour
 
 **What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and `/goal` pass-conditions stop any agent from claiming "done" without evidence. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).

@@ -25,6 +25,10 @@ The repo layout is fixed and known: `state/` and `project/` are siblings under t
 
 **`current-state.md` is the parent agent's responsibility alone.** Only the parent agent updates it, and the parent is its sole committer: a sub-agent must never write to it and must never run `commit-state.ts` against it (a shared-file write would race the parallel sub-agents). A sub-agent's only state changes are to its own ticket: it writes its `evidence/` and adds a History note to its `detail.md` **before** moving its directory, then runs `move.ts`, whose ticket-scoped commit captures the evidence and History along with the transition. So the sub-agent never commits the state repo by hand: its `move.ts` (or `fail-ticket.ts`/`reset-failures.ts` on a failure path) is what auto-commits its ticket's state change. The parent reflects those changes into `current-state.md` after the turn.
 
+## Output style
+
+Bullet points, not prose. Report the run as terse lines: each ticket and what happened to it. No preamble, no narrating what you are about to do next. Keep `current-state.md` entries to one or two plain lines each.
+
 ## Processing order
 
 Each turn works the queues in this priority order: **`merge-queue` → `agent-review` → `todo` → `in-progress`**. The principle is *finish work nearest to done before starting anything new*: land approved tickets on main first, then clear every review already in flight, and only then admit and implement new work. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets.

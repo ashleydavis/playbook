@@ -7,6 +7,10 @@ description: Invoke to tune the project's enforced rule set (the files in docs/r
 
 Interactively tune the project's enforced rule set: the files in `docs/rules/`. Run during bootstrap or any time afterwards to change how Claude is expected to work in this repo. The agent-review goal reads every file in `docs/rules/`, so anything captured here is enforced on every ticket from then on.
 
+## Output style
+
+Bullet points, not prose. No preamble. One area at a time: show the current setting, ask, then report the change as one line.
+
 ## Steps
 
 1. Interview the developer across four areas, showing the current setting for each and asking what to change:

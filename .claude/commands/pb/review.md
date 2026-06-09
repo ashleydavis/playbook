@@ -9,6 +9,16 @@ STATUS: NEEDS REVIEW
 
 Walk the developer through the `human-review/` queue. This is the human approval gate: the one point in the loop where a person decides.
 
+## Output style
+
+Bullet points, not prose. Everything you say to the developer is a short list of concrete things to do or look at:
+
+- Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**. State the thing, not your intentions.
+- One fact per bullet. No preamble, no narration of what you are about to do, no restating these instructions back to the developer.
+- A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
+- A ticket summary is at most 3 bullets: what changed, the evidence (test result + screenshot paths), the diff (files touched). Do not retell the History.
+- Never write a paragraph where a list works.
+
 ## Responses
 
 The developer drives the walkthrough with two sets of single-letter (or full-word) commands:
@@ -75,29 +85,31 @@ Then update `current-state.md` to reflect the move (and any follow-up tickets qu
 ## Example
 
 ```
-Reviewing search-3 (debounced search input).
+search-3 — debounced search input
+- Changed: src/search/input.tsx (+44 -3)
+- Evidence (review-1/): unit 12 passed, smoke exit 0
+- Screenshot: state/tickets/human-review/search-3/evidence/review-1/screenshots/results.png
 
-Evidence (review-1/): unit.txt (12 passed), smoke.txt (exit 0), screenshots/results.png.
-Diff: src/search/input.tsx (+44 -3).
+Step 1 — screenshot
+- Open the path above (rendered below). Check: results list updates after typing stops.
+[n]
 
-Developer: Looks good, but the placeholder text should say "Search docs".
-  -> note transcribed to feature search/detail.md behaviour, and a follow-up ticket
-     queued as todo/search-6 (placeholder copy). Approving search-3 as-is.
+Step 2 — run it
+- Run: bun run dev, then type in the search box.
+- Manual: docs/testing-manual/search.md "Debounce".
+[n]
 
-Moved search-3 to merge-queue/. current-state.md updated.
+Developer: placeholder should say "Search docs".
+- Note -> search/detail.md behaviour; follow-up todo/search-6 (placeholder copy).
+- Approve search-3 -> merge-queue/. current-state.md updated.
 
 ---
-
-Reviewing search-4 (search result ranking).
-
-Developer: Not sure about this yet, I want to test it more tomorrow.
-  -> Deferred. Left in human-review/, no changes made. Moving on to search-5.
+search-4 — result ranking
+Developer: d
+- Deferred. Left in human-review/. Next: search-5.
 
 ---
-
-Reviewing search-5 (experimental fuzzy matching).
-
-Developer: ab - we've decided not to ship fuzzy matching, drop it.
-  -> Abort reason appended to search-5 History. Moved search-5 to aborted/.
-     Removed from current-state.md.
+search-5 — fuzzy matching
+Developer: ab — not shipping it.
+- Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 ```

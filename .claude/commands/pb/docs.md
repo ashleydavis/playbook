@@ -7,6 +7,10 @@ description: Invoke when documentation needs writing or updating (spec, testing 
 
 Write or update documentation. Use this for documentation work that is not the design of a new feature (that is `pb:plan`).
 
+## Output style
+
+Bullet points, not prose. No preamble. Report what changed: files updated, tickets queued. One line each.
+
 ## Steps
 
 1. Ask the developer what documentation needs writing or updating.

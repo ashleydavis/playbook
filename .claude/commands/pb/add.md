@@ -7,6 +7,10 @@ description: Invoke when you want to queue a single, already-understood piece of
 
 Create one structured ticket in `todo/`. For a single, well-understood task. If the root cause of a bug is unknown, use `pb:debug` instead.
 
+## Output style
+
+Bullet points, not prose. No preamble. Confirm the ticket in a few lines: ID, Type, one-line description, where it landed.
+
 ## Steps
 
 1. Ask the developer for the ticket's details: description, acceptance criteria, test plan, dependencies, and type.
