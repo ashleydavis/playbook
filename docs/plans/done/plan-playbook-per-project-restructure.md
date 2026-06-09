@@ -16,7 +16,7 @@ Switch the playbook from "install once per machine (symlinks + global config)" t
 5. `.gitignore`: add `project/` and `state/`.
 6. In `.claude/commands/pb/bootstrap/new.md` and `existing.md`: scaffold into `project/` and `state/` (paths relative to the clone root); drop any global-install assumption. `existing.md` clones the project into `project/`.
 7. In `.claude/commands/pb/help.md`, `review.md`, `next.md`: fix `~/playbook/...` paths and the `skills/pb` reference; doc links to root files become `../../../<file>` (skills moved one level deeper).
-8. `templates/state/work-items/CLAUDE.md`: `~/playbook/scripts/move.ts` → `bun ../scripts/move.ts` from the state repo.
+8. `templates/state/tickets/CLAUDE.md`: `~/playbook/scripts/move.ts` → `bun ../scripts/move.ts` from the state repo.
 9. `README.md`, `handbook.md`, `process.md`, `index.md`: change only the lines describing install/symlinks/`~/playbook`/`config/`/`skills/pb`/`install.sh`/"one clone per machine". Leave all other prose untouched. Specifically:
    - Permissions warning in **both** README and handbook (see Notes).
    - README: keep the Prerequisites and Next steps sections; show the exact clone command `git clone https://github.com/ashleydavis/playbook.git ~/playbook`.

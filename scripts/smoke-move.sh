@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test for scripts/move.ts driven through its CLI.
 #
-# Builds a throwaway state fixture in a temp dir, walks a work item
+# Builds a throwaway state fixture in a temp dir, walks a ticket
 # through the queues with the real CLI, checks the error paths exit non-zero,
 # then cleans up and prints PASS or FAIL.
 
@@ -26,11 +26,11 @@ trap cleanup EXIT
 
 # Build the fixture: six empty queues plus demo-1 in todo/ with contents.
 for q in "${QUEUES[@]}"; do
-    mkdir -p "$FIXTURE/work-items/$q"
+    mkdir -p "$FIXTURE/tickets/$q"
 done
-mkdir -p "$FIXTURE/work-items/todo/demo-1/evidence"
-echo "# demo-1" > "$FIXTURE/work-items/todo/demo-1/index.md"
-echo "pass" > "$FIXTURE/work-items/todo/demo-1/evidence/unit.txt"
+mkdir -p "$FIXTURE/tickets/todo/demo-1/evidence"
+echo "# demo-1" > "$FIXTURE/tickets/todo/demo-1/index.md"
+echo "pass" > "$FIXTURE/tickets/todo/demo-1/evidence/unit.txt"
 
 # Make the state fixture a git repo so move.ts's auto-commit can run, and seed an
 # initial commit so the moves produce their own commits on top.
@@ -45,11 +45,11 @@ assert_only_in() {
     local queue="$1"
     for q in "${QUEUES[@]}"; do
         if [[ "$q" == "$queue" ]]; then
-            [[ -d "$FIXTURE/work-items/$q/demo-1" ]] || fail "demo-1 missing from $q"
-            [[ -f "$FIXTURE/work-items/$q/demo-1/evidence/unit.txt" ]] \
+            [[ -d "$FIXTURE/tickets/$q/demo-1" ]] || fail "demo-1 missing from $q"
+            [[ -f "$FIXTURE/tickets/$q/demo-1/evidence/unit.txt" ]] \
                 || fail "demo-1 evidence missing from $q"
         else
-            [[ ! -e "$FIXTURE/work-items/$q/demo-1" ]] \
+            [[ ! -e "$FIXTURE/tickets/$q/demo-1" ]] \
                 || fail "demo-1 unexpectedly present in $q"
         fi
     done
@@ -70,15 +70,15 @@ for target in in-progress agent-review human-review; do
 done
 
 # Each move auto-committed: the latest commit names the last transition and its
-# diff is scoped to the item's from/to paths (and nothing else).
+# diff is scoped to the ticket's from/to paths (and nothing else).
 last_msg="$(git -C "$FIXTURE" log -1 --pretty=%s)"
 [[ "$last_msg" == "move demo-1 agent-review -> human-review" ]] \
     || fail "last commit message wrong: '$last_msg'"
 changed="$(git -C "$FIXTURE" show --name-only --pretty=format: HEAD | grep -v '^$')"
-echo "$changed" | grep -q "work-items/human-review/demo-1/" \
+echo "$changed" | grep -q "tickets/human-review/demo-1/" \
     || fail "move commit did not touch the new path"
 echo "$changed" | grep -vq "demo-1" \
-    && fail "move commit touched a path outside demo-1 (not item-scoped)"
+    && fail "move commit touched a path outside demo-1 (not ticket-scoped)"
 
 # Error path: invalid queue must exit non-zero.
 if run_move demo-1 not-a-queue > /dev/null 2>&1; then

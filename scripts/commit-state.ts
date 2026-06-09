@@ -4,16 +4,16 @@
 // Usage (run with the state repo as the current working directory):
 //   bun ../scripts/commit-state.ts "<message>" [pathspec...]
 //
-// The state repo records how each work item moved through the pipeline. The
-// mutation scripts (move, setup-work-item, fail-work-item, reset-failures) call
+// The state repo records how each ticket moved through the pipeline. The
+// mutation scripts (move, setup-ticket, fail-ticket, reset-failures) call
 // commitState() from their CLI main() to commit their own change automatically;
 // agents call this CLI directly for free-form edits (a current-state.md update,
-// a newly created work item) that no script performs.
+// a newly created ticket) that no script performs.
 //
 // Two properties make this safe for the pb:next loop, which runs up to 10
 // sub-agents in parallel against the single shared state-repo git index:
-//   - Item-scoped: pass the affected item's directory (or current-state.md) as a
-//     pathspec so a commit never mixes two items' changes.
+//   - Ticket-scoped: pass the affected ticket's directory (or current-state.md) as a
+//     pathspec so a commit never mixes two tickets' changes.
 //   - Lock-safe: every git invocation retries on index.lock contention, so
 //     concurrent committers serialise on the shared index instead of failing.
 //
@@ -27,7 +27,7 @@ import { join } from "node:path";
 // Injectable git runner: takes the cwd to run in and the argv after `git`, and
 // returns the captured result. The unit test passes a scripted fake; the smoke
 // test uses the real one against a throwaway repo. Mirrors the runner in
-// finalize-work-item.ts.
+// finalize-ticket.ts.
 export type GitRunner = (
     cwd: string,
     args: string[],
@@ -147,9 +147,9 @@ async function main(argv: string[]): Promise<void> {
     }
 
     const stateDir = process.cwd();
-    if (!(await exists(join(stateDir, "work-items")))) {
+    if (!(await exists(join(stateDir, "tickets")))) {
         console.error(
-            `no work-items/ directory in ${stateDir}: run from the state repo root`,
+            `no tickets/ directory in ${stateDir}: run from the state repo root`,
         );
         process.exit(1);
     }

@@ -5,14 +5,14 @@
 //   bun ../scripts/reset-loop.ts
 //
 // Unwinds an interrupted or abandoned run as one tested operation:
-//   1. Move every item in work-items/in-progress/ back to work-items/todo/.
+//   1. Move every ticket in tickets/in-progress/ back to tickets/todo/.
 //   2. Force-remove every git worktree under ../project/worktrees/ and delete
-//      its per-item branch worktrees/<id>, then prune stale worktree records.
+//      its per-ticket branch worktrees/<id>, then prune stale worktree records.
 //
 // It does NOT merge: any commits or uncommitted changes in a worktree are
 // discarded. Use it to recover from a crashed/abandoned pb:next run, or to throw
 // away in-flight work, never to land work. Failure counts are left untouched: an
-// item returns to todo/ exactly as it was so the loop can pick it up again.
+// ticket returns to todo/ exactly as it was so the loop can pick it up again.
 
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -53,8 +53,8 @@ async function exists(path: string): Promise<boolean> {
 }
 
 // Immediate subdirectory names of `dir`, sorted; empty if `dir` is absent. Each
-// such directory is a work-item directory (under a queue) or a worktree.
-async function itemDirs(dir: string): Promise<string[]> {
+// such directory is a ticket directory (under a queue) or a worktree.
+async function ticketDirs(dir: string): Promise<string[]> {
     try {
         const entries = await readdir(dir, { withFileTypes: true });
         return entries
@@ -85,10 +85,10 @@ export async function resetLoop(
     stateDir: string,
     runGit: GitRunner = realGit,
 ): Promise<ResetResult> {
-    const workItemsDir = join(stateDir, "work-items");
-    if (!(await exists(workItemsDir))) {
+    const ticketsDir = join(stateDir, "tickets");
+    if (!(await exists(ticketsDir))) {
         throw new ResetError(
-            `no work-items/ directory in ${stateDir}: run from the state repo root`,
+            `no tickets/ directory in ${stateDir}: run from the state repo root`,
         );
     }
 
@@ -96,19 +96,19 @@ export async function resetLoop(
     const worktreesDir = join(projectDir, "worktrees");
 
     // 1. Requeue everything still in in-progress/ back to todo/. move() is a
-    //    no-op when an item is already in todo/, so a re-run converges.
+    //    no-op when a ticket is already in todo/, so a re-run converges.
     const requeued: string[] = [];
-    for (const id of await itemDirs(join(workItemsDir, "in-progress"))) {
-        await move(id, "todo", workItemsDir);
+    for (const id of await ticketDirs(join(ticketsDir, "in-progress"))) {
+        await move(id, "todo", ticketsDir);
         requeued.push(id);
     }
 
-    // 2. Tear down every work-item worktree and its per-item branch. Force-remove
+    // 2. Tear down every ticket worktree and its per-ticket branch. Force-remove
     //    because a worktree may hold unmerged commits or uncommitted changes; we
     //    are discarding that work, not landing it.
     const worktreesRemoved: string[] = [];
     const branchesDeleted: string[] = [];
-    const wtIds = await itemDirs(worktreesDir);
+    const wtIds = await ticketDirs(worktreesDir);
     for (const id of wtIds) {
         const wtPath = join(worktreesDir, id);
         const removed = await runGit(projectDir, [
@@ -124,7 +124,7 @@ export async function resetLoop(
         }
         worktreesRemoved.push(wtPath);
 
-        // Delete the per-item branch setup-work-item.ts created, if it still
+        // Delete the per-ticket branch setup-ticket.ts created, if it still
         // exists (a worktree could be detached/branchless after manual fiddling).
         const branch = `worktrees/${id}`;
         const present = await runGit(projectDir, [
@@ -155,9 +155,9 @@ export async function resetLoop(
 // Thin CLI wrapper. Not exercised by the unit tests.
 async function main(): Promise<void> {
     const stateDir = process.cwd();
-    if (!(await exists(join(stateDir, "work-items")))) {
+    if (!(await exists(join(stateDir, "tickets")))) {
         console.error(
-            `no work-items/ directory in ${stateDir}: run from the state repo root`,
+            `no tickets/ directory in ${stateDir}: run from the state repo root`,
         );
         process.exit(1);
     }
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
             ? ` (${result.requeued.join(", ")})`
             : "";
         console.log(
-            `reset: requeued ${result.requeued.length} item(s) to todo/${requeued}; ` +
+            `reset: requeued ${result.requeued.length} ticket(s) to todo/${requeued}; ` +
                 `removed ${result.worktreesRemoved.length} worktree(s), ` +
                 `deleted ${result.branchesDeleted.length} branch(es)`,
         );

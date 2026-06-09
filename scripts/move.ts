@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Move a work-item directory between state queues.
+// Move a ticket directory between state queues.
 //
 // Usage (run with the state repo as the current working directory):
 //   bun playbook/scripts/move.ts <id> <target-queue>
@@ -13,7 +13,7 @@ import { dirname, join, relative } from "node:path";
 import { commitState } from "./commit-state";
 
 // The valid queues. The first six are the pipeline, in order. `blocked` is a
-// side pen, not a pipeline stage: any stage moves a problem item here when it
+// side pen, not a pipeline stage: any stage moves a problem ticket here when it
 // needs human attention, and only a human re-admits it (blocked -> todo).
 export const QUEUES = [
     "todo",
@@ -54,12 +54,12 @@ async function isDir(path: string): Promise<boolean> {
     }
 }
 
-// Core logic: validate, locate the item across queues, and move it.
-// `workItemsDir` is the path to the state repo's `work-items/` directory.
+// Core logic: validate, locate the ticket across queues, and move it.
+// `ticketsDir` is the path to the state repo's `tickets/` directory.
 export async function move(
     id: string,
     targetQueue: string,
-    workItemsDir: string,
+    ticketsDir: string,
 ): Promise<MoveResult> {
     if (!id) {
         throw new MoveError("missing id: usage: move.ts <id> <target-queue>");
@@ -73,7 +73,7 @@ export async function move(
 
     // Find every queue that contains a directory named `id`.
     const present = await Promise.all(
-        QUEUES.map((queue) => isDir(join(workItemsDir, queue, id))),
+        QUEUES.map((queue) => isDir(join(ticketsDir, queue, id))),
     );
     const matches = QUEUES.filter((_, i) => present[i]);
 
@@ -87,8 +87,8 @@ export async function move(
     }
 
     const from = matches[0];
-    const fromPath = join(workItemsDir, from, id);
-    const toPath = join(workItemsDir, targetQueue, id);
+    const fromPath = join(ticketsDir, from, id);
+    const toPath = join(ticketsDir, targetQueue, id);
 
     if (from === targetQueue) {
         return { id, from, to: targetQueue, fromPath, toPath, noop: true };
@@ -122,23 +122,23 @@ async function main(argv: string[]): Promise<void> {
         process.exit(1);
     }
 
-    const workItemsDir = join(process.cwd(), "work-items");
-    if (!(await isDir(workItemsDir))) {
+    const ticketsDir = join(process.cwd(), "tickets");
+    if (!(await isDir(ticketsDir))) {
         console.error(
-            `no work-items/ directory in ${process.cwd()}: run from the state repo root`,
+            `no tickets/ directory in ${process.cwd()}: run from the state repo root`,
         );
         process.exit(1);
     }
 
     try {
-        const result = await move(id, targetQueue, workItemsDir);
+        const result = await move(id, targetQueue, ticketsDir);
         if (result.noop) {
             console.log(`${id} is already in ${result.to} (no-op)`);
         } else {
             console.log(`moved ${id}: ${result.fromPath} -> ${result.toPath}`);
             // Commit the state change. The commit lives here in main(), not in
             // the exported move() core, so unit tests stay commit-free; the
-            // commit path is covered by smoke-move.sh. Item-scoped pathspecs (the
+            // commit path is covered by smoke-move.sh. Ticket-scoped pathspecs (the
             // old and new dirs) let the -A add pick up both the deletion at the
             // old path and the new directory with any evidence/History the agent
             // wrote before the move.

@@ -4,19 +4,19 @@ Definitions of the terms used throughout the [handbook](handbook.md) and the res
 
 - **Playbook**: the repo holding the process, skills, templates, and scripts. One clone of this repo per project with Claude Code launched from the playbook repo root.
 - **Project repo**: the application's own code and docs (spec, rules). Self-contained; knows nothing of the playbook or state repo.
-- **State repo**: per-project process state: the work-item queues and `current-state.md`. Lives outside the project repo.
+- **State repo**: per-project process state: the ticket queues and `current-state.md`. Lives outside the project repo.
 - **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `/pb:next`). Skills instruct; they do not enforce.
-- **Work item**: a unit of work: a directory (`index.md` and `detail.md` plus an `evidence/` subdir) named by its ID, that travels through the queues.
-- **Queue**: one of six pipeline directories under `state/work-items/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`. Plus `blocked/`, a side pen (not a pipeline stage) where items that hit a hard or repeated failure are parked for the developer.
+- **Ticket**: a unit of work: a directory (`index.md` and `detail.md` plus an `evidence/` subdir) named by its ID, that travels through the queues.
+- **Queue**: one of six pipeline directories under `state/tickets/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`. Plus `blocked/`, a side pen (not a pipeline stage) where tickets that hit a hard or repeated failure are parked for the developer.
 - **`current-state.md`**: the curated, human-readable summary of where things stand, sitting on top of the queues.
 - **Goal (`/goal`)**: a pass condition checked after every turn; an agent is not "done" until it holds. Goals enforce what skills only instruct.
 - **Goal evaluator**: the mechanism that re-checks a `/goal` against the repos after each turn.
-- **Sub-agent**: an agent `/pb:next` spawns to take one work item through one stage, running in that item's worktree. The pipeline diagram's **Work / Review / Merge Agent** are sub-agents at the implement, agent-review, and merge stages.
-- **Worktree**: a git working tree per work item, so parallel items do not collide and a sub-agent cannot touch the main repo by accident.
+- **Sub-agent**: an agent `/pb:next` spawns to take one ticket through one stage, running in that ticket's worktree. The pipeline diagram's **Work / Review / Merge Agent** are sub-agents at the implement, agent-review, and merge stages.
+- **Worktree**: a git working tree per ticket, so parallel tickets do not collide and a sub-agent cannot touch the main repo by accident.
 - **Check**: any pass/fail verification of the work, either deterministic (a command: compile, lint, unit, smoke, e2e) or judgement (an agent analysing against a rule). See the Checks section.
 - **Stop the line**: halt and fix immediately when a check fails, before moving on.
-- **Environmental failure**: two or more work items failing the same stage or check in one `/pb:next` run, signalling a shared environmental cause (test fixtures, a contended resource, a broken tool) rather than a fault in any one item. It stops the run and hands back to the developer. See [Handling Failures](handbook.md#handling-failures).
-- **Evidence**: captured proof (test output, screenshots, transcripts) in a work item's `evidence/` subdir; goals require it before an item advances.
+- **Environmental failure**: two or more tickets failing the same stage or check in one `/pb:next` run, signalling a shared environmental cause (test fixtures, a contended resource, a broken tool) rather than a fault in any one ticket. It stops the run and hands back to the developer. See [Handling Failures](handbook.md#handling-failures).
+- **Evidence**: captured proof (test output, screenshots, transcripts) in a ticket's `evidence/` subdir; goals require it before a ticket advances.
 - **Spec**: the source of truth for app behaviour, in `docs/spec/`. Tests, the testing manual, and derived docs all follow from it.
 - **Setup**: forking (optional) and cloning the playbook and launching Claude Code from the playbook repo root, so the process applies. One clone per project. Distinct from bootstrap, which scaffolds the per-project repos.
 - **Bootstrap**: the one-time, per-project setup (`pb:bootstrap:*`) that scaffolds the repos. Distinct from setup, which clones the playbook and launches it.

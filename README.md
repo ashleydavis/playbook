@@ -78,11 +78,11 @@ playbook/
     project/
     state/
     feature-template/
-    work-item-template/
+    ticket-template/
     commit-template/   # Commit message template.
   scripts/
     install-prereqs.sh # Installs git, bun, and Claude Code.
-    move.ts            # Moves work items between queues.
+    move.ts            # Moves tickets between queues.
   project/    # The project repo (created by bootstrap, gitignored).
   state/      # The state repo (created by bootstrap, gitignored).
 ```
@@ -90,7 +90,7 @@ playbook/
 ## How it fits with project and state repos
 Each project has two further repos, nested in the playbook repo root:
 - **Project repo**: the product you are building, its code, its spec (`docs/spec/`), testing manual, and enforced rules. Source of truth for the project.
-- **State repo**: tracks the state of the project, the work-item queues (`work-items/`) and `current-state.md`, tracking what is in flight.
+- **State repo**: tracks the state of the project, the ticket queues (`tickets/`) and `current-state.md`, tracking what is in flight.
 
 Bootstrap (`pb:bootstrap:new` / `pb:bootstrap:existing`) scaffolds both from [templates/](templates/). The project repo is decoupled from the playbook which remains separate and shareable between multiple projects.
 

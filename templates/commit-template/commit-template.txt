@@ -9,6 +9,6 @@
 # - <criterion>
 
 Type: <Feature|Tweak|Bug fix|Test coverage|Doc|Scaffolding|Refactor>
-# Work-item: repeat the ID so history is greppable. One item may span
+# Ticket: repeat the ID so history is greppable. One ticket may span
 # several commits, each carrying this trailer.
-Work-item: <id>
+Ticket: <id>

@@ -49,8 +49,8 @@ function scriptedGit(outputs: GitOutput[]): {
 const ok = (stdout = ""): GitOutput => ({ code: 0, stdout, stderr: "" });
 const fail = (stderr = ""): GitOutput => ({ code: 1, stdout: "", stderr });
 
-async function makeItem(queue: string, id: string): Promise<void> {
-    await mkdir(join(stateDir, "work-items", queue, id, "evidence"), {
+async function makeTicket(queue: string, id: string): Promise<void> {
+    await mkdir(join(stateDir, "tickets", queue, id, "evidence"), {
         recursive: true,
     });
 }
@@ -71,7 +71,7 @@ beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "reset-test-"));
     stateDir = join(root, "state");
     for (const q of QUEUES) {
-        await mkdir(join(stateDir, "work-items", q), { recursive: true });
+        await mkdir(join(stateDir, "tickets", q), { recursive: true });
     }
     await mkdir(join(root, "project"), { recursive: true });
 });
@@ -81,9 +81,9 @@ afterEach(async () => {
 });
 
 describe("resetLoop()", () => {
-    test("requeues in-progress items and tears down their worktrees", async () => {
-        await makeItem("in-progress", "feat-1");
-        await makeItem("in-progress", "feat-2");
+    test("requeues in-progress tickets and tears down their worktrees", async () => {
+        await makeTicket("in-progress", "feat-1");
+        await makeTicket("in-progress", "feat-2");
         await makeWorktree("feat-1");
         await makeWorktree("feat-2");
 
@@ -106,13 +106,13 @@ describe("resetLoop()", () => {
             "worktrees/feat-2",
         ]);
 
-        // Items are back in todo/ and in-progress/ is empty.
-        expect(await names(join(stateDir, "work-items", "todo"))).toEqual([
+        // Tickets are back in todo/ and in-progress/ is empty.
+        expect(await names(join(stateDir, "tickets", "todo"))).toEqual([
             "feat-1",
             "feat-2",
         ]);
         expect(
-            await names(join(stateDir, "work-items", "in-progress")),
+            await names(join(stateDir, "tickets", "in-progress")),
         ).toEqual([]);
 
         // Each worktree is force-removed, and prune runs once at the end.
@@ -125,7 +125,7 @@ describe("resetLoop()", () => {
         expect(calls.at(-1)?.args).toEqual(["worktree", "prune"]);
     });
 
-    test("skips branch deletion when the per-item branch is gone", async () => {
+    test("skips branch deletion when the per-ticket branch is gone", async () => {
         await makeWorktree("feat-1");
 
         const { runGit, calls } = scriptedGit([
@@ -156,7 +156,7 @@ describe("resetLoop()", () => {
 
     test("requeues even when there is no project repo to clean up", async () => {
         await rm(join(root, "project"), { recursive: true, force: true });
-        await makeItem("in-progress", "feat-1");
+        await makeTicket("in-progress", "feat-1");
 
         const { runGit, calls } = scriptedGit([]);
 
@@ -165,7 +165,7 @@ describe("resetLoop()", () => {
         expect(result.requeued).toEqual(["feat-1"]);
         expect(result.worktreesRemoved).toEqual([]);
         expect(calls).toHaveLength(0);
-        expect(await names(join(stateDir, "work-items", "todo"))).toEqual([
+        expect(await names(join(stateDir, "tickets", "todo"))).toEqual([
             "feat-1",
         ]);
     });
@@ -178,7 +178,7 @@ describe("resetLoop()", () => {
     });
 
     test("throws ResetError when not run from a state repo", async () => {
-        await rm(join(stateDir, "work-items"), { recursive: true, force: true });
+        await rm(join(stateDir, "tickets"), { recursive: true, force: true });
 
         await expect(
             resetLoop(stateDir, scriptedGit([]).runGit),

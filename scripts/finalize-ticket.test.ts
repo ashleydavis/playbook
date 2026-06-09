@@ -1,4 +1,4 @@
-// Unit tests for the core teardownItem() logic in finalize-work-item.ts.
+// Unit tests for the core teardownTicket() logic in finalize-ticket.ts.
 //
 // Run with: npm test (Jest via ts-jest, ESM).
 //
@@ -12,10 +12,10 @@ import { join } from "node:path";
 
 import {
     TeardownError,
-    teardownItem,
+    teardownTicket,
     type GitOutput,
     type GitRunner,
-} from "./finalize-work-item";
+} from "./finalize-ticket";
 
 let root: string;
 let stateDir: string;
@@ -42,7 +42,7 @@ const fail = (stderr = ""): GitOutput => ({ code: 1, stdout: "", stderr });
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "finalize-test-"));
     stateDir = join(root, "state");
-    await mkdir(join(stateDir, "work-items"), { recursive: true });
+    await mkdir(join(stateDir, "tickets"), { recursive: true });
     await mkdir(join(root, "project"), { recursive: true });
     await mkdir(join(root, "project", "worktrees", "feat-1"), { recursive: true });
 });
@@ -51,7 +51,7 @@ afterEach(async () => {
     await rm(root, { recursive: true, force: true });
 });
 
-describe("teardownItem()", () => {
+describe("teardownTicket()", () => {
     test("merges cleanly: rebase ok, fast-forward, worktree removed", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse --abbrev-ref HEAD
@@ -63,12 +63,12 @@ describe("teardownItem()", () => {
             ok(), // branch -D worktrees/feat-1
         ]);
 
-        const result = await teardownItem("feat-1", stateDir, runGit);
+        const result = await teardownTicket("feat-1", stateDir, runGit);
 
         expect(result.status).toBe("merged");
         expect(result.branch).toBe("main");
         expect(result.mergedCommits).toEqual(["c1", "c2"]);
-        // It removes the worktree, then deletes the per-item branch last.
+        // It removes the worktree, then deletes the per-ticket branch last.
         expect(calls.at(-2)?.args.slice(0, 2)).toEqual(["worktree", "remove"]);
         expect(calls.at(-1)?.args).toEqual(["branch", "-D", "worktrees/feat-1"]);
     });
@@ -82,7 +82,7 @@ describe("teardownItem()", () => {
             ok(), // rebase --abort
         ]);
 
-        const result = await teardownItem("feat-1", stateDir, runGit);
+        const result = await teardownTicket("feat-1", stateDir, runGit);
 
         expect(result.status).toBe("conflict");
         expect(result.conflicts).toEqual(["src/a.ts", "src/b.ts"]);
@@ -101,7 +101,7 @@ describe("teardownItem()", () => {
             ok(), // branch -D worktrees/feat-1
         ]);
 
-        const result = await teardownItem("feat-1", stateDir, runGit);
+        const result = await teardownTicket("feat-1", stateDir, runGit);
 
         expect(result.status).toBe("noop");
         expect(result.mergedCommits).toEqual([]);
@@ -117,13 +117,13 @@ describe("teardownItem()", () => {
         });
 
         await expect(
-            teardownItem("feat-1", stateDir, scriptedGit([]).runGit),
+            teardownTicket("feat-1", stateDir, scriptedGit([]).runGit),
         ).rejects.toThrow(TeardownError);
     });
 
     test("throws on a missing id", async () => {
         await expect(
-            teardownItem("", stateDir, scriptedGit([]).runGit),
+            teardownTicket("", stateDir, scriptedGit([]).runGit),
         ).rejects.toThrow(TeardownError);
     });
 });

@@ -2,26 +2,26 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { FailError, bumpFailures, recordFailure } from "./fail-work-item";
+import { FailError, bumpFailures, recordFailure } from "./fail-ticket";
 
 let root: string;
-let workItemsDir: string;
+let ticketsDir: string;
 
-// Create an item directory `id` in `queue` with the given index.md body.
-async function makeItem(
+// Create a ticket directory `id` in `queue` with the given index.md body.
+async function makeTicket(
     queue: string,
     id: string,
     indexMd: string,
 ): Promise<void> {
-    const dir = join(workItemsDir, queue, id);
+    const dir = join(ticketsDir, queue, id);
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, "index.md"), indexMd);
 }
 
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "fail-test-"));
-    workItemsDir = join(root, "work-items");
-    await mkdir(workItemsDir, { recursive: true });
+    ticketsDir = join(root, "tickets");
+    await mkdir(ticketsDir, { recursive: true });
 });
 
 afterEach(async () => {
@@ -72,49 +72,49 @@ describe("bumpFailures()", () => {
 
 describe("recordFailure()", () => {
     test("creates the field on first failure and increments on the next", async () => {
-        await makeItem("agent-review", "fix-1", "# fix-1\n\n**ID:** fix-1\n**Type:** Fix\n");
+        await makeTicket("agent-review", "fix-1", "# fix-1\n\n**ID:** fix-1\n**Type:** Fix\n");
 
-        const first = await recordFailure("fix-1", workItemsDir);
+        const first = await recordFailure("fix-1", ticketsDir);
         expect(first).toEqual({ id: "fix-1", queue: "agent-review", count: 1 });
 
-        const second = await recordFailure("fix-1", workItemsDir);
+        const second = await recordFailure("fix-1", ticketsDir);
         expect(second.count).toBe(2);
 
         const onDisk = await readFile(
-            join(workItemsDir, "agent-review", "fix-1", "index.md"),
+            join(ticketsDir, "agent-review", "fix-1", "index.md"),
             "utf8",
         );
         expect(onDisk).toContain("**Failures:** 2");
     });
 
-    test("finds the item whichever queue it sits in", async () => {
-        await makeItem("blocked", "stuck-1", "**ID:** stuck-1\n");
-        const result = await recordFailure("stuck-1", workItemsDir);
+    test("finds the ticket whichever queue it sits in", async () => {
+        await makeTicket("blocked", "stuck-1", "**ID:** stuck-1\n");
+        const result = await recordFailure("stuck-1", ticketsDir);
         expect(result.queue).toBe("blocked");
         expect(result.count).toBe(1);
     });
 
     test("throws on a missing id", async () => {
-        await expect(recordFailure("", workItemsDir)).rejects.toThrow(FailError);
+        await expect(recordFailure("", ticketsDir)).rejects.toThrow(FailError);
     });
 
     test("throws on an unknown id", async () => {
-        await expect(recordFailure("ghost", workItemsDir)).rejects.toThrow(
+        await expect(recordFailure("ghost", ticketsDir)).rejects.toThrow(
             /unknown id/,
         );
     });
 
     test("throws when the id exists in two queues", async () => {
-        await makeItem("todo", "dup", "**ID:** dup\n");
-        await makeItem("in-progress", "dup", "**ID:** dup\n");
-        await expect(recordFailure("dup", workItemsDir)).rejects.toThrow(
+        await makeTicket("todo", "dup", "**ID:** dup\n");
+        await makeTicket("in-progress", "dup", "**ID:** dup\n");
+        await expect(recordFailure("dup", ticketsDir)).rejects.toThrow(
             /ambiguous/,
         );
     });
 
-    test("throws when the item has no index.md", async () => {
-        await mkdir(join(workItemsDir, "todo", "bare"), { recursive: true });
-        await expect(recordFailure("bare", workItemsDir)).rejects.toThrow(
+    test("throws when the ticket has no index.md", async () => {
+        await mkdir(join(ticketsDir, "todo", "bare"), { recursive: true });
+        await expect(recordFailure("bare", ticketsDir)).rejects.toThrow(
             /no index.md/,
         );
     });

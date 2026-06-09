@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # Smoke test for scripts/reset-loop.ts driven through its CLI with REAL git.
 #
-# Builds a throwaway repo layout, admits two work items (each gets a worktree and
-# branch via setup-work-item.ts), commits work in one worktree and leaves the
+# Builds a throwaway repo layout, admits two tickets (each gets a worktree and
+# branch via setup-ticket.ts), commits work in one worktree and leaves the
 # other dirty, then runs reset-loop and asserts the loop is wound back to a clean
 # slate:
-#   - both items return from in-progress/ to todo/,
+#   - both tickets return from in-progress/ to todo/,
 #   - both worktrees are force-removed (discarding committed and uncommitted work),
-#   - both per-item branches are deleted,
+#   - both per-ticket branches are deleted,
 #   - no stale worktree records remain.
 # Finally checks a second run is a clean no-op. Prints PASS or FAIL.
 
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SETUP="$SCRIPT_DIR/setup-work-item.ts"
+SETUP="$SCRIPT_DIR/setup-ticket.ts"
 RESET="$SCRIPT_DIR/reset-loop.ts"
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smoke-reset.XXXXXX")"
@@ -31,13 +31,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# State repo with two items waiting in todo/.
+# State repo with two tickets waiting in todo/.
 for q in "${QUEUES[@]}"; do
-    mkdir -p "$ROOT/state/work-items/$q"
+    mkdir -p "$ROOT/state/tickets/$q"
 done
 for id in feat-1 feat-2; do
-    mkdir -p "$ROOT/state/work-items/todo/$id/evidence"
-    echo "# $id" > "$ROOT/state/work-items/todo/$id/index.md"
+    mkdir -p "$ROOT/state/tickets/todo/$id/evidence"
+    echo "# $id" > "$ROOT/state/tickets/todo/$id/index.md"
 done
 
 # Project repo with a base commit.
@@ -53,7 +53,7 @@ git -C "$ROOT/project" commit -qm base
 run_setup() { ( cd "$ROOT/state" && bun "$SETUP" "$@" ); }
 run_reset() { ( cd "$ROOT/state" && bun "$RESET" "$@" ); }
 
-# Admit both items: each moves todo/ -> in-progress/ and gets a worktree+branch.
+# Admit both tickets: each moves todo/ -> in-progress/ and gets a worktree+branch.
 run_setup feat-1 > /dev/null || fail "setup feat-1 failed"
 run_setup feat-2 > /dev/null || fail "setup feat-2 failed"
 
@@ -64,11 +64,11 @@ git -C "$ROOT/project/worktrees/feat-1" commit -qm "feat-1 work"
 # feat-2: an uncommitted change that force-remove must discard.
 printf 'dirty\n' > "$ROOT/project/worktrees/feat-2/dirty.txt"
 
-# ---- reset: requeue both items, tear down both worktrees ----
+# ---- reset: requeue both tickets, tear down both worktrees ----
 if run_reset > /dev/null; then
-    [[ -d "$ROOT/state/work-items/todo/feat-1" ]] || fail "feat-1 not requeued to todo/"
-    [[ -d "$ROOT/state/work-items/todo/feat-2" ]] || fail "feat-2 not requeued to todo/"
-    [[ -z "$(ls -A "$ROOT/state/work-items/in-progress")" ]] || fail "in-progress/ not empty"
+    [[ -d "$ROOT/state/tickets/todo/feat-1" ]] || fail "feat-1 not requeued to todo/"
+    [[ -d "$ROOT/state/tickets/todo/feat-2" ]] || fail "feat-2 not requeued to todo/"
+    [[ -z "$(ls -A "$ROOT/state/tickets/in-progress")" ]] || fail "in-progress/ not empty"
     [[ ! -e "$ROOT/project/worktrees/feat-1" ]] || fail "feat-1 worktree not removed"
     [[ ! -e "$ROOT/project/worktrees/feat-2" ]] || fail "feat-2 worktree not removed"
     git -C "$ROOT/project" show-ref --verify --quiet refs/heads/worktrees/feat-1 \

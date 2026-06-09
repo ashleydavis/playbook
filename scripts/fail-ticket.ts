@@ -1,17 +1,17 @@
 #!/usr/bin/env bun
-// Increment a work item's failure count, stored in its index.md.
+// Increment a ticket's failure count, stored in its index.md.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun ../scripts/fail-work-item.ts <id>
+//   bun ../scripts/fail-ticket.ts <id>
 //
-// Each time a work item fails for any reason (a sub-agent timeout, a not-proven
+// Each time a ticket fails for any reason (a sub-agent timeout, a not-proven
 // Debug, a failed Fix review, a failed check, an unresolvable conflict, failing
 // post-merge checks) the caller records it here. A human rejection in pb:review
 // is NOT a failure: it does not call this; it resets the count (see
-// reset-failures.ts). The count lives in the item's index.md as a
+// reset-failures.ts). The count lives in the ticket's index.md as a
 // `**Failures:** N` field, so the todo-vs-blocked decision is driven by a
 // deterministic number rather than an agent re-counting History. The script
-// finds the item in whatever queue it currently sits in, bumps the field
+// finds the ticket in whatever queue it currently sits in, bumps the field
 // (creating it at 1 when absent), writes index.md back, and prints the new count
 // on its own line so the caller can read it directly.
 
@@ -70,19 +70,19 @@ async function isDir(path: string): Promise<boolean> {
     }
 }
 
-// Locate the single queue holding the item and read its index.md. Shared by
-// fail-work-item and reset-failures. Throws FailError when the id is missing,
+// Locate the single queue holding the ticket and read its index.md. Shared by
+// fail-ticket and reset-failures. Throws FailError when the id is missing,
 // not found, found in more than one queue, or has no index.md.
-export async function locateItem(
+export async function locateTicket(
     id: string,
-    workItemsDir: string,
+    ticketsDir: string,
 ): Promise<{ queue: string; indexPath: string; indexMd: string }> {
     if (!id) {
         throw new FailError("missing id");
     }
 
     const present = await Promise.all(
-        QUEUES.map((queue) => isDir(join(workItemsDir, queue, id))),
+        QUEUES.map((queue) => isDir(join(ticketsDir, queue, id))),
     );
     const matches = QUEUES.filter((_, i) => present[i]);
 
@@ -96,7 +96,7 @@ export async function locateItem(
     }
 
     const queue = matches[0];
-    const indexPath = join(workItemsDir, queue, id, "index.md");
+    const indexPath = join(ticketsDir, queue, id, "index.md");
     let indexMd: string;
     try {
         indexMd = await readFile(indexPath, "utf8");
@@ -106,13 +106,13 @@ export async function locateItem(
     return { queue, indexPath, indexMd };
 }
 
-// Core logic: find the item, increment its failure count, return the new count.
-// `workItemsDir` is the state repo's `work-items/` dir.
+// Core logic: find the ticket, increment its failure count, return the new count.
+// `ticketsDir` is the state repo's `tickets/` dir.
 export async function recordFailure(
     id: string,
-    workItemsDir: string,
+    ticketsDir: string,
 ): Promise<{ id: string; queue: string; count: number }> {
-    const { queue, indexPath, indexMd } = await locateItem(id, workItemsDir);
+    const { queue, indexPath, indexMd } = await locateTicket(id, ticketsDir);
     const { text, count } = bumpFailures(indexMd);
     await writeFile(indexPath, text);
     return { id, queue, count };
@@ -123,32 +123,32 @@ async function main(argv: string[]): Promise<void> {
     const [id] = argv;
 
     if (!id) {
-        console.error("usage: fail-work-item.ts <id>");
+        console.error("usage: fail-ticket.ts <id>");
         process.exit(1);
     }
 
-    const workItemsDir = join(process.cwd(), "work-items");
+    const ticketsDir = join(process.cwd(), "tickets");
     try {
-        await readdir(workItemsDir);
+        await readdir(ticketsDir);
     } catch {
         console.error(
-            `no work-items/ directory in ${process.cwd()}: run from the state repo root`,
+            `no tickets/ directory in ${process.cwd()}: run from the state repo root`,
         );
         process.exit(1);
     }
 
     try {
-        const result = await recordFailure(id, workItemsDir);
+        const result = await recordFailure(id, ticketsDir);
         // Print the new count on its own line so the caller can read it directly.
         console.log(result.count);
         // Commit the state change here in main(), not in the exported
         // recordFailure() core, so unit tests stay commit-free; the commit path
-        // is covered by smoke-fail-work-item.sh. Item-scoped so it captures the
+        // is covered by smoke-fail-ticket.sh. Ticket-scoped so it captures the
         // index.md bump and any History note already written for this failure.
         await commitState(
             process.cwd(),
             `record failure for ${id} (count ${result.count})`,
-            ["work-items/" + result.queue + "/" + id],
+            ["tickets/" + result.queue + "/" + id],
         );
     } catch (err) {
         if (err instanceof FailError) {

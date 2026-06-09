@@ -12,8 +12,8 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan, docs, add, next, review, debug, customize, reset.
 - [.claude/commands/pb/bootstrap/](.claude/commands/pb/bootstrap/): new, existing. Run once per project (`pb:bootstrap:*`).
 - [.claude/settings.json](.claude/settings.json): Claude Code settings for the playbook repo (permission prompts off).
-- [templates/](templates/): all templates, with its own [README.md](templates/README.md) and [index.md](templates/index.md). `project/` and `state/` are scaffolded into new projects by `pb:bootstrap:*`; `feature-template/` and `work-item-template/` are copied per item by `pb:plan`/`pb:add`; `commit-template/` is registered in place via `git config commit.template`.
-- [scripts/move.ts](scripts/move.ts): moves a work item between queues.
+- [templates/](templates/): all templates, with its own [README.md](templates/README.md) and [index.md](templates/index.md). `project/` and `state/` are scaffolded into new projects by `pb:bootstrap:*`; `feature-template/` and `ticket-template/` are copied per ticket by `pb:plan`/`pb:add`; `commit-template/` is registered in place via `git config commit.template`.
+- [scripts/move.ts](scripts/move.ts): moves a ticket between queues.
 - [scripts/reset-loop.ts](scripts/reset-loop.ts): unwinds a run (in-progress -> todo, tears down worktrees). Used by `pb:reset`.
 - [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code.
 
@@ -26,10 +26,10 @@ A compact orientation map: what lives where across the playbook and a project's 
 - Code, tests, derived docs: project-specific layout. See the project repo's CLAUDE.md.
 
 ## In a state repo (project-specific)
-- `work-items/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the queues. Each holds one directory per work item (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs.
+- `tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the queues. Each holds one directory per ticket (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs.
 - `current-state.md`: scannable snapshot of what's in flight, what's blocked, what needs developer attention.
 
 ## Conventions
-- A work item's ID is `{feature-id}-{n}`, declared in its `index.md` `**ID:**` field and mirrored by the item's directory name.
+- A ticket's ID is `{feature-id}-{n}`, declared in its `index.md` `**ID:**` field and mirrored by the ticket's directory name.
 - A feature's ID is declared in its `index.md` `**ID:**` field. Globally unique, flat kebab-case.
 - Project and state repos nest under the playbook repo, as `project/` and `state/`.

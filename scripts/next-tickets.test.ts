@@ -1,0 +1,171 @@
+// Unit tests for the core nextTickets() logic in next-tickets.ts.
+//
+// Run with: npm test (Jest via ts-jest, ESM).
+//
+// Each test builds a throwaway tickets/ fixture under the OS temp dir and
+// removes it again in afterEach. The CLI wrapper in next-tickets.ts is
+// intentionally not exercised here; we call the exported nextTickets() function
+// directly.
+
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { nextTickets, parseDependsOn } from "./next-tickets";
+
+let ticketsDir: string;
+let root: string;
+
+// Create a ticket directory `id` in `queue` with an index.md listing `deps`.
+// Pass null to omit the Depends on line entirely (as the template does when
+// there are no dependencies).
+async function makeTicket(
+    queue: string,
+    id: string,
+    deps: string[] | null = null,
+): Promise<void> {
+    const dir = join(ticketsDir, queue, id);
+    await mkdir(dir, { recursive: true });
+    const dependsLine =
+        deps === null ? "" : `**Depends on:** ${deps.join(", ")}\n`;
+    await writeFile(join(dir, "index.md"), `# ${id}\n\n**ID:** ${id}\n${dependsLine}`);
+}
+
+beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "next-tickets-test-"));
+    ticketsDir = join(root, "tickets");
+    await mkdir(ticketsDir, { recursive: true });
+});
+
+afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+});
+
+describe("parseDependsOn()", () => {
+    test("returns [] when the line is absent", () => {
+        expect(parseDependsOn("# ticket-1\n\n**ID:** ticket-1\n")).toEqual([]);
+    });
+
+    test("parses a single dependency", () => {
+        expect(parseDependsOn("**Depends on:** feat-1\n")).toEqual(["feat-1"]);
+    });
+
+    test("parses and trims a comma-separated list", () => {
+        expect(parseDependsOn("**Depends on:** feat-1, feat-2 , feat-3\n")).toEqual([
+            "feat-1",
+            "feat-2",
+            "feat-3",
+        ]);
+    });
+
+    test("returns [] for an empty Depends on line", () => {
+        expect(parseDependsOn("**Depends on:**\n")).toEqual([]);
+    });
+
+    test("treats the literal 'none' sentinel as no dependencies", () => {
+        expect(parseDependsOn("**Depends on:** none\n")).toEqual([]);
+        expect(parseDependsOn("**Depends on:** None\n")).toEqual([]);
+    });
+
+    test("drops a 'none' sentinel mixed into a list", () => {
+        expect(parseDependsOn("**Depends on:** none, feat-1\n")).toEqual([
+            "feat-1",
+        ]);
+    });
+});
+
+describe("nextTickets()", () => {
+    test("returns all four queues as empty arrays for an empty tickets/", async () => {
+        expect(await nextTickets(ticketsDir)).toEqual({
+            "merge-queue": [],
+            todo: [],
+            "in-progress": [],
+            "agent-review": [],
+        });
+    });
+
+    test("lists merge-queue, in-progress and agent-review in full, sorted", async () => {
+        await makeTicket("merge-queue", "auth-5");
+        await makeTicket("in-progress", "infra-2");
+        await makeTicket("agent-review", "search-5");
+        await makeTicket("agent-review", "search-4");
+
+        const report = await nextTickets(ticketsDir);
+        expect(report["merge-queue"]).toEqual(["auth-5"]);
+        expect(report["in-progress"]).toEqual(["infra-2"]);
+        expect(report["agent-review"]).toEqual(["search-4", "search-5"]);
+        expect(report.todo).toEqual([]);
+    });
+
+    test("todo lists only actionable tickets (deps merged), sorted", async () => {
+        await makeTicket("done", "merged-9"); // a merged dependency
+        await makeTicket("todo", "auth-1");
+        await makeTicket("todo", "auth-2", ["auth-1"]); // dep only in todo -> blocked
+        await makeTicket("todo", "auth-3", ["merged-9"]); // dep in done/ -> ready
+        await makeTicket("todo", "search-1");
+
+        expect((await nextTickets(ticketsDir)).todo).toEqual([
+            "auth-1",
+            "auth-3",
+            "search-1",
+        ]);
+    });
+
+    test("a todo ticket is blocked unless every dependency is in done/", async () => {
+        await makeTicket("done", "dep-ok");
+        await makeTicket("todo", "feat-1");
+        await makeTicket("todo", "feat-2", ["dep-ok"]); // only dep is merged -> ready
+        await makeTicket("todo", "feat-3", ["dep-ok", "gone-9"]); // gone-9 not merged -> blocked
+
+        expect((await nextTickets(ticketsDir)).todo).toEqual(["feat-1", "feat-2"]);
+    });
+
+    test("a dependency in-progress (not yet merged) keeps the dependent blocked", async () => {
+        await makeTicket("in-progress", "dep-1");
+        await makeTicket("todo", "child-1", ["dep-1"]);
+
+        expect((await nextTickets(ticketsDir)).todo).toEqual([]);
+    });
+
+    test("the limit caps todo but not merge-queue or agent-review", async () => {
+        await makeTicket("todo", "a-1");
+        await makeTicket("todo", "b-1");
+        await makeTicket("todo", "c-1");
+        await makeTicket("merge-queue", "m-1");
+        await makeTicket("merge-queue", "m-2");
+
+        const report = await nextTickets(ticketsDir, 2);
+        expect(report.todo).toEqual(["a-1", "b-1"]);
+        expect(report["merge-queue"]).toEqual(["m-1", "m-2"]);
+    });
+
+    test("todo and in-progress share the limit budget", async () => {
+        // limit 3, with 2 already in-progress, leaves room for only 1 todo.
+        await makeTicket("in-progress", "ip-1");
+        await makeTicket("in-progress", "ip-2");
+        await makeTicket("todo", "t-1");
+        await makeTicket("todo", "t-2");
+        await makeTicket("todo", "t-3");
+
+        const report = await nextTickets(ticketsDir, 3);
+        expect(report["in-progress"]).toEqual(["ip-1", "ip-2"]);
+        expect(report.todo).toEqual(["t-1"]);
+    });
+
+    test("todo is empty once in-progress already fills the limit", async () => {
+        await makeTicket("in-progress", "ip-1");
+        await makeTicket("in-progress", "ip-2");
+        await makeTicket("todo", "t-1");
+
+        const report = await nextTickets(ticketsDir, 2);
+        expect(report.todo).toEqual([]);
+        expect(report["in-progress"]).toEqual(["ip-1", "ip-2"]);
+    });
+
+    test("ignores files and only counts ticket directories", async () => {
+        await makeTicket("todo", "real-1");
+        await writeFile(join(ticketsDir, "todo", "stray.txt"), "noise\n");
+
+        expect((await nextTickets(ticketsDir)).todo).toEqual(["real-1"]);
+    });
+});

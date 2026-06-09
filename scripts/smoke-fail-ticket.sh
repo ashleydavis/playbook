@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Smoke test for scripts/fail-work-item.ts driven through its CLI.
+# Smoke test for scripts/fail-ticket.ts driven through its CLI.
 #
-# Builds a throwaway state fixture, increments an item's failure count twice with
+# Builds a throwaway state fixture, increments a ticket's failure count twice with
 # the real CLI, checks the count is written to index.md and printed, checks the
 # error paths exit non-zero, then cleans up and prints PASS or FAIL.
 
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FAIL="$SCRIPT_DIR/fail-work-item.ts"
+FAIL="$SCRIPT_DIR/fail-ticket.ts"
 
 FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/smoke-fail.XXXXXX")"
 QUEUES=(todo in-progress agent-review human-review merge-queue done blocked)
@@ -26,15 +26,15 @@ trap cleanup EXIT
 
 # Build the fixture: empty queues plus demo-1 in agent-review/ with an index.md.
 for q in "${QUEUES[@]}"; do
-    mkdir -p "$FIXTURE/work-items/$q"
+    mkdir -p "$FIXTURE/tickets/$q"
 done
-mkdir -p "$FIXTURE/work-items/agent-review/demo-1"
+mkdir -p "$FIXTURE/tickets/agent-review/demo-1"
 printf '# demo-1\n\n**ID:** demo-1\n**Type:** Fix\n' \
-    > "$FIXTURE/work-items/agent-review/demo-1/index.md"
+    > "$FIXTURE/tickets/agent-review/demo-1/index.md"
 
-INDEX="$FIXTURE/work-items/agent-review/demo-1/index.md"
+INDEX="$FIXTURE/tickets/agent-review/demo-1/index.md"
 
-# Make the state fixture a git repo so fail-work-item.ts's auto-commit can run.
+# Make the state fixture a git repo so fail-ticket.ts's auto-commit can run.
 git -C "$FIXTURE" init -q
 git -C "$FIXTURE" config user.email smoke@test
 git -C "$FIXTURE" config user.name smoke

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Smoke test for scripts/next-items.ts driven through its CLI.
+# Smoke test for scripts/next-tickets.ts driven through its CLI.
 #
-# Builds a throwaway work-items/ fixture in a temp dir, runs the real CLI, and
+# Builds a throwaway tickets/ fixture in a temp dir, runs the real CLI, and
 # checks the JSON output and the error path, then cleans up and prints
 # PASS or FAIL.
 
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NEXT="$SCRIPT_DIR/next-items.ts"
+NEXT="$SCRIPT_DIR/next-tickets.ts"
 
-FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-items.XXXXXX")"
+FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-tickets.XXXXXX")"
 
 failures=0
 fail() {
@@ -23,14 +23,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Write an item directory: queue, id, optional "Depends on" value.
-make_item() {
+# Write a ticket directory: queue, id, optional "Depends on" value.
+make_ticket() {
     local queue="$1" id="$2" deps="${3:-}"
-    mkdir -p "$FIXTURE/work-items/$queue/$id"
+    mkdir -p "$FIXTURE/tickets/$queue/$id"
     {
         printf '# %s\n\n**ID:** %s\n' "$id" "$id"
         [[ -n "$deps" ]] && printf '**Depends on:** %s\n' "$deps"
-    } > "$FIXTURE/work-items/$queue/$id/index.md"
+    } > "$FIXTURE/tickets/$queue/$id/index.md"
 }
 
 # Build a fixture spanning all reported queues, plus done/ for dependencies.
@@ -40,15 +40,15 @@ make_item() {
 #         auth-0 in done/ -> ready), search-1 (ready)
 #   in-progress: infra-2
 #   agent-review: search-4, search-5
-make_item merge-queue auth-5
-make_item done auth-0
-make_item todo auth-1
-make_item todo auth-2 auth-1
-make_item todo auth-3 auth-0
-make_item todo search-1
-make_item in-progress infra-2
-make_item agent-review search-4
-make_item agent-review search-5
+make_ticket merge-queue auth-5
+make_ticket done auth-0
+make_ticket todo auth-1
+make_ticket todo auth-2 auth-1
+make_ticket todo auth-3 auth-0
+make_ticket todo search-1
+make_ticket in-progress infra-2
+make_ticket agent-review search-4
+make_ticket agent-review search-5
 
 # Run the CLI with the fixture as the current working directory.
 run_next() {
@@ -58,7 +58,7 @@ run_next() {
 # Happy path: the full per-queue report.
 output="$(run_next)"
 if [[ $? -ne 0 ]]; then
-    fail "next-items exited non-zero on a valid work-items/"
+    fail "next-tickets exited non-zero on a valid tickets/"
 fi
 expected='{"merge-queue":["auth-5"],"agent-review":["search-4","search-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
 if [[ "$output" != "$expected" ]]; then
@@ -67,7 +67,7 @@ fi
 
 # Empty queues yield empty arrays for every key.
 EMPTY="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-empty.XXXXXX")"
-mkdir -p "$EMPTY/work-items"
+mkdir -p "$EMPTY/tickets"
 empty_out="$( cd "$EMPTY" && bun "$NEXT" )"
 empty_expected='{"merge-queue":[],"agent-review":[],"todo":[],"in-progress":[]}'
 if [[ "$empty_out" != "$empty_expected" ]]; then
@@ -75,10 +75,10 @@ if [[ "$empty_out" != "$empty_expected" ]]; then
 fi
 rm -rf "$EMPTY"
 
-# Error path: no work-items/ must exit non-zero.
+# Error path: no tickets/ must exit non-zero.
 NOWORK="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-nowork.XXXXXX")"
 if ( cd "$NOWORK" && bun "$NEXT" ) > /dev/null 2>&1; then
-    fail "next-items should have exited non-zero with no work-items/"
+    fail "next-tickets should have exited non-zero with no tickets/"
 fi
 rm -rf "$NOWORK"
 

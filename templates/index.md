@@ -2,7 +2,7 @@
 
 What each template is and when it is used. See [README.md](README.md) for orientation.
 
-Three kinds live here: **repo scaffolds** copied wholesale into a new project by bootstrap, **item templates** whose shape is copied per item by `pb:plan`/`pb:add` (references, not part of any repo), and the **commit template**, a reference for the commit message format.
+Three kinds live here: **repo scaffolds** copied wholesale into a new project by bootstrap, **ticket templates** whose shape is copied per ticket by `pb:plan`/`pb:add` (references, not part of any repo), and the **commit template**, a reference for the commit message format.
 
 ## Project repo scaffold (`project/`)
 
@@ -20,17 +20,17 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 
 - [state/CLAUDE.md](state/CLAUDE.md): state repo root rules.
 - [state/current-state.md](state/current-state.md): empty starting state.
-- [state/work-items/CLAUDE.md](state/work-items/CLAUDE.md): queue and work-item rules.
-- [state/work-items/README.md](state/work-items/README.md): work-items orientation.
-- `state/work-items/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).
-- `state/work-items/blocked/`: the side pen for items that hit a problem and need human attention (empty, with `.gitkeep`).
+- [state/tickets/CLAUDE.md](state/tickets/CLAUDE.md): queue and ticket rules.
+- [state/tickets/README.md](state/tickets/README.md): tickets orientation.
+- `state/tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).
+- `state/tickets/blocked/`: the side pen for tickets that hit a problem and need human attention (empty, with `.gitkeep`).
 
-## Item templates (references, not copied wholesale)
+## Ticket templates (references, not copied wholesale)
 
-The shape of a single feature or work item. `pb:plan` and `pb:add` copy these when creating items in a project; the template files themselves stay in the playbook.
+The shape of a single feature or ticket. `pb:plan` and `pb:add` copy these when creating tickets in a project; the template files themselves stay in the playbook.
 
 - [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied by `pb:plan` into `docs/spec/<id>/`.
-- [work-item-template/](work-item-template/): the shape of a work item's `index.md` + `detail.md`. Copied by `pb:add` into `state/work-items/todo/<id>/`.
+- [ticket-template/](ticket-template/): the shape of a ticket's `index.md` + `detail.md`. Copied by `pb:add` into `state/tickets/todo/<id>/`.
 
 ## Commit template
 

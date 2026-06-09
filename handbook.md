@@ -30,10 +30,10 @@ This process is semi-autonomous, not autonomous. Claude does the labour (plannin
 The developer is in the loop at the two ends of the pipeline, and out of it in the middle:
 
 - **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
-- **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every item. The developer can watch `current-state.md`, but nothing requires them to.
+- **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch `current-state.md`, but nothing requires them to.
 - **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or defers. Nothing merges without that explicit yes.
 
-Two other moments need a human and only a human: a blocked item (parked after repeated failure) re-enters the loop only when the developer moves it back to `todo/`, and a broken `main` is handed back for the developer to fix. Everywhere else the process runs itself. The automated agent-review gate exists precisely so the developer's review time is spent only on work that has already passed the mechanical checks.
+Two other moments need a human and only a human: a blocked ticket (parked after repeated failure) re-enters the loop only when the developer moves it back to `todo/`, and a broken `main` is handed back for the developer to fix. Everywhere else the process runs itself. The automated agent-review gate exists precisely so the developer's review time is spent only on work that has already passed the mechanical checks.
 
 ## Setup
 
@@ -74,7 +74,7 @@ Interviews the developer, then scaffolds both per-project repos from the playboo
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
-Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a work item to fill each gap. These items become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
+Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a ticket to fill each gap. These tickets become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
 
 ## Running a Session
 
@@ -88,7 +88,7 @@ A typical session (the host/VM labels apply only in host + VM mode; in host only
 1. Check where things stand: read `current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
 2. `/pb:plan`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
 3. `/pb:next` (VM) to implement everything unblocked through to human review.
-4. `/pb:review` (host) to approve or reject the items waiting for you; approved items merge.
+4. `/pb:review` (host) to approve or reject the tickets waiting for you; approved tickets merge.
 5. Back to `/pb:status`, and repeat.
 
 New to the process? Run `/pb:help`.
@@ -99,7 +99,7 @@ The loop has a simple rhythm: check where things stand, run a skill that prompts
 
 `current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
 
-The full pipeline a work item travels through, from session start to merge:
+The full pipeline a ticket travels through, from session start to merge:
 
 ```mermaid
 flowchart TD
@@ -111,19 +111,19 @@ flowchart TD
 
     PLAN["Plan/update a Feature: updates spec, docs, testing manual"] --> WQ
     DOCS["Write Documentation: updates spec, docs, testing manual"] --> WQ
-    ADD_WI["Add a Work Item"] --> WQ
-    REVIEW_WI["Review Work Items: code, tests, docs, manual testing"] --> HR
+    ADD_WI["Add a Ticket"] --> WQ
+    REVIEW_WI["Review Tickets: code, tests, docs, manual testing"] --> HR
 
     WQ[("Work Queue")] -->|"up to 10 in parallel"| IMPL
 
     subgraph WorkAgent ["Work Agent: Worktrees"]
-        IMPL["Implement Work Item + Write Tests + Update Docs"] --> RT["Run Tests: Unit, Smoke, e2e"]
+        IMPL["Implement Ticket + Write Tests + Update Docs"] --> RT["Run Tests: Unit, Smoke, e2e"]
         RT -->|Fail| STL["Stop the Line: Fix Issues"]
         STL --> RT
     end
 
     subgraph ReviewAgent ["Review Agent"]
-        CHK["Review only (no edits): Re-run checks (lint, format, tests) + Rules, Style, Docs current + Every change justified by the work item"]
+        CHK["Review only (no edits): Re-run checks (lint, format, tests) + Rules, Style, Docs current + Every change justified by the ticket"]
     end
 
     subgraph DevReview ["Developer Review: pb:review"]
@@ -142,36 +142,36 @@ flowchart TD
     MA -->|Tests Fail| FIX["Fix Immediately on Main"]
     FIX --> MA
     MA -->|"Gives up"| WQ
-    MA -->|Tests Pass| DONE(["Work Item Complete"])
+    MA -->|Tests Pass| DONE(["Ticket Complete"])
     IMPL -->|"Fail (retry)"| WQ
     BLK -->|"developer re-admits"| WQ
 ```
 
-Any failure, from any stage or source, routes by the item's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
+Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
 
 Each stage is driven by a skill; see [Skills](#skills) for what each one does.
 
 ## Handling Failures
 
-A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug item back with no proven root cause, a Fix item doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug ticket back with no proven root cause, a Fix ticket doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
 
-**Every failure is recorded.** Whichever agent hits the failure runs `fail-work-item.ts <id>` to increment the item's `**Failures:**` count in its `index.md`, and writes a History entry in the item's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the item.
+**Every failure is recorded.** Whichever agent hits the failure runs `fail-ticket.ts <id>` to increment the ticket's `**Failures:**` count in its `index.md`, and writes a History entry in the ticket's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the ticket.
 
-**Three strikes parks the item.** Below three failures the item returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked item, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
+**Three strikes parks the ticket.** Below three failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
 
-**One failure never stops the run; an environmental one does.** A single failed item is parked or retried and the development loop carries on with the others. Two or more items failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
+**One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
 **The developer is told through `current-state.md`.** Anything that needs the developer (a block, a broken main, or an environmental failure) is recorded in the top `⚠ Needs your action` section of `current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it.
 
-**Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the item still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later item builds on main.
+**Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the ticket still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later ticket builds on main.
 
 ### Environmental failure
 
-An **environmental failure** is two or more items failing the same stage or check in one run. The cause is the environment, not the items (shared test fixtures, a contended resource, a broken tool), so retrying the items will not help and the run must stop.
+An **environmental failure** is two or more tickets failing the same stage or check in one run. The cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help and the run must stop.
 
-The loop reconciles every failed item first (recording and routing each by its count), then stops launching new work and hands back to the developer. It never works around the failure by switching from parallel to serial or re-driving an item by hand, the slow-but-grinding mode this design exists to prevent.
+The loop reconciles every failed ticket first (recording and routing each by its count), then stops launching new work and hands back to the developer. It never works around the failure by switching from parallel to serial or re-driving a ticket by hand, the slow-but-grinding mode this design exists to prevent.
 
-The cause is recorded as a `Run halted: environmental failure` entry in the top `⚠ Needs your action` section of `current-state.md`, naming the shared stage or check, the items involved, the suspected cause, and the evidence path. The items it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
+The cause is recorded as a `Run halted: environmental failure` entry in the top `⚠ Needs your action` section of `current-state.md`, naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
 
 ## Repository Structure
 
@@ -190,7 +190,7 @@ playbook/
   index.md            # Orientation map: what lives where across the three repos.
   .claude/            # Claude Code config: commands/pb/ (the skills) and settings.json (permissions off).
   templates/          # Various templates for creating repos and files.
-  scripts/            # install-prereqs.sh (install git/bun/Claude Code) and move.ts (move a work item between queues).
+  scripts/            # install-prereqs.sh (install git/bun/Claude Code) and move.ts (move a ticket between queues).
   project/            # The project repo (created by bootstrap).
   state/              # The state repo (created by bootstrap).
 ```
@@ -247,23 +247,23 @@ Manages the project's state, so both the developer and Claude know what is happe
 ```bash
 state/
   current-state.md    # Snapshot of current state.
-  work-items/
-    todo/             # Pending work items
-    in-progress/      # Items currently being implemented
-    agent-review/     # Items awaiting automated review
-    human-review/     # Items awaiting developer review
-    merge-queue/      # Approved items waiting to merge
-    done/             # Completed items
+  tickets/
+    todo/             # Pending tickets
+    in-progress/      # Tickets currently being implemented
+    agent-review/     # Tickets awaiting automated review
+    human-review/     # Tickets awaiting developer review
+    merge-queue/      # Approved tickets waiting to merge
+    done/             # Completed tickets
     blocked/          # Parked for the developer after a hard/repeated failure (not a pipeline stage)
 ```
 
-Each queue holds one directory per work item, named by the item's ID. The directory travels between queues as a unit, so the item and its evidence always stay together and lands in together in `done/<id>/`:
+Each queue holds one directory per ticket, named by the ticket's ID. The directory travels between queues as a unit, so the ticket and its evidence always stay together and lands in together in `done/<id>/`:
 
 ```bash
 todo/
-  <id>/         # Named by the work item's ID
+  <id>/         # Named by the ticket's ID
     index.md    # Brief: ID, type, depends-on, one-line description.
-    detail.md   # The full work item.
+    detail.md   # The full ticket.
     evidence/   # Proof, one subdir per pass (see Verification and Evidence)
       implementation-1/
       review-1/
@@ -283,31 +283,31 @@ Reads `current-state.md` and the queues, summarises what was completed, what is 
 
 ### pb:plan
 
-Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered work items in `todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
+Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
 
 ### pb:docs
 
-Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing work items in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
+Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing tickets in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
 
 ### pb:add
 
-Creates one structured work item in `todo/` for a single, well-understood task. See [.claude/commands/pb/add.md](.claude/commands/pb/add.md).
+Creates one structured ticket in `todo/` for a single, well-understood task. See [.claude/commands/pb/add.md](.claude/commands/pb/add.md).
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved items, then clears every review already in flight, then picks up to 10 unblocked `todo/` items into worktrees and runs a per-item sub-agent through each stage (implement, agent-review) until the item reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps items flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed items. Each sub-agent runs in the item's worktree and advances the item only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### pb:review
 
-The human approval gate. Walks the developer through each item in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the item to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
+The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
 
 ### pb:debug
 
-The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two work items so each is reviewed on its own: a **Debug** item proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** item that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `/pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix items are in [.claude/commands/pb/debug.md](.claude/commands/pb/debug.md).
+The path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two tickets so each is reviewed on its own: a **Debug** ticket proves the root cause (in a throwaway worktree, no commits), and on review it spawns a **Fix** ticket that flows through the pipeline normally. If the developer already knows the fix, they skip this and use `/pb:add`. The investigation method, acceptance criteria, and how the two pipeline stages behave for Debug/Fix tickets are in [.claude/commands/pb/debug.md](.claude/commands/pb/debug.md).
 
 ### pb:customize
 
-Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every work item from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
+Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every ticket from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
 
 ## Templates
 
@@ -318,7 +318,7 @@ templates/
   project/         # Project repo scaffold. Copied by pb:bootstrap:new.
   state/           # State repo scaffold. Copied by pb:bootstrap:*.
   feature-template/     # A feature's index.md + detail.md shape. Copied by pb:plan.
-  work-item-template/   # A work item's index.md + detail.md shape. Copied by pb:add.
+  ticket-template/   # A ticket's index.md + detail.md shape. Copied by pb:add.
   commit-template/      # Commit message format. Copied and filled out when making a commit.
 ```
 
@@ -357,9 +357,9 @@ A feature's ID is declared in the `**ID:**` field of its `index.md`. The ID in t
 Rules for IDs:
 - An ID is a flat kebab-case token. It never contains slashes, even for nested sub-features.
 - IDs are globally unique across the spec. A sub-feature does not inherit its parent's ID; it picks its own (e.g. `<sub-feature>`, or `<parent>-<sub-feature>` if a flat name would clash).
-- The same applies to any other indexable item (work items, etc.): the ID is declared inside the file, not inferred from the path.
+- The same applies to any other indexable ticket (tickets, etc.): the ID is declared inside the file, not inferred from the path.
 
-Tooling that needs to resolve an ID to a path should read the `**ID:**` field of each `index.md` and build an index, rather than inferring the ID from the directory. The feature ID is how work items reference features (see Work Item Format).
+Tooling that needs to resolve an ID to a path should read the `**ID:**` field of each `index.md` and build an index, rather than inferring the ID from the directory. The feature ID is how tickets reference features (see Ticket Format).
 
 #### Status fields
 
@@ -368,14 +368,14 @@ Each feature `index.md` declares two status fields that capture orthogonal axes:
 - `**Spec:**` is the state of the spec itself. `Draft` means it is still being written or has open questions to settle. `Settled` means the spec is finished and ready to build against.
 - `**Implementation:**` is how far the code has caught up. `None` means nothing built yet. `Partial` means some acceptance criteria are met. `Complete` means all acceptance criteria are met. It rolls up the checkboxes in the `detail.md` acceptance criteria.
 
-A `Settled` spec with `Implementation: None` is the canonical "planned." A `Draft` spec with `Implementation: Complete` flags drift: the code has moved ahead of the agreed behaviour. A retired feature uses `Spec: Settled` with a `**Deprecated:** <date or reason>` field added to mark it as on the way out. These fields describe the long-lived state of the feature; work-item state in the queues is separate and describes only the in-flight tasks.
+A `Settled` spec with `Implementation: None` is the canonical "planned." A `Draft` spec with `Implementation: Complete` flags drift: the code has moved ahead of the agreed behaviour. A retired feature uses `Spec: Settled` with a `**Deprecated:** <date or reason>` field added to mark it as on the way out. These fields describe the long-lived state of the feature; ticket state in the queues is separate and describes only the in-flight tasks.
 
 ### Rules
 
 - Every feature has a directory containing two files: `index.md` (lightweight: ID, brief description, sub-feature list) and `detail.md` (the full spec).
 - A feature's ID is declared in its `index.md` `**ID:**` field. IDs are flat kebab-case tokens and globally unique.
-- The spec is the source of truth. Work-item acceptance criteria are derived from the `detail.md`, not invented in the work item.
-- When the spec changes, affected work items, tests, and the testing manual section are regenerated or updated.
+- The spec is the source of truth. Ticket acceptance criteria are derived from the `detail.md`, not invented in the ticket.
+- When the spec changes, affected tickets, tests, and the testing manual section are regenerated or updated.
 - `docs/spec/index.md` always lists every top-level feature. Each feature's `index.md` lists its direct sub-features.
 - Every entry in an index includes the child's `**ID:**`, a brief description, and a link to the child's `index.md`. The full set of IDs and feature summaries can be enumerated by reading only `index.md` files; the heavier `detail.md` is loaded only on demand.
 
@@ -406,28 +406,28 @@ This applies on the first iteration as much as on the hundredth:
 
 `/pb:plan` and `/pb:docs` both accept changes from any entry point and walk through the affected artifacts.
 
-## Work Item Format
+## Ticket Format
 
-Each work item is a directory named by its ID, sitting directly under a queue (e.g. `state/work-items/todo/<id>/`). The directory holds `index.md` (brief: the work item's surface) and `detail.md` (the full work item) and, once any proof is captured, an `evidence/` subdirectory. The queues are flat: item directories sit directly under the queue with no nested hierarchy mirroring the spec.
+Each ticket is a directory named by its ID, sitting directly under a queue (e.g. `state/tickets/todo/<id>/`). The directory holds `index.md` (brief: the ticket's surface) and `detail.md` (the full ticket) and, once any proof is captured, an `evidence/` subdirectory. The queues are flat: ticket directories sit directly under the queue with no nested hierarchy mirroring the spec.
 
-The work item's ID is declared inside `index.md` in an `**ID:**` field; the directory name mirrors it by convention, but the field is the source of truth. The ID has the form `{feature-id}-{n}`, where `{feature-id}` is the ID declared in the corresponding feature's `index.md` and `n` increments per feature. When the item moves between queues (`todo/` to `in-progress/` to `agent-review/` etc.), the whole directory moves under the new queue root, carrying its `index.md`, `detail.md`, and `evidence/` with it.
+The ticket's ID is declared inside `index.md` in an `**ID:**` field; the directory name mirrors it by convention, but the field is the source of truth. The ID has the form `{feature-id}-{n}`, where `{feature-id}` is the ID declared in the corresponding feature's `index.md` and `n` increments per feature. When the ticket moves between queues (`todo/` to `in-progress/` to `agent-review/` etc.), the whole directory moves under the new queue root, carrying its `index.md`, `detail.md`, and `evidence/` with it.
 
-Because the directory name mirrors the ID, listing a queue directory enumerates the IDs of every item in that queue without opening any file. This plays the same role for work items that index files play for features: the full set of IDs is discoverable cheaply.
+Because the directory name mirrors the ID, listing a queue directory enumerates the IDs of every ticket in that queue without opening any file. This plays the same role for tickets that index files play for features: the full set of IDs is discoverable cheaply.
 
-The item's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, a `**Failures:**` count (see [Handling Failures](#handling-failures)), and a one-line description (no status field, since the queue the item sits in is its status). The item's `detail.md` carries the full work item: Description, Acceptance Criteria, Test Plan, Notes, and History sections. For a Debug item, the root-cause write-up lives in `detail.md`. The full shape is in [templates/work-item-template/](templates/work-item-template/) (its `index.md` and `detail.md`).
+The ticket's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, a `**Failures:**` count (see [Handling Failures](#handling-failures)), and a one-line description (no status field, since the queue the ticket sits in is its status). The ticket's `detail.md` carries the full ticket: Description, Acceptance Criteria, Test Plan, Notes, and History sections. For a Debug ticket, the root-cause write-up lives in `detail.md`. The full shape is in [templates/ticket-template/](templates/ticket-template/) (its `index.md` and `detail.md`).
 
 Rules:
-- The work agent must refuse to implement a work item that is missing acceptance criteria.
-- A Test Plan is required, but for items with no testable behaviour (pure scaffolding, doc-only changes, dependency bumps, etc.) the Test Plan may be `N/A: <reason>` and must be paired with a Manual Verification section listing the steps the developer will run during human review (look at the file, run the linter, render the doc, etc.). Code never reaches `merge-queue/` without some check, automated or manual.
-- `**Type:**` is free-form. Common values are `Feature`, `Tweak`, `Test coverage`, `Doc`, `Scaffolding`, `Refactor`. Projects can add their own. Type is mostly used for filtering and reporting, not enforcement. The two exceptions are `Debug` and `Fix`, which change how the agent-review stage behaves (see `/pb:debug`): a `Debug` item is reviewed for a proven root cause and, on pass, spawns a `Fix` item; a `Fix` item is reviewed for a minimal change that solves the proven problem with evidence.
-- Each work item gets an ID of the form `{feature-id}-{n}`, where `n` increments per feature. Items not tied to a feature use a catch-all ID prefix like `chore`, `fix`, `misc` `infra` or whatever you want.
-- Where possible, number `n` in order of execution, so a dependent item gets a higher number than the items it depends on. The number is only a hint at reading order; `**Depends on:**` is what actually gates execution.
-- Dependencies reference other work-item IDs. Dependent items cannot be started until their dependencies are merged.
-- A human rejection is not a failure: its feedback is appended to the History section in `detail.md` and the item returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`), a clean slate.
+- The work agent must refuse to implement a ticket that is missing acceptance criteria.
+- A Test Plan is required, but for tickets with no testable behaviour (pure scaffolding, doc-only changes, dependency bumps, etc.) the Test Plan may be `N/A: <reason>` and must be paired with a Manual Verification section listing the steps the developer will run during human review (look at the file, run the linter, render the doc, etc.). Code never reaches `merge-queue/` without some check, automated or manual.
+- `**Type:**` is free-form. Common values are `Feature`, `Tweak`, `Test coverage`, `Doc`, `Scaffolding`, `Refactor`. Projects can add their own. Type is mostly used for filtering and reporting, not enforcement. The two exceptions are `Debug` and `Fix`, which change how the agent-review stage behaves (see `/pb:debug`): a `Debug` ticket is reviewed for a proven root cause and, on pass, spawns a `Fix` ticket; a `Fix` ticket is reviewed for a minimal change that solves the proven problem with evidence.
+- Each ticket gets an ID of the form `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a catch-all ID prefix like `chore`, `fix`, `misc` `infra` or whatever you want.
+- Where possible, number `n` in order of execution, so a dependent ticket gets a higher number than the tickets it depends on. The number is only a hint at reading order; `**Depends on:**` is what actually gates execution.
+- Dependencies reference other ticket IDs. Dependent tickets cannot be started until their dependencies are merged.
+- A human rejection is not a failure: its feedback is appended to the History section in `detail.md` and the ticket returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`), a clean slate.
 
 ## Commit Format
 
-Every commit follows one template, so history stays uniform and each commit traces back to the work item that produced it. The subject is `<id>: <imperative summary>`; the body carries the prose, an optional `Acceptance criteria:` list, and `Type:` / `Work-item:` trailers tooling can grep by.
+Every commit follows one template, so history stays uniform and each commit traces back to the ticket that produced it. The subject is `<id>: <imperative summary>`; the body carries the prose, an optional `Acceptance criteria:` list, and `Type:` / `Ticket:` trailers tooling can grep by.
 
 The template lives at [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). The `/pb:next` sub-agents make the commits using this template.
 
@@ -439,15 +439,15 @@ The queue directories are the source of truth for the state of things. `current-
 - What is waiting on the developer
 - What is blocked and why
 - What was recently completed
-- Anything that needs developer attention: items parked in `blocked/` and why, sub-agent timeouts, repeated failures on the same item, merges left on main in a broken state
+- Anything that needs developer attention: tickets parked in `blocked/` and why, sub-agent timeouts, repeated failures on the same ticket, merges left on main in a broken state
 
-Sub-agents update this file whenever a work item changes queue or something significant happens that requires manual rectification. Keep it scannable: short, structured, no prose padding.
+Sub-agents update this file whenever a ticket changes queue or something significant happens that requires manual rectification. Keep it scannable: short, structured, no prose padding.
 
 ## Claude Code Configuration
 
 ### CLAUDE.md files
 
-`CLAUDE.md` files give Claude directory-scoped rules, auto-loaded by Claude Code when it works in or below that directory. Each repo carries its own, shipped as a template and copied in at bootstrap: the playbook's root `CLAUDE.md` (loaded when Claude Code launches from the playbook repo root), the project repo's root `CLAUDE.md` and `docs/spec/CLAUDE.md`, and the state repo's root `CLAUDE.md` and `work-items/CLAUDE.md`. Keep each one small and scoped to the rules that matter in that tree; the files themselves are the source of truth, so this handbook does not restate their contents.
+`CLAUDE.md` files give Claude directory-scoped rules, auto-loaded by Claude Code when it works in or below that directory. Each repo carries its own, shipped as a template and copied in at bootstrap: the playbook's root `CLAUDE.md` (loaded when Claude Code launches from the playbook repo root), the project repo's root `CLAUDE.md` and `docs/spec/CLAUDE.md`, and the state repo's root `CLAUDE.md` and `tickets/CLAUDE.md`. Keep each one small and scoped to the rules that matter in that tree; the files themselves are the source of truth, so this handbook does not restate their contents.
 
 #### Rule set: `docs/rules/`
 
@@ -479,11 +479,11 @@ A **check** is any pass/fail verification of the work. Every check produces a bo
 - **Deterministic checks** run a command that yields the verdict: compile, lint, format, unit, smoke, e2e. There is no discretion: the command passes or it does not.
 - **Judgement checks** require an agent to analyse the work against a named rule and decide. These cover anything in `docs/rules/`, the root and scoped `CLAUDE.md` files, and the documents required by `documentation.md`: is the documentation current after this code change, does the code conform to the rule, is the fix the minimal change that solves the problem. Discretion is required, but the output is still a single boolean.
 
-The two are interchangeable in the pipeline. A judgement check is not "softer" than a unit test: it must pass before the item advances, exactly like a test. What differs is the evidence behind the verdict (see below).
+The two are interchangeable in the pipeline. A judgement check is not "softer" than a unit test: it must pass before the ticket advances, exactly like a test. What differs is the evidence behind the verdict (see below).
 
 ### Who evaluates them, and when
 
-Checks run inside the `/pb:next` sub-agents, in the work item's worktree, never against the main repo:
+Checks run inside the `/pb:next` sub-agents, in the ticket's worktree, never against the main repo:
 
 - The **implement** and **merge** sub-agents run the deterministic checks (compile, lint, the test suites) and capture their output.
 - The **agent-review** sub-agent is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
@@ -502,16 +502,16 @@ Whatever its kind, every check result carries the same fields, so deterministic 
 
 ## Agent review
 
-Agent-review is the automated gate between implementation and the human review queue. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the work item's own state (move the item directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
+Agent-review is the automated gate between implementation and the human review queue. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
 
 For each review pass N it:
 
 1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
 2. **Runs the judgement checks:** reads every rule in `docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
-3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the item, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
-4. **Resolves**, writing only to the item's state: on **pass** (every check passes and every change is justified) it moves the item from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-work-item.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
+3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the ticket, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
+4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-ticket.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
 
-Debug and Fix items vary step 4 (see `/pb:debug`).
+Debug and Fix tickets vary step 4 (see `/pb:debug`).
 
 ## Verification and Evidence
 
@@ -529,16 +529,16 @@ Every agent, at every stage, follows the same sequence before claiming a check p
 
 For a judgement check there is no command to run: the agent reads the rule and the relevant code in place of steps 1-3, then captures its written assessment (the rule named, the verdict, and the reasoning) as the evidence in step 5. The discipline is the same: a verdict reached fresh, recorded as a file the goal evaluator and developer can both see.
 
-Checks run in the foreground. A sub-agent runs each check and blocks until it returns, within its turn budget; it never launches a long check (e.g. e2e) in the background and ends the turn waiting to be woken, which stalls silently and makes no progress. A check either completes in the turn or the agent hits its limit and the item is parked in `blocked/`.
+Checks run in the foreground. A sub-agent runs each check and blocks until it returns, within its turn budget; it never launches a long check (e.g. e2e) in the background and ends the turn waiting to be woken, which stalls silently and makes no progress. A check either completes in the turn or the agent hits its limit and the ticket is parked in `blocked/`.
 
 ### The evidence store
 
-Proof for each work item lives in the `evidence/` subdir of the item's own directory. Because evidence travels inside the item directory, it survives every queue move and is archived self-contained when the item reaches `done/<id>/`.
+Proof for each ticket lives in the `evidence/` subdir of the ticket's own directory. Because evidence travels inside the ticket directory, it survives every queue move and is archived self-contained when the ticket reaches `done/<id>/`.
 
-**One subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so a rejected-and-redone item keeps the full round-trip history rather than overwriting it:
+**One subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so a rejected-and-redone ticket keeps the full round-trip history rather than overwriting it:
 
 ```
-<work-item>/
+<ticket>/
   evidence/
     implementation-1/   # first implement pass
     review-1/           # first review pass
@@ -551,14 +551,14 @@ Proof for each work item lives in the `evidence/` subdir of the item's own direc
 An agent allocates its subdir by taking one more than the highest existing number for its kind (the first implement pass writes `implementation-1/`, the next `implementation-2/`, and likewise for `review-N/`); the merge stage writes to `evidence/merge/`. What goes in each subdir:
 
 - **Test output.** The full captured run for each suite: `unit.txt`, `smoke.txt`, `e2e.txt` (or per-run files). Exit code visible. Plus any other artefacts the run produces.
-- **Screenshots.** For any change that affects the UI, a screenshot of each affected view in **both light and dark mode** (every UI screenshot exists in both modes), in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the item's `evidence/` dir or a temp dir, and is discarded.
+- **Screenshots.** For any change that affects the UI, a screenshot of each affected view in **both light and dark mode** (every UI screenshot exists in both modes), in a `screenshots/` subdirectory. Capture them however works, but never by committing capture code to `project/`: a screenshot must need no committed change to the project tree (no added test, helper, or env plumbing). Any capture script lives outside the project tree, in the ticket's `evidence/` dir or a temp dir, and is discarded.
 - **Command transcripts.** For anything else a claim rests on (a build log, a migration run, a manual reproduction of a bug), the captured command and its output.
 
 The store is append-only within a run and overwritten on the next run of the same check, so it always reflects the latest verified state. It is the developer's first stop in `/pb:review`: read the captured evidence before re-running anything by hand, and only dig deeper where the evidence is missing or unconvincing.
 
 ### Where it is enforced
 
-The capture is written into the success condition of every sub-agent goal in `/pb:next` (implement, agent-review, merge), so an item cannot move to the next queue until its evidence is on disk. `/pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
+The capture is written into the success condition of every sub-agent goal in `/pb:next` (implement, agent-review, merge), so a ticket cannot move to the next queue until its evidence is on disk. `/pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
 
 ## Maximising Autonomy
 
@@ -576,21 +576,21 @@ A `/goal` is a pass condition declared at the start of a session or sub-agent. A
 
 Every goal has two parts:
 - **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
-- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or an environmental-failure signal (see [Handling Failures](#handling-failures)). A single stuck item does not abort the run; it is parked in `blocked/` and the loop carries on.
+- **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or an environmental-failure signal (see [Handling Failures](#handling-failures)). A single stuck ticket does not abort the run; it is parked in `blocked/` and the loop carries on.
 
-Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving items between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether an item is finished.
+Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving tickets between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether a ticket is finished.
 
 Goals cover both responsibilities that hooks would otherwise handle:
 
-- **Queue transitions.** The success condition names the target queue ("the work item directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
+- **Queue transitions.** The success condition names the target queue ("the ticket directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
 - **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass. Because the goal evaluator re-checks after each turn, the agent cannot pretend it is done.
-- **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the item's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
+- **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the ticket's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
 
 The development loop relies on this in three places:
 
-- `/pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` item moved downstream).
-- Each per-item sub-agent (merge, implement, agent-review) has its own goal scoped to that item, with its own timeout.
-- A sub-agent that cannot meet its goal records the failure and the item routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives an item or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
+- `/pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` ticket moved downstream).
+- Each per-ticket sub-agent (merge, implement, agent-review) has its own goal scoped to that ticket, with its own timeout.
+- A sub-agent that cannot meet its goal records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
 
 The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 
@@ -611,6 +611,6 @@ What the VM contains is command execution: a reckless command hits the VM's own 
 
 This applies to both repos, by two distinct mechanisms:
 
-- **Project repo.** Code changes happen in a per-item worktree and are committed there using the commit template (`templates/commit-template/`). `finalize-work-item.ts` rebases and merges that worktree back onto the project branch.
-- **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, an item admitted, a failure recorded, a failure reset, an item created, a `current-state.md` update) is committed as its own item-scoped commit. The mutation scripts (`move`, `setup-work-item`, `fail-work-item`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Item-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-item trail of how each work item moved through the pipeline, and any state change can be reverted.
+- **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `finalize-ticket.ts` rebases and merges that worktree back onto the project branch.
+- **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a failure recorded, a failure reset, a ticket created, a `current-state.md` update) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted.
 

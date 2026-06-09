@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Merge a work item's worktree back into the project repo, then clean it up.
+// Merge a ticket's worktree back into the project repo, then clean it up.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun ../scripts/finalize-work-item.ts <id>
+//   bun ../scripts/finalize-ticket.ts <id>
 //
 // Does the mechanical parts of merge + cleanup as one tested operation. It does
 // NOT resolve conflicts: conflict resolution is a judgement task, so when a
@@ -16,8 +16,8 @@
 //      - conflict: abort the rebase (worktree left intact) and report
 //        status "conflict" so the agent can resolve, commit, then re-run.
 //   2. Fast-forward the project branch to the rebased worktree HEAD (the merge).
-//   3. Remove the worktree (`git worktree remove`) and delete its per-item
-//      branch (worktrees/<id>), which setup-work-item.ts created.
+//   3. Remove the worktree (`git worktree remove`) and delete its per-ticket
+//      branch (worktrees/<id>), which setup-ticket.ts created.
 //
 // Exit status maps to the reported `status` field:
 //   merged   -> exit 0, worktree removed, changes on the branch.
@@ -85,18 +85,18 @@ const realGit: GitRunner = async (cwd, args) => {
 
 // Core logic. `stateDir` is the state repo root (the cwd when run via the CLI).
 // `runGit` is injectable for testing and defaults to the real git invocation.
-export async function teardownItem(
+export async function teardownTicket(
     id: string,
     stateDir: string,
     runGit: GitRunner = realGit,
 ): Promise<TeardownResult> {
     if (!id) {
-        throw new TeardownError("missing id: usage: finalize-work-item.ts <id>");
+        throw new TeardownError("missing id: usage: finalize-ticket.ts <id>");
     }
 
     const projectDir = resolve(stateDir, "..", "project");
     const worktreePath = join(resolve(stateDir, "..", "project", "worktrees"), id);
-    const itemBranch = `worktrees/${id}`;
+    const ticketBranch = `worktrees/${id}`;
 
     if (!(await exists(projectDir))) {
         throw new TeardownError(`no project repo at ${projectDir}`);
@@ -130,7 +130,7 @@ export async function teardownItem(
 
     // Nothing to merge: just remove the worktree.
     if (mergedCommits.length === 0) {
-        await removeWorktree(projectDir, worktreePath, itemBranch, runGit);
+        await removeWorktree(projectDir, worktreePath, ticketBranch, runGit);
         return {
             id,
             status: "noop",
@@ -175,7 +175,7 @@ export async function teardownItem(
         throw new TeardownError(`fast-forward merge failed: ${ff.stderr}`);
     }
 
-    await removeWorktree(projectDir, worktreePath, itemBranch, runGit);
+    await removeWorktree(projectDir, worktreePath, ticketBranch, runGit);
 
     return {
         id,
@@ -217,7 +217,7 @@ async function removeWorktree(
     if (out.code !== 0) {
         throw new TeardownError(`git worktree remove failed: ${out.stderr}`);
     }
-    // Delete the per-item branch setup-work-item.ts created; after the merge it
+    // Delete the per-ticket branch setup-ticket.ts created; after the merge it
     // is fully contained in the project branch, so this is a clean delete.
     const del = await runGit(projectDir, ["branch", "-D", branch]);
     if (del.code !== 0) {
@@ -229,20 +229,20 @@ async function removeWorktree(
 async function main(argv: string[]): Promise<void> {
     const [id] = argv;
     if (!id) {
-        console.error("usage: finalize-work-item.ts <id>");
+        console.error("usage: finalize-ticket.ts <id>");
         process.exit(1);
     }
 
     const stateDir = process.cwd();
-    if (!(await exists(join(stateDir, "work-items")))) {
+    if (!(await exists(join(stateDir, "tickets")))) {
         console.error(
-            `no work-items/ directory in ${stateDir}: run from the state repo root`,
+            `no tickets/ directory in ${stateDir}: run from the state repo root`,
         );
         process.exit(1);
     }
 
     try {
-        const result = await teardownItem(id, stateDir);
+        const result = await teardownTicket(id, stateDir);
         if (result.status === "conflict") {
             console.error(
                 `conflict merging ${id} into ${result.branch}: resolve in ${result.worktreePath} ` +

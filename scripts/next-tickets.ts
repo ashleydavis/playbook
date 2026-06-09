@@ -2,26 +2,26 @@
 // Report the work the pb:next loop should act on, for every queue it drives.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun playbook/scripts/next-items.ts
+//   bun playbook/scripts/next-tickets.ts
 //
 // Prints a JSON object keyed by the four queues pb:next drives, each value the
-// list of item IDs to act on in that queue (sorted by ID). The keys are in the
+// list of ticket IDs to act on in that queue (sorted by ID). The keys are in the
 // order pb:next processes them each turn (merge-queue, then agent-review, then
 // todo, then in-progress: finish work nearest to done before starting new work):
 //
-//   merge-queue, agent-review, in-progress: every item in the queue.
-//   todo: only the actionable items (dependencies resolved), capped so that
-//         todo + in-progress together never exceed LIMIT items in flight.
+//   merge-queue, agent-review, in-progress: every ticket in the queue.
+//   todo: only the actionable tickets (dependencies resolved), capped so that
+//         todo + in-progress together never exceed LIMIT tickets in flight.
 //
-// A todo item is actionable only when every one of its dependencies is in done/
-// (merged): items cannot start until their dependencies are merged. A dependency
+// A todo ticket is actionable only when every one of its dependencies is in done/
+// (merged): tickets cannot start until their dependencies are merged. A dependency
 // sitting anywhere else (todo, in-progress, agent-review, human-review,
-// merge-queue) or missing entirely leaves the item blocked. done/ is read only
+// merge-queue) or missing entirely leaves the ticket blocked. done/ is read only
 // to resolve dependencies; it is not reported. human-review/ is neither driven
 // nor read.
 //
 // The todo cap shares one budget with in-progress: the implementation stage runs
-// at most LIMIT items at once, so todo is trimmed to LIMIT minus however many are
+// at most LIMIT tickets at once, so todo is trimmed to LIMIT minus however many are
 // already in-progress (zero todo once in-progress is full).
 
 import { readFile, readdir } from "node:fs/promises";
@@ -39,10 +39,10 @@ export const QUEUES = [
 
 export type ReportedQueue = (typeof QUEUES)[number];
 
-export type NextItemsReport = Record<ReportedQueue, string[]>;
+export type NextTicketsReport = Record<ReportedQueue, string[]>;
 
-// Most items in flight in the implementation stage at once (todo admitted this
-// pass plus items already in-progress, combined).
+// Most tickets in flight in the implementation stage at once (todo admitted this
+// pass plus tickets already in-progress, combined).
 export const LIMIT = 10;
 
 // Pull the dependency IDs out of an index.md's `**Depends on:**` line.
@@ -61,7 +61,7 @@ export function parseDependsOn(indexMd: string): string[] {
         .filter((id) => id.toLowerCase() !== "none");
 }
 
-// List the item directory names in a queue, sorted. Returns [] if the queue
+// List the ticket directory names in a queue, sorted. Returns [] if the queue
 // directory does not exist.
 async function listQueue(queueDir: string): Promise<string[]> {
     let entries;
@@ -76,20 +76,20 @@ async function listQueue(queueDir: string): Promise<string[]> {
         .sort();
 }
 
-// Core logic: given the work-items/ directory, return the per-queue report.
-// `workItemsDir` is the path to the state repo's `work-items/` directory.
-export async function nextItems(
-    workItemsDir: string,
+// Core logic: given the tickets/ directory, return the per-queue report.
+// `ticketsDir` is the path to the state repo's `tickets/` directory.
+export async function nextTickets(
+    ticketsDir: string,
     limit: number = LIMIT,
-): Promise<NextItemsReport> {
-    const inProgress = await listQueue(join(workItemsDir, "in-progress"));
-    // The implementation stage runs at most `limit` items at once, and todo +
-    // in-progress share that budget. Trim todo to what is left after the items
+): Promise<NextTicketsReport> {
+    const inProgress = await listQueue(join(ticketsDir, "in-progress"));
+    // The implementation stage runs at most `limit` tickets at once, and todo +
+    // in-progress share that budget. Trim todo to what is left after the tickets
     // already in-progress (zero once in-progress is full).
     const todoBudget = Math.max(0, limit - inProgress.length);
 
-    const todoIds = await listQueue(join(workItemsDir, "todo"));
-    const done = new Set(await listQueue(join(workItemsDir, "done")));
+    const todoIds = await listQueue(join(ticketsDir, "todo"));
+    const done = new Set(await listQueue(join(ticketsDir, "done")));
 
     const todoReady: string[] = [];
     for (const id of todoIds) {
@@ -99,7 +99,7 @@ export async function nextItems(
         let indexMd: string;
         try {
             indexMd = await readFile(
-                join(workItemsDir, "todo", id, "index.md"),
+                join(ticketsDir, "todo", id, "index.md"),
                 "utf8",
             );
         } catch {
@@ -114,8 +114,8 @@ export async function nextItems(
     }
 
     return {
-        "merge-queue": await listQueue(join(workItemsDir, "merge-queue")),
-        "agent-review": await listQueue(join(workItemsDir, "agent-review")),
+        "merge-queue": await listQueue(join(ticketsDir, "merge-queue")),
+        "agent-review": await listQueue(join(ticketsDir, "agent-review")),
         todo: todoReady,
         "in-progress": inProgress,
     };
@@ -123,16 +123,16 @@ export async function nextItems(
 
 // Thin CLI wrapper. Not exercised by the unit tests.
 async function main(): Promise<void> {
-    const workItemsDir = join(process.cwd(), "work-items");
+    const ticketsDir = join(process.cwd(), "tickets");
     try {
-        await readdir(workItemsDir);
+        await readdir(ticketsDir);
     } catch {
         console.error(
-            `no work-items/ directory in ${process.cwd()}: run from the state repo root`,
+            `no tickets/ directory in ${process.cwd()}: run from the state repo root`,
         );
         process.exit(1);
     }
-    const report = await nextItems(workItemsDir);
+    const report = await nextTickets(ticketsDir);
     console.log(JSON.stringify(report));
 }
 

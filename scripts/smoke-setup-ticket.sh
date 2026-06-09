@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Smoke test for scripts/setup-work-item.ts driven through its CLI with REAL git.
+# Smoke test for scripts/setup-ticket.ts driven through its CLI with REAL git.
 #
 # Builds a throwaway repo layout in a temp dir (a state/ sibling with the six
-# queues, plus a project/ git repo on a `main` commit), admits a work item with
+# queues, plus a project/ git repo on a `main` commit), admits a ticket with
 # the real CLI, and asserts:
-#   - the item moved todo/ -> in-progress/,
+#   - the ticket moved todo/ -> in-progress/,
 #   - a worktree was created at ../project/worktrees/<id> against project/ (not state/),
 #   - the worktree is on a new branch worktrees/<id> at the project's current commit,
 #   - a second run is idempotent (no error, worktree reused).
@@ -13,7 +13,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SETUP="$SCRIPT_DIR/setup-work-item.ts"
+SETUP="$SCRIPT_DIR/setup-ticket.ts"
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smoke-setup.XXXXXX")"
 QUEUES=(todo in-progress agent-review human-review merge-queue done)
@@ -31,12 +31,12 @@ trap cleanup EXIT
 
 # Build the state repo: six empty queues plus feat-1 waiting in todo/.
 for q in "${QUEUES[@]}"; do
-    mkdir -p "$ROOT/state/work-items/$q"
+    mkdir -p "$ROOT/state/tickets/$q"
 done
-mkdir -p "$ROOT/state/work-items/todo/feat-1/evidence"
-echo "# feat-1" > "$ROOT/state/work-items/todo/feat-1/index.md"
+mkdir -p "$ROOT/state/tickets/todo/feat-1/evidence"
+echo "# feat-1" > "$ROOT/state/tickets/todo/feat-1/index.md"
 
-# Make the state repo a git repo so setup-work-item.ts's auto-commit can run.
+# Make the state repo a git repo so setup-ticket.ts's auto-commit can run.
 git -C "$ROOT/state" init -q
 git -C "$ROOT/state" config user.email smoke@test
 git -C "$ROOT/state" config user.name smoke
@@ -61,9 +61,9 @@ run_setup() {
 
 # Happy path.
 if run_setup feat-1 > /dev/null; then
-    [[ -d "$ROOT/state/work-items/in-progress/feat-1" ]] \
+    [[ -d "$ROOT/state/tickets/in-progress/feat-1" ]] \
         || fail "feat-1 not in in-progress/"
-    [[ ! -e "$ROOT/state/work-items/todo/feat-1" ]] \
+    [[ ! -e "$ROOT/state/tickets/todo/feat-1" ]] \
         || fail "feat-1 still in todo/"
     [[ -d "$ROOT/project/worktrees/feat-1" ]] \
         || fail "worktree not created at project/worktrees/feat-1"
@@ -84,19 +84,19 @@ if run_setup feat-1 > /dev/null; then
     [[ "$WT_BRANCH" == "worktrees/feat-1" ]] \
         || fail "worktree not on branch worktrees/feat-1 (got $WT_BRANCH)"
 else
-    fail "setup-work-item feat-1 exited non-zero"
+    fail "setup-ticket feat-1 exited non-zero"
 fi
 
-# Idempotent re-run: item already in in-progress/, worktree already present.
+# Idempotent re-run: ticket already in in-progress/, worktree already present.
 if run_setup feat-1 > /dev/null; then
     [[ -d "$ROOT/project/worktrees/feat-1" ]] || fail "worktree gone after re-run"
 else
-    fail "idempotent re-run of setup-work-item feat-1 exited non-zero"
+    fail "idempotent re-run of setup-ticket feat-1 exited non-zero"
 fi
 
 # Error path: unknown id must exit non-zero.
 if run_setup ghost-99 > /dev/null 2>&1; then
-    fail "setup-work-item ghost-99 should have exited non-zero"
+    fail "setup-ticket ghost-99 should have exited non-zero"
 fi
 
 if [[ "$failures" -eq 0 ]]; then

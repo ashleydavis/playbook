@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
-// Admit a work item into the implementation stage.
+// Admit a ticket into the implementation stage.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun ../scripts/setup-work-item.ts <id>
+//   bun ../scripts/setup-ticket.ts <id>
 //
 // Performs the two fiddly steps of admission as one atomic, tested operation so
 // the agent never has to compute paths or run `git worktree` by hand:
-//   1. Move work-items/todo/<id>/ -> work-items/in-progress/<id>/.
-//   2. Create a git worktree for the item against the PROJECT repo
+//   1. Move tickets/todo/<id>/ -> tickets/in-progress/<id>/.
+//   2. Create a git worktree for the ticket against the PROJECT repo
 //      (../project) at ../project/worktrees/<id>, on a new branch named
 //      worktrees/<id> based at the project's current HEAD.
 //
@@ -17,9 +17,9 @@
 //
 // Each worktree gets its own branch (worktrees/<id>). Git refuses to check the
 // same branch out in two worktrees, and the project repo already has its branch
-// checked out, so the worktree cannot share it; a per-item branch off the
-// current commit avoids the collision and keeps the item's commits on a named
-// ref. finalize-work-item.ts rebases that branch onto the project branch at
+// checked out, so the worktree cannot share it; a per-ticket branch off the
+// current commit avoids the collision and keeps the ticket's commits on a named
+// ref. finalize-ticket.ts rebases that branch onto the project branch at
 // merge time and deletes it.
 
 import { mkdir, stat } from "node:fs/promises";
@@ -73,19 +73,19 @@ const realGit: GitRunner = async (projectDir, worktreePath, branch) => {
     }
 };
 
-// Core logic: create the item's worktree and admit it into in-progress/.
+// Core logic: create the ticket's worktree and admit it into in-progress/.
 // `stateDir` is the state repo root (the cwd when run via the CLI). `runGit` is
 // injectable for testing; it defaults to the real git invocation.
-export async function setupItem(
+export async function setupTicket(
     id: string,
     stateDir: string,
     runGit: GitRunner = realGit,
 ): Promise<SetupResult> {
     if (!id) {
-        throw new SetupError("missing id: usage: setup-work-item.ts <id>");
+        throw new SetupError("missing id: usage: setup-ticket.ts <id>");
     }
 
-    const workItemsDir = join(stateDir, "work-items");
+    const ticketsDir = join(stateDir, "tickets");
     const projectDir = resolve(stateDir, "..", "project");
     const worktreesDir = resolve(stateDir, "..", "project", "worktrees");
     const worktreePath = join(worktreesDir, id);
@@ -95,7 +95,7 @@ export async function setupItem(
         throw new SetupError(`no project repo at ${projectDir}`);
     }
 
-    // Create the worktree first, so a git failure leaves the item untouched in
+    // Create the worktree first, so a git failure leaves the ticket untouched in
     // todo/ for a clean retry. Skip if it already exists, so a retry after a
     // half-finished run still converges instead of erroring on an existing
     // worktree.
@@ -106,9 +106,9 @@ export async function setupItem(
         worktreeCreated = true;
     }
 
-    // Then admit the item. move() is a no-op when it is already in in-progress/,
+    // Then admit the ticket. move() is a no-op when it is already in in-progress/,
     // so a retry converges rather than failing.
-    const moved = await move(id, "in-progress", workItemsDir);
+    const moved = await move(id, "in-progress", ticketsDir);
 
     return { id, move: moved, worktreePath, worktreeCreated };
 }
@@ -117,35 +117,35 @@ export async function setupItem(
 async function main(argv: string[]): Promise<void> {
     const [id] = argv;
     if (!id) {
-        console.error("usage: setup-work-item.ts <id>");
+        console.error("usage: setup-ticket.ts <id>");
         process.exit(1);
     }
 
     const stateDir = process.cwd();
-    if (!(await exists(join(stateDir, "work-items")))) {
+    if (!(await exists(join(stateDir, "tickets")))) {
         console.error(
-            `no work-items/ directory in ${stateDir}: run from the state repo root`,
+            `no tickets/ directory in ${stateDir}: run from the state repo root`,
         );
         process.exit(1);
     }
 
     try {
-        const result = await setupItem(id, stateDir);
+        const result = await setupTicket(id, stateDir);
         const note = result.worktreeCreated
             ? `worktree ${result.worktreePath}`
             : `worktree ${result.worktreePath} (already existed)`;
         console.log(`admitted ${id}: ${result.move.toPath}, ${note}`);
         // Commit the state change here in main(), not in the exported
-        // setupItem() core, so unit tests stay commit-free; the commit path is
-        // covered by smoke-setup-work-item.sh. The worktree it creates lives in
-        // the project repo and is irrelevant to the state commit. Item-scoped to
-        // the admitted item's old and new dirs. Skip on an idempotent re-run
+        // setupTicket() core, so unit tests stay commit-free; the commit path is
+        // covered by smoke-setup-ticket.sh. The worktree it creates lives in
+        // the project repo and is irrelevant to the state commit. Ticket-scoped to
+        // the admitted ticket's old and new dirs. Skip on an idempotent re-run
         // (the move was a no-op): there is nothing to commit, and the now-gone
         // todo/ pathspec would make `git add` error on a non-matching pathspec.
         if (!result.move.noop) {
             await commitState(stateDir, `admit ${id} to in-progress`, [
-                "work-items/in-progress/" + id,
-                "work-items/todo/" + id,
+                "tickets/in-progress/" + id,
+                "tickets/todo/" + id,
             ]);
         }
     } catch (err) {

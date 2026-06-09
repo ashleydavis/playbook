@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test for scripts/reset-failures.ts driven through its CLI.
 #
-# Builds a throwaway state fixture with an item that already has failures, resets
+# Builds a throwaway state fixture with a ticket that already has failures, resets
 # it with the real CLI, checks the count is 0 in index.md and printed, checks the
 # unknown-id path exits non-zero, then cleans up and prints PASS or FAIL.
 
@@ -25,13 +25,13 @@ cleanup() {
 trap cleanup EXIT
 
 for q in "${QUEUES[@]}"; do
-    mkdir -p "$FIXTURE/work-items/$q"
+    mkdir -p "$FIXTURE/tickets/$q"
 done
-mkdir -p "$FIXTURE/work-items/human-review/demo-1"
+mkdir -p "$FIXTURE/tickets/human-review/demo-1"
 printf '# demo-1\n\n**ID:** demo-1\n**Type:** Feature\n**Failures:** 2\n' \
-    > "$FIXTURE/work-items/human-review/demo-1/index.md"
+    > "$FIXTURE/tickets/human-review/demo-1/index.md"
 
-INDEX="$FIXTURE/work-items/human-review/demo-1/index.md"
+INDEX="$FIXTURE/tickets/human-review/demo-1/index.md"
 
 # Make the state fixture a git repo so reset-failures.ts's auto-commit can run.
 git -C "$FIXTURE" init -q

@@ -24,7 +24,7 @@ TODO: FACTOR OUT THE INTERVIEW PROCESS TO A SEPERATE FILE AND LINK IT INTO EXIST
 TODO: WHY THERE TWO STEPS HERE AND ONE STEP IN THE EXISTING SKILL?
 
 2. Create the project repo at `project/` under the playbook repo by copying [templates/project/](../../../../templates/project/) and filling the placeholders from the interview answers (CLAUDE.md, src/, scripts/, smoke/, e2e/, docs/).
-3. Create the state repo at `state/` under the playbook repo by copying [templates/state/](../../../../templates/state/) (work-items/ queues, current-state.md, and the scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `process.md`).
+3. Create the state repo at `state/` under the playbook repo by copying [templates/state/](../../../../templates/state/) (tickets/ queues, current-state.md, and the scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `process.md`).
 
 TODO: DOES THIS LINE UP WITH WHAT'S REQUESTED IN EXISTING SKILL:  
 
