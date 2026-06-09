@@ -83,7 +83,7 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 
 ## Failures
 
-A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug root cause is not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. Every failure is handled the same way:
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug root cause is not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. An **interruption** is not a failure and is never handled as one: a session or rate limit, the developer stopping the run, or the machine dying cuts the run off from outside and tells you nothing about the ticket, so it is recorded nowhere, counts toward no cap, and blocks no ticket (see [Interruption and resume](#interruption-and-resume)). Every failure is handled the same way:
 
 1. **Record it.** Run `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the ticket's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the ticket carries a complete deterministic record of everything that went wrong.
 2. **Route by count.** Below three, the ticket returns to `todo/` and the loop retries it on a later pass. At three it moves to `blocked/`.
@@ -96,13 +96,25 @@ A single failure never aborts the loop; the run continues with the other tickets
 
 ## Environmental failure
 
-An **environmental failure** is two or more tickets failing the same stage or check in one run. The shared cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help: the run must stop and hand back.
+An **environmental failure** is two or more tickets failing the same stage or check in one run. The shared cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help: the run must stop and hand back. A session or rate limit is **not** an environmental failure even though it can stop several sub-agents at once: nothing about the environment-under-test broke, the run simply ran out of capacity, and the tickets are unharmed (see [Interruption and resume](#interruption-and-resume)).
 
 Handle it in this order:
 
 1. **Reconcile every failed ticket first** (record and route each by count, per **Failures** point 4). Handing back never means leaving a ticket mid-stage.
 2. **Stop launching new work and hand back** to the developer. Never work around it by switching parallel→serial or re-driving tickets by hand.
 3. **Record the cause** in the top `⚠ Needs your action` section of `current-state.md` as a `Run halted: environmental failure` entry naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this entry is the only record of why the run stopped.
+
+## Interruption and resume
+
+An **interruption** is the run being cut off from outside, not a ticket failing: a session or rate limit, the developer stopping the run (`/goal clear`), or the agent or machine dying. The work was fine; it just stopped. An interruption is never an environmental, systemic, or systematic failure.
+
+Handle it like this:
+
+1. **Don't record it.** Never run `fail-ticket.ts` for an interrupted ticket, never increment its `**Failures:**`, never route it to `blocked/`, and never write a `Run halted: environmental failure` entry. An interruption leaves no failure trace, because treating one as a failure would wrongly march an untouched ticket toward the block cap.
+2. **Stop cleanly and leave the queues as they are.** The instant a session or rate limit is hit (the parent's own or a sub-agent's), stop launching new work and hand back. A ticket left mid-stage stays exactly where it is; do not reconcile it as a failure. If the parent still has capacity, it adds a one-line `Run interrupted (session limit); resume with pb:next` note to the top of `current-state.md`; if it doesn't, the queues themselves are the record and `pb:status` shows the in-flight state.
+3. **Resume by re-running `pb:next`** when the developer says to. The queues are the durable state and every script is idempotent, so resuming is simply invoking `pb:next` again: it reads `next-tickets.ts` and continues from the live queue state. A ticket the interruption left mid-stage (in `in-progress/` or `agent-review/`) is **re-driven from where it sits, not failed**: the implement or review sub-agent just redoes that stage into a fresh `evidence/implementation-N/` or `review-N/`. This is the one case where a stranded ticket is re-driven rather than recorded as a failure (contrast the within-turn reconciliation in **Failures** point 4, which only fails strandings left by a sub-agent that returned alive this turn).
+
+The "don't run `pb:next` again until the developer unblocks something" rule is about a **clean** finish, where forward progress is genuinely exhausted. After an interruption the opposite holds: re-running `pb:next` is exactly how the developer resumes.
 
 ## Templates
 

@@ -173,6 +173,12 @@ The loop reconciles every failed ticket first (recording and routing each by its
 
 The cause is recorded as a `Run halted: environmental failure` entry in the top `⚠ Needs your action` section of `current-state.md`, naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
 
+### Interruption and resume
+
+An **interruption** is the run being cut off from outside, not a ticket failing: a session or rate limit, the developer stopping the run, or the agent or machine dying. It is **not** a failure, environmental or otherwise, and is never recorded, counted, or treated as a block: hitting a session limit just means the run ran out of capacity, not that anything is wrong.
+
+When it happens the loop stops launching new work and leaves the queues exactly as they are. The queues are the durable state, so resuming is simply re-running `/pb:next` when the developer chooses: every script is idempotent and the report is the single source of truth, so the run continues from the live queue state, re-driving any ticket the interruption left mid-stage (a fresh evidence pass) rather than failing it. This is the one case where `/pb:next` is re-run before the developer has unblocked anything: an interrupted run is resumed, not restarted.
+
 ## Repository Structure
 
 Three repos: the generic playbook (cloned once per project) plus the two per-project repos nested inside it. The split keeps everything generic (the process, the skills, reusable templates and scripts) in the playbook, while everything project-specific (the code, the queues, the current state, the rules for contributing to the project) stays scoped to its project.
