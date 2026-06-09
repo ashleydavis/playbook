@@ -2,7 +2,6 @@
 
 - Be cool if there are different interviews for different types of projects.
 - Be cool to set the CC status bar to show an overview of current state.
-- Review output of /pb:help
 - /goal doesn't seem to be set for the parent agent by /next
     - Possibly not set for subagents either.
     - Seems like only a human can type the /goal in? That sounds wierd. Needs research.
@@ -13,8 +12,6 @@
 - Agent review doesn't need to run compile or automated tests if there are no code or configuraton 
 changes.
 - How do I make it so that permission are not disabled on the host. But are on the VM?
-- Should "ticket" be renamed to "task" ? I'm not so sure about this, but "task" would be less cumbersome.
-    - Change it to "ticket" !
 - In the review, be able to pick a particular ticket to start with.
 - Feel like I need multiple Claude's open:
     - Planning

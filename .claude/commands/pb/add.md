@@ -9,7 +9,9 @@ Create one structured ticket in `todo/`. For a single, well-understood task. If 
 
 ## Output style
 
-Bullet points, not prose. No preamble. Confirm the ticket in a few lines: ID, Type, one-line description, where it landed.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to add:
+
+- Confirm the ticket in a few lines: ID, Type, one-line description, where it landed.
 
 ## Steps
 

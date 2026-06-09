@@ -27,7 +27,10 @@ The repo layout is fixed and known: `state/` and `project/` are siblings under t
 
 ## Output style
 
-Bullet points, not prose. Report the run as terse lines: each ticket and what happened to it. No preamble, no narrating what you are about to do next. Keep `current-state.md` entries to one or two plain lines each.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to next:
+
+- Report the run as terse lines: each ticket and what happened to it.
+- Keep `current-state.md` entries to one or two plain lines each.
 
 ## Processing order
 

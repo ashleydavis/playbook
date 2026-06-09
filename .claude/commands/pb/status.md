@@ -9,12 +9,11 @@ Read where the project stands and recommend the next move. This is the usual ses
 
 ## Output style
 
-Bullet points, not prose. No preamble, no narration, no explaining the queues or the process.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to status:
 
 - One ticket per bullet: ID + one-line description + what it needs (if anything).
 - Group under the fixed headings below; drop any heading that is empty.
 - The recommendation is one line: the skill to run and why, in a few words.
-- Report the state. Do not editorialise or pad.
 
 ## Steps
 

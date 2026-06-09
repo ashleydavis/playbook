@@ -11,13 +11,11 @@ Walk the developer through the `human-review/` queue. This is the human approval
 
 ## Output style
 
-Bullet points, not prose. Everything you say to the developer is a short list of concrete things to do or look at:
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to review:
 
-- Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**. State the thing, not your intentions.
-- One fact per bullet. No preamble, no narration of what you are about to do, no restating these instructions back to the developer.
 - A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
+- Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**.
 - A ticket summary is at most 3 bullets: what changed, the evidence (test result + screenshot paths), the diff (files touched). Do not retell the History.
-- Never write a paragraph where a list works.
 
 ## Responses
 

@@ -13,6 +13,10 @@ Each "thing" (feature, ticket) is a directory holding two markdown files with st
 
 Default to `index.md`; open `detail.md` on demand.
 
+## Output style
+
+How a skill presents output to the developer is defined once in [output-format.md](output-format.md). Each skill links to it and adds its own local tailoring. Load it on demand (skip if it is already in your context).
+
 ## Setup
 
 Clone the playbook for each project you want to work on. 

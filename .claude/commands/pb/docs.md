@@ -9,7 +9,9 @@ Write or update documentation. Use this for documentation work that is not the d
 
 ## Output style
 
-Bullet points, not prose. No preamble. Report what changed: files updated, tickets queued. One line each.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to docs:
+
+- Report what changed: files updated, tickets queued. One line each.
 
 ## Steps
 

@@ -13,7 +13,10 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
 
 ## Output style
 
-Bullet points, not prose. No preamble. Interview one question at a time. Report results as a short list: repos created, gaps found, tickets queued, next step.
+Follow the project's [output format](../../../../output-format.md) (load it once per session if it is not already in your context). Specific to bootstrap:
+
+- Interview one question at a time.
+- Report results as a short list: repos created, gaps found, tickets queued, next step.
 
 ## Steps
 

@@ -11,7 +11,9 @@ Unwind the loop back to a clean slate after a run was interrupted, or when you w
 
 ## Output style
 
-Bullet points, not prose. No preamble. Show what will be reset as a short list, then report what was reset. Nothing more.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to reset:
+
+- Show what will be reset as a short list, then report what was reset. Nothing more.
 
 ## Steps
 

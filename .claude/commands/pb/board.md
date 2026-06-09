@@ -11,7 +11,10 @@ Use it when you only want to see where tickets are. For "what should I do next?"
 
 ## Output style
 
-Bullet points, not prose. Print the board and nothing else: queue name + count, one line per ticket. No preamble, no summary, no recommendation.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to the board:
+
+- Print the board only: queue name + count, one line per ticket.
+- No summary, no recommendation.
 
 ## Steps
 

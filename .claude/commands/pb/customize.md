@@ -9,7 +9,9 @@ Interactively tune the project's enforced rule set: the files in `docs/rules/`. 
 
 ## Output style
 
-Bullet points, not prose. No preamble. One area at a time: show the current setting, ask, then report the change as one line.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to customize:
+
+- One area at a time: show the current setting, ask, then report the change as one line.
 
 ## Steps
 

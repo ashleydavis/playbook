@@ -13,7 +13,10 @@ If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected 
 
 ## Output style
 
-Bullet points, not prose. No preamble. Answer the question asked, then stop. Keep it scannable; link the deeper docs rather than pasting them.
+Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to help:
+
+- Answer the question asked, then stop.
+- Keep it scannable; link the deeper docs rather than pasting them.
 
 ## The short tour
 
