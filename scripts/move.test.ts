@@ -136,6 +136,19 @@ describe("move()", () => {
         expect(await isDir(join(ticketsDir, "blocked", "stuck-1"))).toBe(false);
     });
 
+    test("aborts a ticket from human-review to the aborted pen", async () => {
+        await makeTicket("human-review", "kill-1");
+
+        const aborted = await move("kill-1", "aborted", ticketsDir);
+        expect(aborted.noop).toBe(false);
+        expect(aborted.from).toBe("human-review");
+        expect(aborted.to).toBe("aborted");
+        expect(await isDir(join(ticketsDir, "aborted", "kill-1"))).toBe(true);
+        expect(await isDir(join(ticketsDir, "human-review", "kill-1"))).toBe(
+            false,
+        );
+    });
+
     test("is a no-op when the ticket is already in the target queue", async () => {
         await makeTicket("agent-review", "ticket-4");
 

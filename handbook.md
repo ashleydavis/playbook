@@ -255,6 +255,7 @@ state/
     merge-queue/      # Approved tickets waiting to merge
     done/             # Completed tickets
     blocked/          # Parked for the developer after a hard/repeated failure (not a pipeline stage)
+    aborted/          # Killed by the developer during pb:review (abandoned, terminal; not a pipeline stage)
 ```
 
 Each queue holds one directory per ticket, named by the ticket's ID. The directory travels between queues as a unit, so the ticket and its evidence always stay together and lands in together in `done/<id>/`:
@@ -299,7 +300,7 @@ Drains the queues as far as possible until human input is required. It sets a to
 
 ### pb:review
 
-The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
+The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). The developer can also **abort** a ticket (`ab`): it moves to `aborted/` with an optional reason in its History, the work is abandoned, and it is dropped from `current-state.md`. A deferred ticket stays in `human-review/` for later. See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
 
 ### pb:debug
 

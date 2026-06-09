@@ -26,6 +26,7 @@ const QUEUES = [
     "merge-queue",
     "done",
     "blocked",
+    "aborted",
 ];
 
 let root: string;

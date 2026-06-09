@@ -46,11 +46,13 @@ Three repos, each a separate concern:
 
 ## Queues
 
-`state/tickets/` has six pipeline queue directories, in order, plus one side pen:
+`state/tickets/` has six pipeline queue directories, in order, plus two side pens:
 
 `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`
 
-`blocked/` is the side pen. It is **not** a pipeline stage: it is where a ticket lands after its third failure (see **Failures**). A blocked ticket is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
+`blocked/` is a side pen. It is **not** a pipeline stage: it is where a ticket lands after its third failure (see **Failures**). A blocked ticket is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
+
+`aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. Unlike a blocked ticket, an aborted ticket is a deliberate, terminal decision: it is **removed from `current-state.md`** entirely (the `aborted/` directory is its only record), its `**Failures:**` count is left untouched, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
 
 The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](.claude/commands/pb/next.md) skill.
 

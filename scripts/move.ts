@@ -12,9 +12,11 @@ import { dirname, join, relative } from "node:path";
 
 import { commitState } from "./commit-state";
 
-// The valid queues. The first six are the pipeline, in order. `blocked` is a
-// side pen, not a pipeline stage: any stage moves a problem ticket here when it
-// needs human attention, and only a human re-admits it (blocked -> todo).
+// The valid queues. The first six are the pipeline, in order. `blocked` and
+// `aborted` are side pens, not pipeline stages. `blocked` is where a stage parks
+// a problem ticket that needs human attention; only a human re-admits it
+// (blocked -> todo). `aborted` is where the developer kills a ticket during
+// pb:review: the work is abandoned and the directory is its terminal record.
 export const QUEUES = [
     "todo",
     "in-progress",
@@ -23,6 +25,7 @@ export const QUEUES = [
     "merge-queue",
     "done",
     "blocked",
+    "aborted",
 ] as const;
 
 export type Queue = (typeof QUEUES)[number];
