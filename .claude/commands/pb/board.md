@@ -15,26 +15,38 @@ Bullet points, not prose. Print the board and nothing else: queue name + count, 
 
 ## Steps
 
-1. List each queue under `state/tickets/`, in pipeline order, then the side pen and recent done:
-   `todo/` -> `in-progress/` -> `agent-review/` -> `human-review/` -> `merge-queue/`, then `blocked/`, then the most recent few entries in `done/`.
-   List a queue with `ls state/tickets/<queue>/`; each directory name is a ticket ID.
-2. For each ticket, show its ID and the one-line description from its `index.md` (read only that line; never pull `detail.md`). Keep it to one line per ticket.
-3. Print the board grouped by queue, with a count beside each queue name. Show empty queues as empty. Do not summarise, recommend a next skill, flag what needs the developer, or read `current-state.md`: that is `pb:status`.
+1. From the state repo, run the board script: `(cd state && bun ../scripts/board-tickets.ts)`. It prints JSON keyed by queue, in board order (`todo`, `in-progress`, `agent-review`, `human-review`, `merge-queue`, then the side pens `blocked` and `aborted`, then `done` most-recent-first). Do not list the queues by hand; do not read `detail.md`.
+2. Each queue value is `{ count, truncated, tickets: [{ id, description, dependsOn }] }`. `count` is the true total; `tickets` is capped at 5 for display; `truncated` is true when the queue holds more than 5. Each `description` is already shortened to one short line (it ends in `…` when cut), so print it as-is.
+3. Print the board grouped by queue, with the `count` beside each queue name. Per ticket: the ID on its own line, then the description indented under it, then a `depends on: <ids>` line indented under it when `dependsOn` is non-empty. Put a blank line after each ticket so the list is easy to scan. Show empty queues as empty. When `truncated` is true, add a `...` line after that queue's tickets to show there are more than displayed.
+4. Do not summarise, recommend a next skill, flag what needs the developer, or read `current-state.md`: that is `pb:status`.
 
 ## Example
 
 ```
 todo (2)
-  search-3   add result ranking
-  search-4   paginate results          (depends on search-3)
+  search-3
+    add result ranking
+
+  search-4
+    paginate results
+    depends on: search-3
+
 in-progress (1)
-  auth-2     session store
+  auth-2
+    session store
+
 agent-review (0)
-human-review (1)
-  auth-1     login endpoint
+human-review (12)
+  auth-1
+    login endpoint
+
+  ... (5 of 12 shown)
 merge-queue (0)
 blocked (1)
-  infra-7    flaky CI worker
+  infra-7
+    flaky CI worker
+
 done (recent)
-  infra-2    CI pipeline
+  infra-2
+    CI pipeline
 ```

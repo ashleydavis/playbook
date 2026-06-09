@@ -6,6 +6,7 @@ The helpers:
 
 - `move.ts <id> <queue>`: move a ticket directory between queues.
 - `next-tickets.ts`: report the tickets each queue the loop drives should act on.
+- `board-tickets.ts`: report the board for `pb:board`: every queue and side pen with its true ticket count plus up to 5 tickets to display (id, description, dependencies), and a `truncated` flag when the queue holds more than 5.
 - `setup-ticket.ts <id>`: admit a ticket: move `todo/<id>` to `in-progress/` and create its worktree against `project/` at `project/worktrees/<id>` (on a new branch `worktrees/<id>` at the project's current commit). This is the only supported way to create a ticket worktree; never run `git worktree` by hand.
 - `finalize-ticket.ts <id>`: merge a ticket's worktree back into the project's current branch (rebase, then fast-forward), remove the worktree, and delete its `worktrees/<id>` branch. On a merge conflict it aborts cleanly, leaves the worktree intact, and exits 2 so the agent can resolve the conflict, commit, and re-run.
 - `fail-ticket.ts <id>`: increment the ticket's `**Failures:**` count in its `index.md` and print the new count. Called on every failure (any source except a human rejection); three failures park the ticket in `blocked/`.
