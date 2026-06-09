@@ -60,6 +60,8 @@ Three repos, each a separate concern:
 
 The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](.claude/commands/pb/next.md) skill.
 
+`human-review/` is worked by `pb:review` as a **review loop**: it lists the reviewable tickets numbered from 1 and asks which to review, the developer picks one by number or name, is walked through it and resolves it (approve, reject, defer, abort), then the numbered list and question return for the next pick. The loop repeats until the developer stops or the queue is empty, so they choose the order and can stop any time. Full procedure in the [pb:review](.claude/commands/pb/review.md) skill.
+
 - Each queue holds one directory per ticket, named by its ID (`todo/<id>/`).
 - The ticket directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the ticket and its evidence stay together end to end and land in `done/<id>/`.
 - List a queue with `ls state/tickets/<queue>/` (e.g. `ls state/tickets/todo/`); the directory names are the IDs, so this shows queue contents without opening files.

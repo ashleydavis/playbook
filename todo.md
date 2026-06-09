@@ -12,7 +12,6 @@
 - Agent review doesn't need to run compile or automated tests if there are no code or configuraton 
 changes.
 - How do I make it so that permission are not disabled on the host. But are on the VM?
-- In the review, be able to pick a particular ticket to start with.
 - Feel like I need multiple Claude's open:
     - Planning
     - Review
