@@ -43,13 +43,13 @@ Anything else the developer types at the inspect menu is treated as a **note** (
 
 The review loop is driven by a **ticket review checklist**. On the **first** time through, snapshot every ticket then in `human-review/` onto the checklist, each one **unchecked**. A ticket is checked off the moment the developer processes it (approve, reject, skip, or abort), and stays checked for the rest of the review loop. The checklist lives only in your context for this one `pb:review` session; it is never written to disk, so a fresh `pb:review` starts every box unchecked again.
 
-Print the checklist **numbered from 1**, in a stable order (unchecked items first, so what is left to do floats to the top), each line showing its box and, once processed, its outcome:
+Print the checklist **numbered from 1**, always in the **original snapshot order** the tickets were captured in. **Never reorder it.** Checked-off tickets keep their original position and number; they do not float to the bottom (or top). The number beside a ticket is fixed for the whole session, so the developer can rely on it. Each line shows its box and, once processed, its outcome:
 
 ```
 Review checklist (1 of 3 done):
-[ ] 1. search-4 — result ranking
-[ ] 2. search-5 — fuzzy matching
-[x] 3. search-3 — debounced search input — approved
+[x] 1. search-3 — debounced search input — approved
+[ ] 2. search-4 — result ranking
+[ ] 3. search-5 — fuzzy matching
 ```
 
 For each one-line summary, **read only each ticket's `index.md`**, which already holds the title and a one-line summary. **Do not read `detail.md` here** (its History and evidence logs run to thousands of lines and must not be slurped).
@@ -172,9 +172,9 @@ Developer: placeholder should say "Search docs".
 - Approve search-3 -> merge-queue/. current-state.md updated.
 
 Review checklist (1 of 3 done):
-[ ] 1. search-4 — result ranking
-[ ] 2. search-5 — fuzzy matching
-[x] 3. search-3 — debounced search input — approved
+[x] 1. search-3 — debounced search input — approved
+[ ] 2. search-4 — result ranking
+[ ] 3. search-5 — fuzzy matching
 
 Which ticket do you want to review?
 
@@ -185,8 +185,8 @@ Developer: ab — not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 
 Review checklist (2 of 3 done):
-[ ] 1. search-4 — result ranking
-[x] 2. search-3 — debounced search input — approved
+[x] 1. search-3 — debounced search input — approved
+[ ] 2. search-4 — result ranking
 [x] 3. search-5 — fuzzy matching — aborted
 
 Which ticket do you want to review?
@@ -199,8 +199,8 @@ Developer: s — come back to it later.
 
 Review checklist (3 of 3 done):
 [x] 1. search-3 — debounced search input — approved
-[x] 2. search-5 — fuzzy matching — aborted
-[x] 3. search-4 — result ranking — skipped
+[x] 2. search-4 — result ranking — skipped
+[x] 3. search-5 — fuzzy matching — aborted
 
 All tickets processed this pass; search-4 (skipped) remains in human-review for next time.
 ```
