@@ -3,8 +3,6 @@ name: pb:next
 description: Invoke to drive the development loop forward without human input: merge any approved tickets, then implement the next batch of up to 10 unblocked tickets through to human review. Run it once and let it drain the queues; you do not run it again until the developer has unblocked something (e.g. by completing reviews). Keywords: next, work next, run the loop, drive the pipeline, implement, merge, drain the queue, autonomous, batch, keep going, do the work.
 ---
 
-STATUS: REVIEWED
-
 # pb:next
 
 Drain every ticket the queues can move without human input. `pb:next` sets a `/goal` for itself and keeps running turns until the queues stop making forward progress, so a single invocation is enough. You do not run it again until the developer has unblocked something (e.g. by completing reviews in `pb:review`). The one exception is an **interruption** (a session or rate limit, or the developer stopping the run): that is not a completion, so the developer re-runs `pb:next` to resume from the live queue state (see **When the run is interrupted** below).

@@ -1,7 +1,5 @@
 # Playbook
 
-STATUS: REVIEWED
-
 This repo contains instructions for a semi-autonomous AI development process. 
 
 Claude Code is launched from the root of this repo and these are your standing instructions for this project.

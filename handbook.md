@@ -1,7 +1,5 @@
 # Handbook
 
-STATUS: REVIEWED
-
 The full, human-facing reference for the semi-autonomous AI development process: how it works and how to use it. The concise version Claude reads at session start is [process.md](process.md); the orientation map of what lives where is [index.md](index.md).
 
 It uses a work queue as the central source of truth, a set of Claude skills to drive each stage, and three repos: a playbook that holds the process and skills, and nested repos for the project (the project repo) and tracking the state of the process (the state repo).

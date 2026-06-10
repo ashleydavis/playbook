@@ -3,8 +3,6 @@ name: pb:bootstrap:new
 description: Invoke once to set up a brand-new greenfield project under this process. Interviews the developer, creates the project repo from templates/project/ and the state repo from templates/state/, writes the initial spec, testing manual, and docs/rules/ rule set, and populates current-state.md with empty queues. Use when there is no existing code yet. Keywords: bootstrap, new project, greenfield, set up, scaffold, start a project, initialise, from scratch, create repos.
 ---
 
-STATUS: REVIEWED
-
 # pb:bootstrap:new
 
 Bootstrap a greenfield project: create both project/ and state/ repos under the playbook repo, where Claude Code is launched, from the playbook templates and seed the docs from an interview. For an existing codebase, use `pb:bootstrap:existing` instead.

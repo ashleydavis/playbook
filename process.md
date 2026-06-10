@@ -1,7 +1,5 @@
 # Process
 
-STATUS: REVIEWED
-
 Read this at session start. This is all the AI needs. [handbook.md](handbook.md) is the full reference for humans; you don't need to read it. Orientation map is [index.md](index.md).
 
 ## Files: index and detail

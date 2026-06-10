@@ -3,8 +3,6 @@ name: pb:help
 description: Invoke when the developer wants to understand this process: what it is, how to bootstrap a project, how to drive work forward, which skills do what, and which queues a ticket travels through. The orientation entry point for someone new to the playbook or coming back to it. Keywords: help, how does this work, how do I use this, getting started, what skills, what queues, explain the process, orientation, where do I start, what does pb:next do, pipeline, onboarding.
 ---
 
-STATUS: NEEDS REVIEW
-
 # pb:help
 
 Orient the developer in this process. Answer their actual question directly, then point them at the next step. Do not just dump the whole reference: lead with what they asked, keep it scannable, and link the deeper docs ([process.md](../../../process.md), [handbook.md](../../../handbook.md), [index.md](../../../index.md)) for detail.

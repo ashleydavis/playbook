@@ -1,7 +1,5 @@
 # Playbook Index
 
-STATUS: REVIEWED
-
 A compact orientation map: what lives where across the playbook and a project's project/state repos. Read when looking something up; read the handbook for full detail.
 
 ## In this playbook

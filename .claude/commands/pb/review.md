@@ -3,8 +3,6 @@ name: pb:review
 description: "Invoke when there are tickets in human-review/ waiting for the developer to approve, reject, skip, or abort. Walks the developer through each ticket (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, and moves the ticket to merge-queue/ on approval, back to todo/ on rejection, to aborted/ on abort, or leaves it in human-review/ when skipped. Keywords: review, human review, approve, reject, abort, kill, abandon, drop, come back later, skip, walk me through, sign off, check the work, review queue, code review, accept changes."
 ---
 
-STATUS: NEEDS REVIEW
-
 # pb:review
 
 Walk the developer through the `human-review/` queue. This is the human approval gate: the one point in the loop where a person decides.

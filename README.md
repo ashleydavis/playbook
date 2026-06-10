@@ -1,7 +1,5 @@
 # Playbook
 
-STATUS: REVIEWED
-
 Playbook is a semi-autonomous AI development process centered around human planning and review. The human does the planning, the AI does the work (many tasks in parallel, implementation, testing, docs updates, etc), the human does review and testing.
 
 This repo describes the development process and has skills that the human uses to drive development forward.
