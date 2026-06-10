@@ -1,6 +1,6 @@
 # scripts/
 
-This directory is a small, self-contained Bun project that supports the Playbook process. It holds the only executable code in the repo: the TypeScript helpers that drive the ticket queues (`move.ts`, `next-tickets.ts`, `setup-ticket.ts`, `finalize-ticket.ts`), their Jest unit tests, and their bash smoke tests.
+This directory is a small, self-contained Bun project that supports the Playbook process. It holds the only executable code in the repo: the TypeScript helpers that drive the ticket queues (`move.ts`, `next-tickets.ts`, `setup-ticket.ts`, `merge-ticket.ts`), their Jest unit tests, and their bash smoke tests.
 
 The helpers:
 
@@ -8,13 +8,13 @@ The helpers:
 - `next-tickets.ts`: report the tickets each queue the loop drives should act on.
 - `board-tickets.ts`: report the board for `pb:board`: every queue and side pen with its true ticket count plus up to 5 tickets to display (id, description, dependencies), and a `truncated` flag when the queue holds more than 5.
 - `setup-ticket.ts <id>`: admit a ticket: move `todo/<id>` to `in-progress/` and create its worktree against `project/` at `project/worktrees/<id>` (on a new branch `worktrees/<id>` at the project's current commit). This is the only supported way to create a ticket worktree; never run `git worktree` by hand.
-- `finalize-ticket.ts <id>`: merge a ticket's worktree back into the project's current branch (rebase, then fast-forward), remove the worktree, and delete its `worktrees/<id>` branch. On a merge conflict it aborts cleanly, leaves the worktree intact, and exits 2 so the agent can resolve the conflict, commit, and re-run.
+- `merge-ticket.ts <build|land|discard> ...`: merge approved tickets as one **train** so the post-merge checks run once on the combined result, not once per ticket. `build <id> [<id> ...]` creates a throwaway `merge-<random>` train worktree and cherry-picks each ticket's commits onto it (printing JSON with the `trainId`, `included`, and `noops`); on a conflict it aborts that pick, leaves the clean ones, and exits 2 naming the offending ticket. `land <trainId> <id> ...` fast-forwards the project branch to the train, moves each ticket from `merge-queue/` to `done/` (committing that transition), and tears down the train and ticket worktrees. `discard <trainId>` tears down a failed train (leaving the ticket worktrees) so the agent can rebuild a smaller one while bisecting. Never run `git worktree` or the merge by hand.
 - `fail-ticket.ts <id>`: increment the ticket's `**Failures:**` count in its `index.md` and print the new count. Called on every failure (any source except a human rejection); three failures park the ticket in `blocked/`.
 - `reset-failures.ts <id>`: reset the ticket's `**Failures:**` count to 0. Called by `pb:review` when a human rejects a ticket back to `todo/`, so rework starts with a clean slate (a rejection is not a failure).
 - `reset-loop.ts`: unwind an interrupted or abandoned run back to a clean slate. Moves every `in-progress/` ticket back to `todo/`, then force-removes every worktree under `project/worktrees/`, deletes its `worktrees/<id>` branch, and prunes stale worktree records. Discards unmerged work; does not merge. Called by `pb:reset`.
 - `commit-state.ts <message> [pathspec...]`: commit a change in the state repo (ticket-scoped and lock-safe) so its git history is an audit log. Used by agents for free-form edits (a `current-state.md` update, a newly created ticket); skips with a warning if the state repo is not a git repo.
 
-`move`, `setup-ticket`, `fail-ticket`, and `reset-failures` now commit their own state change automatically (ticket-scoped, lock-safe) via `commit-state.ts`, so concurrent `pb:next` sub-agents never produce a muddled cross-ticket commit. `finalize-ticket` does not commit the state repo: the agent's follow-up `move <id> done` commits that transition.
+`move`, `setup-ticket`, `fail-ticket`, `reset-failures`, and `merge-ticket land` now commit their own state change automatically (ticket-scoped, lock-safe) via `commit-state.ts`, so concurrent `pb:next` sub-agents never produce a muddled cross-ticket commit. `merge-ticket land` commits the `merge-queue/` → `done/` moves of the tickets it lands; its `build` and `discard` touch only the project repo and commit nothing.
 
 It is deliberately kept separate from the scaffolded `project/` so the Playbook's own tooling and its Jest run never sweep up an app's tests.
 

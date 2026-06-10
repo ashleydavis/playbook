@@ -46,7 +46,7 @@ A failure is any setback from any source: a sub-agent times out or exhausts its 
 - **Never invent a recovery.** Do not switch from parallel to serial, do not re-drive a failed ticket by hand outside this retry path, do not loop a broken batch through slowly. A failure is recorded and surfaced, not absorbed. Slow-but-grinding for hours is itself a failure to report.
 - **Tell the developer.** Record every block, environmental failure, and broken-main situation in the top `⚠ Needs your action` section of `current-state.md`, naming the ticket and the one-line reason. That section leads the file so it is the first thing the developer sees, directly or via `pb:status`.
 
-The one exception is a **broken main**: if a merge lands on main but its post-merge checks then fail, the ticket still goes to `todo/` (not `blocked/`) so fixing main stays actionable, the failure is recorded as above, and the run stops because every later ticket builds on main.
+The one exception is a **broken main**: a merge train lands only after its checks pass on the train (which becomes main verbatim on the fast-forward), so a clean run never breaks main. If a later check on main fails anyway (a flaky or environmental check), the landed tickets are already merged and stay **done** (a merge cannot be undone). Record the broken main, surface it in the top `⚠ Needs your action` section of `current-state.md`, and stop the run because every later ticket builds on main; fixing main is new work (a fresh ticket), not a reopening of the done tickets.
 
 ## When the run is interrupted
 
@@ -89,17 +89,24 @@ Sufficient means enough that the developer can confirm every part of the goal fr
 
 2. Each turn, work the queues in processing order (**`merge-queue` → `agent-review` → `todo` → `in-progress`**; see Processing order above). **Begin every step by re-running `bun ../scripts/next-tickets.ts`**, because an earlier step may have moved tickets into this step's queue (the todo step feeds `in-progress`). It is cheap and deterministic, so always act on a freshly generated report, never a stale one:
 
-   1. **Run the report, then process its `merge-queue` list first.** For each ID, spawn a sub-agent with:
+   1. **Run the report, then merge its whole `merge-queue` list as one train.** If `merge-queue` is non-empty, spawn a single merge sub-agent (not one per ticket) with:
 
       ```
-      /goal <id> is merged into main and its directory is in done/, with every post-merge check (compile, lint, unit, smoke, e2e) passing on main and the evidence required by Verification and Evidence captured to evidence/merge/. Or stop after 15 turns.
+      /goal Every ticket the report listed in merge-queue/ is resolved: either merged into main and moved to done/ with the post-merge checks captured to its evidence/merge/, or dropped back to todo/ (blocked/ at the third failure) as a failure because it conflicts or breaks the suite. No train worktree is left behind. Or stop after 20 turns.
       ```
 
-      The sub-agent merges with `bun ../scripts/finalize-ticket.ts <id>` (run from `state/`), which rebases the ticket's worktree onto the project's current branch, fast-forwards the merge, and removes the worktree. **Never run `git worktree` or the merge by hand**; the script resolves the paths and handles the cleanup. Its exit status drives what happens next:
-      - **Conflict** (exit 2): the script aborts cleanly and leaves the worktree intact. The sub-agent resolves the conflict in the worktree (merge main in, fix the conflicted files, commit per the commit template), then re-runs `finalize-ticket.ts <id>`. If it cannot resolve the conflict, handle it as a failure (see **When anything fails**): record it and route the ticket by its count, leaving main untouched.
-      - **Merged** (exit 0): the changes are on the project's branch now and the worktree is gone, but the ticket directory is still in `merge-queue/`. **While it is still in `merge-queue/`**, the sub-agent runs the post-merge checks (fixing any failures on main, committing each fix per the commit template, until they pass), captures their output to `evidence/merge/`, and writes the merge History note. Only then, as its final step, does it move the ticket to `done/` with `move.ts`. This ordering is deliberate and matches the write-before-move invariant used at every other stage: the post-merge evidence can only be generated *after* the merge lands, so the move must come *after* the evidence is on disk, letting `move.ts`'s ticket-scoped commit sweep up the evidence and History along with the transition. Moving to `done/` first (as an earlier version of this skill said) commits the directory before the evidence exists, leaving the post-merge `evidence/merge/` and History note with no commit behind them.
+      The sub-agent merges the batch with one tool, `bun ../scripts/merge-ticket.ts` (run from `state/`), which stacks the tickets onto a single throwaway **train** worktree so the post-merge checks run **once** on the combined result instead of once per ticket. **Never run `git worktree`, the merge, or the `done/` move by hand**; the script resolves the paths, lands the merge, moves each ticket to `done/`, and cleans up. The flow:
 
-      Problem (timeout or exhausted budget): if the merge never happened (the ticket is still in `merge-queue/`, main is clean), handle it as a failure (see **When anything fails**) and carry on with the rest. If the merge happened but the post-merge checks did not all pass, the changes are on main and may have broken it: record the failure, move the ticket to `todo/` so fixing main stays actionable (the broken-main exception), note it in `current-state.md`, and stop the run because every later ticket builds on main. The developer resolves it before invoking `pb:next` again.
+      1. **Build the train.** `merge-ticket.ts build <id> [<id> ...]` with every merge-queue ID, in the report's order. It creates the train worktree and cherry-picks each ticket's own commits onto it, printing a JSON result with the `trainId` and what was `included` / `noops`.
+         - **Built** (exit 0): every ticket stacked cleanly. Go to step 2.
+         - **Conflict** (exit 2): the JSON names the offending ticket (`conflict.ticket`). A ticket that will not apply onto current main is handled as a failure (see **When anything fails**): record it with `fail-ticket.ts`, write its History note, and route it by count (back to `todo/`, or `blocked/` at the third failure). Then `merge-ticket.ts discard <trainId>` and rebuild the train from the remaining IDs. Repeat until the train builds clean. (This replaces in-worktree conflict resolution: a conflicting ticket is reworked on a later pass against the new main, where the conflict is usually gone.)
+      2. **Run the post-merge checks once, on the train.** In the train worktree, run every post-merge check (compile, lint, unit, smoke, e2e) fresh in the foreground per the Verification and Evidence rule, and read the full output. The train tip is exactly what becomes main (the land is a fast-forward), so this single run is the post-merge evidence for every ticket on the train.
+         - **All pass:** write each landed ticket's `evidence/merge/` (the shared check output) and merge History note into its `merge-queue/<id>/` directory **before** landing, then land with `merge-ticket.ts land <trainId> <id> ...` (the train's IDs). The script fast-forwards main, moves each ticket from `merge-queue/` to `done/`, commits that transition (sweeping up the evidence and History written first), and tears down the train and the ticket worktrees. Writing evidence before the land keeps the write-before-move invariant: the move's commit captures it.
+         - **A check fails:** bisect to find the breaking ticket. `discard` the train and rebuild smaller trains over the ID list (binary search: build one half, test it, narrow to the half that fails) until a single ticket is identified as the breaker. Handle that ticket as a failure (record with `fail-ticket.ts`, History note, route by count), then rebuild the train from the remaining IDs and test again. Repeat until the train is green, then land it as above. Each dropped ticket is reworked on a later pass.
+
+      Once main has moved it cannot be un-merged, so a landed ticket is **done** even if a later check on main fails (the broken-main case below). The train worktree must be gone before the sub-agent returns (`discard` any it abandoned).
+
+      Problem (timeout or exhausted budget): if no train ever landed (main is unchanged, every ticket still in `merge-queue/`), handle each as a failure (see **When anything fails**) and carry on. If a train landed but a later check on main then fails, those tickets are already merged and stay **done**: record the broken main, surface it in `current-state.md`, and stop the run because every later ticket builds on main (the broken-main exception in **When anything fails**). The developer resolves it before invoking `pb:next` again.
 
    2. **Run the report, then for each ID in its `agent-review` list,** spawn a sub-agent with:
 
@@ -150,7 +157,10 @@ Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
 
 ```
 /goal set for the loop.
-merge-queue/: empty.
+merge-queue/: 2 approved tickets (search-1, search-2). One merge sub-agent:
+  -> merge-ticket.ts build search-1 search-2 -> train built clean.
+  -> post-merge checks run once on the train -> all pass.
+  -> merge-ticket.ts land -> both fast-forwarded onto main, moved to done/, worktrees torn down.
 agent-review/: empty.
 todo/: 3 unblocked tickets (search-3, search-4, infra-5). Took all 3.
   -> moved to in-progress/, worktrees created.

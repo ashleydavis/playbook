@@ -27,7 +27,7 @@ import { join } from "node:path";
 // Injectable git runner: takes the cwd to run in and the argv after `git`, and
 // returns the captured result. The unit test passes a scripted fake; the smoke
 // test uses the real one against a throwaway repo. Mirrors the runner in
-// finalize-ticket.ts.
+// merge-ticket.ts.
 export type GitRunner = (
     cwd: string,
     args: string[],

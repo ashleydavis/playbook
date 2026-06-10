@@ -661,6 +661,6 @@ What the VM contains is command execution: a reckless command hits the VM's own 
 
 This applies to both repos, by two distinct mechanisms:
 
-- **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `finalize-ticket.ts` rebases and merges that worktree back onto the project branch.
+- **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `merge-ticket.ts` stacks the approved worktrees onto one train worktree and fast-forwards them onto the project branch together.
 - **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a failure recorded, a failure reset, a ticket created, a `current-state.md` update) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted.
 
