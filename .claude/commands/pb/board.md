@@ -18,7 +18,7 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 
 ## Steps
 
-1. From the state repo, run the board script: `(cd state && bun ../scripts/board-tickets.ts)`. It prints JSON keyed by queue, in board order (`todo`, `in-progress`, `agent-review`, `human-review`, `merge-queue`, then the side pens `blocked` and `aborted`, then `done` most-recent-first). Do not list the queues by hand; do not read `detail.md`.
+1. From the state repo, run the board script: `(cd state && bun ../scripts/board-tickets.ts)`. It prints JSON keyed by queue, in board order (`todo`, `in-progress`, `agent-review`, `human-review`, `merge-queue`, then the side pen `blocked`, then `done` most-recent-first). Aborted tickets are a dead end and are deliberately left off the board. Do not list the queues by hand; do not read `detail.md`.
 2. Each queue value is `{ count, truncated, tickets: [{ id, description, dependsOn }] }`. `count` is the true total; `tickets` is capped at 5 for display; `truncated` is true when the queue holds more than 5. Each `description` is already shortened to one short line (it ends in `…` when cut), so print it as-is.
 3. Print the board grouped by queue, with the `count` beside each queue name. Per ticket: the ID on its own line, then the description indented under it, then a `depends on: <ids>` line indented under it when `dependsOn` is non-empty. Put a blank line after each ticket so the list is easy to scan. Show empty queues as empty. When `truncated` is true, add a `...` line after that queue's tickets to show there are more than displayed.
 4. Do not summarise, recommend a next skill, flag what needs the developer, or read `current-state.md`: that is `pb:status`.

@@ -17,7 +17,8 @@
 //
 // Every queue is capped at DISPLAY_LIMIT tickets for display so a huge backlog
 // never floods the board; the count field still reports the true total. Queues
-// are listed in pipeline order, then the side pens (blocked, aborted), then done.
+// are listed in pipeline order, then the side pen (blocked), then done. Aborted
+// tickets are a dead end, so the board does not show them.
 // done/ is ordered most-recent-first (by directory mtime); every other queue is
 // ordered by ticket ID.
 
@@ -27,7 +28,8 @@ import { join } from "node:path";
 import { parseDependsOn } from "./next-tickets";
 
 // Every queue and side pen the board shows, in display order: the pipeline
-// queues first, then the side pens, then recently completed work.
+// queues first, then the side pen, then recently completed work. Aborted
+// tickets are a dead end and are deliberately left off the board.
 export const QUEUES = [
     "todo",
     "in-progress",
@@ -35,7 +37,6 @@ export const QUEUES = [
     "human-review",
     "merge-queue",
     "blocked",
-    "aborted",
     "done",
 ] as const;
 
