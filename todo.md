@@ -17,4 +17,3 @@ changes.
     - Review
     - Work
     - If I do this will they corrupt each others state?
-- In the "inspect loop" is there a way to check off the ones the developer has already one?
