@@ -39,15 +39,31 @@ Anything else the developer types at the inspect menu is treated as a **note** (
 
 ## Steps
 
-### 1. List, numbered, and ask
+### 1. List as a checklist, and ask
 
-List the tickets in `human-review/`, **numbered from 1**. For the one-line summary, **read only each ticket's `index.md`**, which already holds the title and a one-line summary. **Do not read `detail.md` here** (its History and evidence logs run to thousands of lines and must not be slurped). Number every reviewable ticket (`1.`, `2.`, ...) so the developer can select by number.
+The review loop is driven by a **ticket review checklist**. On the **first** time through, snapshot every ticket then in `human-review/` onto the checklist, each one **unchecked**. A ticket is checked off the moment the developer processes it (approve, reject, skip, or abort), and stays checked for the rest of the review loop. The checklist lives only in your context for this one `pb:review` session; it is never written to disk, so a fresh `pb:review` starts every box unchecked again.
+
+Print the checklist **numbered from 1**, in a stable order (unchecked items first, so what is left to do floats to the top), each line showing its box and, once processed, its outcome:
+
+```
+Review checklist (1 of 3 done):
+[ ] 1. search-4 — result ranking
+[ ] 2. search-5 — fuzzy matching
+[x] 3. search-3 — debounced search input — approved
+```
+
+For each one-line summary, **read only each ticket's `index.md`**, which already holds the title and a one-line summary. **Do not read `detail.md` here** (its History and evidence logs run to thousands of lines and must not be slurped).
 
 Then **immediately ask: "Which ticket do you want to review?"** Do not offer or wait for a yes/no; go straight to the question. Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
 
+Selection rules:
+- An **unchecked** ticket: walk through it (Step 2).
+- A **skipped** ticket (checked, still in `human-review/`): the developer may reselect it to look again or resolve it now.
+- An **approved/rejected/aborted** ticket (checked, gone from `human-review/`): tell the developer it is already resolved and reprint the checklist; do not reopen it.
+
 Delay the deep read: `detail.md` (History, Issues, acceptance criteria) and the `evidence/` tree for a given ticket are only read in Step 2, lazily, when the developer selects that ticket, never all up front.
 
-If the developer stops (`q`/`quit`/`stop`), or no reviewable tickets remain, end the review loop here.
+End the review loop when the developer stops (`q`/`quit`/`stop`), or when **every box is checked**. When all boxes are checked, say so plainly (e.g. "All tickets processed this pass; skipped ones remain in human-review for next time") so the developer knows the pass is exhausted.
 
 ### 2. Walk through the chosen ticket
 
@@ -110,15 +126,17 @@ The `move.ts` (approve/skip-then-later/abort) and `reset-failures.ts` + `move.ts
 
 Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright), leaving the rest of its existing content intact. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
-Once the ticket is resolved, **return to the review loop**: go back to Step 1, print the numbered list of the remaining reviewable tickets, and ask "Which ticket do you want to review?" again. A skipped ticket stays in `human-review/` and so reappears in the list; an approved, rejected, or aborted ticket has left the queue and is gone from it. Keep looping until the developer stops or the list is empty.
+Whatever the outcome, **check the ticket off the review checklist** and record its outcome against it (approved, rejected, skipped, or aborted). All four outcomes check the box: resolving it or deferring it both count as processed.
+
+Once the ticket is checked off, **return to the review loop**: go back to Step 1, reprint the checklist (every processed ticket now shown checked with its outcome, the rest unchecked), and ask "Which ticket do you want to review?" again. A skipped ticket stays in `human-review/` and remains selectable; an approved, rejected, or aborted ticket has left the queue and cannot be reopened. Keep looping until the developer stops or every box is checked.
 
 ## Example
 
 ```
-Tickets in human-review:
-1. search-3 — debounced search input
-2. search-4 — result ranking
-3. search-5 — fuzzy matching
+Review checklist (0 of 3 done):
+[ ] 1. search-3 — debounced search input
+[ ] 2. search-4 — result ranking
+[ ] 3. search-5 — fuzzy matching
 
 Which ticket do you want to review?
 
@@ -153,9 +171,10 @@ Developer: placeholder should say "Search docs".
 - Note -> search/detail.md behaviour; follow-up todo/search-6 (placeholder copy).
 - Approve search-3 -> merge-queue/. current-state.md updated.
 
-Tickets in human-review:
-1. search-4 — result ranking
-2. search-5 — fuzzy matching
+Review checklist (1 of 3 done):
+[ ] 1. search-4 — result ranking
+[ ] 2. search-5 — fuzzy matching
+[x] 3. search-3 — debounced search input — approved
 
 Which ticket do you want to review?
 
@@ -165,11 +184,23 @@ search-5 — fuzzy matching
 Developer: ab — not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 
-Tickets in human-review:
-1. search-4 — result ranking
+Review checklist (2 of 3 done):
+[ ] 1. search-4 — result ranking
+[x] 2. search-3 — debounced search input — approved
+[x] 3. search-5 — fuzzy matching — aborted
 
 Which ticket do you want to review?
 
-Developer: q
-- Review loop ended. search-4 left in human-review.
+Developer: s
+
+search-4 — result ranking
+Developer: s — come back to it later.
+- Skipped. Left in human-review.
+
+Review checklist (3 of 3 done):
+[x] 1. search-3 — debounced search input — approved
+[x] 2. search-5 — fuzzy matching — aborted
+[x] 3. search-4 — result ranking — skipped
+
+All tickets processed this pass; search-4 (skipped) remains in human-review for next time.
 ```
