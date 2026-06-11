@@ -29,6 +29,7 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 
 - Report the run as terse lines: each ticket and what happened to it.
 - Keep `current-state.md` entries to one or two plain lines each.
+- **Always write ticket IDs in full** (`performance-tabs-4`, not `-4` or `pt-4`), in both the run report and `current-state.md`. A leading-hyphen shorthand reads as a negative number; never abbreviate, truncate, or drop the feature prefix from an ID.
 
 ## Processing order
 
