@@ -144,6 +144,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:add` | Create a ticket in `todo/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |
 | `pb:review` | Walk the developer through `human-review/` |
+| `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
 | `pb:customize` | Tune the project's enforced rules in `docs/rules/` |
 | `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |
