@@ -1,6 +1,6 @@
 ---
 name: pb:add
-description: Invoke when you want to queue a single, already-understood piece of work without planning a whole feature. Collects the ticket's details from the developer and writes a structured ticket into todo/. Use for a known fix, chore, or small change. Keywords: add ticket, queue a task, new ticket, file a ticket, todo, known fix, chore, quick task, add to queue.
+description: "Invoke when you want to queue a single, already-understood piece of work without planning a whole feature. Collects the ticket's details from the developer and writes a structured ticket into todo/. Use for a known fix, chore, or small change. Keywords: add ticket, queue a task, new ticket, file a ticket, todo, known fix, chore, quick task, add to queue."
 ---
 
 # pb:add
@@ -15,8 +15,8 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 
 ## Steps
 
-1. Ask the developer for the ticket's details: description, acceptance criteria, test plan, dependencies, and type.
-2. Create the ticket directory `state/tickets/todo/<id>/` with two files, following the Ticket Format (see the handbook): a brief `index.md` (ID, Type, Depends on, one-line description) and a full `detail.md` (Description, Acceptance Criteria, Test Plan, Notes, History). The directory name must equal the `**ID:**` declared in `index.md` (the source of truth). Acceptance criteria are always required; a Test Plan is required but may be `N/A: <reason>` paired with a Manual Verification section for tickets with no testable behaviour (these live in `detail.md`). Then commit the new ticket to the state repo: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
+1. Ask the developer for the ticket's details: description, acceptance criteria, test plan, **implementation notes** (how to build it: approach, constraints, files likely involved, gotchas), **testing notes** (how to test it: what to verify, edge cases, manual steps, data or fixtures needed), dependencies, and type. Implementation notes and testing notes are captured when the developer has something to add; leave them empty if they do not.
+2. Create the ticket directory `state/tickets/todo/<id>/` with two files, following the Ticket Format (see the handbook): a brief `index.md` (ID, Type, Depends on, one-line description) and a full `detail.md` (Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History). The directory name must equal the `**ID:**` declared in `index.md` (the source of truth). Acceptance criteria are always required; a Test Plan is required but may be `N/A: <reason>` paired with a Manual Verification section for tickets with no testable behaviour (these live in `detail.md`). Then commit the new ticket to the state repo: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 3. Update `current-state.md` to reflect the new ticket: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example
@@ -34,4 +34,6 @@ Created todo/auth-9/detail.md (full body):
   **Description:** Disable the login button while the auth request is pending.
   **Acceptance Criteria:** Button is disabled on submit, re-enabled on response or error.
   **Test Plan:** Unit test the disabled state; smoke test a double-submit does not fire two requests.
+  **Implementation Notes:** The button lives in LoginForm; gate it on the existing `pending` flag.
+  **Testing Notes:** Cover the error path too (button must re-enable when the request fails).
 ```

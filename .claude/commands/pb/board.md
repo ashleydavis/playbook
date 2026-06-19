@@ -1,6 +1,6 @@
 ---
 name: pb:board
-description: Invoke for a quick, bare listing of every ticket queue and what sits in each, without the narrative or recommendation that pb:status gives. Lists the IDs (and one-line descriptions) in todo, in-progress, agent-review, human-review, merge-queue, blocked, and the most recent in done. Use when you just want to see the board. Keywords: board, list queues, ls queues, show the board, queue contents, what's in the queue, list tickets, kanban, quick list, where are the tickets.
+description: "Invoke for a quick, bare listing of every ticket queue and what sits in each, without the narrative or recommendation that pb:status gives. Lists the IDs (and one-line descriptions) in todo, in-progress, agent-review, human-review, merge-queue, blocked, and the most recent in done. Use when you just want to see the board. Keywords: board, list queues, ls queues, show the board, queue contents, what's in the queue, list tickets, kanban, quick list, where are the tickets."
 ---
 
 # pb:board

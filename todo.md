@@ -2,9 +2,6 @@
 
 - Be cool if there are different interviews for different types of projects.
 - Be cool to set the CC status bar to show an overview of current state.
-- /goal doesn't seem to be set for the parent agent by /next
-    - Possibly not set for subagents either.
-    - Seems like only a human can type the /goal in? That sounds wierd. Needs research.
 - I still need planning!
     - So official support for new plans, done plans. Each plan should be a sequence of tickets that can be scheduled at a later date.
     - The thing is to check how much of the plan is still relevant given that code and docs might have changed since the plan was created.
@@ -17,4 +14,4 @@ changes.
     - Review
     - Work
     - If I do this will they corrupt each others state?
-- Be good to have a hold queue to keep stuff tmp.
+- Be good to have a hold queue to keep stuff tmp

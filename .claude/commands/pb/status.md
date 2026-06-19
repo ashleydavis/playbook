@@ -1,6 +1,6 @@
 ---
 name: pb:status
-description: Invoke at session start, or any time you want to know where the project stands and what to do next. Reads current-state.md and inspects every ticket queue, then summarises what was completed, what is in flight or awaiting review, and what is blocked, and recommends the next skill. Keywords: status, where things stand, what next, catch up, current state, queue summary, in flight, blocked, recommend a skill, session start, what should I do.
+description: "Invoke at session start, or any time you want to know where the project stands and what to do next. Reads current-state.md and inspects every ticket queue, then summarises what was completed, what is in flight or awaiting review, and what is blocked, and recommends the next skill. Keywords: status, where things stand, what next, catch up, current state, queue summary, in flight, blocked, recommend a skill, session start, what should I do."
 ---
 
 # pb:status

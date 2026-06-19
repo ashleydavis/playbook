@@ -93,7 +93,7 @@ New to the process? Run `/pb:help`.
 
 ## The Development Loop
 
-The loop has a simple rhythm: check where things stand, run a skill that prompts you through the substantive work (planning, reviewing, testing, reading docs, exploring the UI, etc.), then repeat. The skill is what gets invoked, but most of the actual work happens outside Claude. The skills and goals keep Claude on the rails.
+The loop has a simple rhythm: check where things stand, run a skill that prompts you through the substantive work (planning, reviewing, testing, reading docs, exploring the UI, etc.), then repeat. The skill is what gets invoked, but most of the actual work happens outside Claude. The skills and ticket completion criteria keep Claude on the rails.
 
 `current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
 
@@ -300,7 +300,7 @@ Creates one structured ticket in `todo/` for a single, well-understood task. See
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It sets a top-level `/goal`, then each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its goal is met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage goal text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### pb:review
 
@@ -357,7 +357,7 @@ The path for "something is broken, find out why." The rule is **no fix without a
 
 ### pb:customize
 
-Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review goal reads the whole directory, anything captured here is enforced on every ticket from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
+Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review stage reads the whole directory, anything captured here is enforced on every ticket from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
 
 ## Templates
 
@@ -464,7 +464,7 @@ The ticket's ID is declared inside `index.md` in an `**ID:**` field; the directo
 
 Because the directory name mirrors the ID, listing a queue directory enumerates the IDs of every ticket in that queue without opening any file. This plays the same role for tickets that index files play for features: the full set of IDs is discoverable cheaply.
 
-The ticket's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, a `**Failures:**` count (see [Handling Failures](#handling-failures)), and a one-line description (no status field, since the queue the ticket sits in is its status). The ticket's `detail.md` carries the full ticket: Description, Acceptance Criteria, Test Plan, Notes, and History sections. For a Debug ticket, the root-cause write-up lives in `detail.md`. The full shape is in [templates/ticket-template/](templates/ticket-template/) (its `index.md` and `detail.md`).
+The ticket's `index.md` is brief: it carries `**ID:**`, `**Type:**`, an optional `**Depends on:**`, a `**Failures:**` count (see [Handling Failures](#handling-failures)), and a one-line description (no status field, since the queue the ticket sits in is its status). The ticket's `detail.md` carries the full ticket: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, and History sections. For a Debug ticket, the root-cause write-up lives in `detail.md`. The full shape is in [templates/ticket-template/](templates/ticket-template/) (its `index.md` and `detail.md`).
 
 Rules:
 - The work agent must refuse to implement a ticket that is missing acceptance criteria.
@@ -501,13 +501,13 @@ Sub-agents update this file whenever a ticket changes queue or something signifi
 
 #### Rule set: `docs/rules/`
 
-The project's enforced rules live in `docs/rules/`. The agent-review goal (see `/pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview fills in the starting rules; `/pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no goal edit needed.
+The project's enforced rules live in `docs/rules/`. The agent-review stage (see `/pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview fills in the starting rules; `/pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no skill edit needed.
 
 The directory ships with three rule files plus a `README.md`, all in [templates/project/docs/rules/](templates/project/docs/rules/); projects add more as needed:
 
 - `coding-style.md`: project-specific style (naming, formatting, file layout, idioms) filled in during bootstrap, plus the default minimalism rules (keep it minimal, minimise complexity, don't overengineer, keep it as simple as possible) that ship with every project.
 - `testing.md`: which kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows), coverage expectations, and how to run each suite. Filled in during bootstrap and revised with `/pb:customize`.
-- `documentation.md`: which documents the project requires beyond the always-required set (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`), and the rules for keeping them current. The agent-review goal checks this file, so a required doc that is missing or stale fails review.
+- `documentation.md`: which documents the project requires beyond the always-required set (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`), and the rules for keeping them current. The agent-review stage checks this file, so a required doc that is missing or stale fails review.
 
 ### process.md (playbook)
 
@@ -537,7 +537,7 @@ Checks run inside the `/pb:next` sub-agents, in the ticket's worktree, never aga
 
 - The **implement** and **merge** sub-agents run the deterministic checks (compile, lint, the test suites) and capture their output.
 - The **agent-review** sub-agent is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
-- The **goal evaluator** re-checks after every turn and requires the evidence on disk, so neither kind of check can be claimed on confidence.
+- The **parent's end-of-turn reconciliation** re-checks the queues every turn, and each ticket's completion criteria require the evidence on disk, so neither kind of check can be claimed on confidence.
 - The **developer** sees the same evidence in `/pb:review` and can re-run or re-judge any of it.
 
 ### What a check result records
@@ -565,7 +565,7 @@ Debug and Fix tickets vary step 4 (see `/pb:debug`).
 
 ## Verification and Evidence
 
-A claim of "done" must be supported by evidence. Before any agent claims a check passes, it runs the check fresh, reads the full output, and saves that output as a file. The goal evaluator can then require the file to exist, so completion cannot be claimed on confidence alone.
+A claim of "done" must be supported by evidence. Before any agent claims a check passes, it runs the check fresh, reads the full output, and saves that output as a file. A ticket's completion criteria require the file to exist, so completion cannot be claimed on confidence alone.
 
 ### The verification rule
 
@@ -577,7 +577,7 @@ Every agent, at every stage, follows the same sequence before claiming a check p
 4. **Confirm** the output actually supports the claim.
 5. **Capture** the output to the evidence store (below), then claim the result and point at the evidence.
 
-For a judgement check there is no command to run: the agent reads the rule and the relevant code in place of steps 1-3, then captures its written assessment (the rule named, the verdict, and the reasoning) as the evidence in step 5. The discipline is the same: a verdict reached fresh, recorded as a file the goal evaluator and developer can both see.
+For a judgement check there is no command to run: the agent reads the rule and the relevant code in place of steps 1-3, then captures its written assessment (the rule named, the verdict, and the reasoning) as the evidence in step 5. The discipline is the same: a verdict reached fresh, recorded as a file the parent and developer can both see.
 
 Checks run in the foreground. A sub-agent runs each check and blocks until it returns, within its turn budget; it never launches a long check (e.g. e2e) in the background and ends the turn waiting to be woken, which stalls silently and makes no progress. A check either completes in the turn or the agent hits its limit and the ticket is parked in `blocked/`.
 
@@ -608,7 +608,7 @@ The store is append-only within a run and overwritten on the next run of the sam
 
 ### Where it is enforced
 
-The capture is written into the success condition of every sub-agent goal in `/pb:next` (implement, agent-review, merge), so a ticket cannot move to the next queue until its evidence is on disk. `/pb:debug` captures the bug reproduction the same way. Because the proof is a file the goal evaluator and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
+The capture is written into the success condition of every sub-agent (implement, agent-review, merge) in `/pb:next`, so a ticket cannot move to the next queue until its evidence is on disk. `/pb:debug` captures the bug reproduction the same way. Because the proof is a file the parent and the developer can both see, "I verified it" stops being something the agent asserts and becomes something anyone can check.
 
 ## Maximising Autonomy
 
@@ -618,31 +618,31 @@ The goal is for Claude to operate without interruption except at the human appro
 
 Skills are pre-written instructions that tell Claude exactly how to behave at each stage. Without them, Claude will drift: asking unnecessary questions, varying its approach between sessions, or missing steps. With them, invoking `/pb:next` always produces the same reliable behaviour. Each skill is a markdown file in the playbook under [.claude/commands/pb/](.claude/commands/pb/), exposed to Claude Code as a slash command when launched from the playbook repo. The full set is in the Skills section above.
 
-Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement belongs in goals.
+Skills drive Claude's implementation work and interactive review sessions. They do not enforce rules: rules written in a skill are just instructions Claude may or may not follow. Enforcement comes from each ticket's completion criteria together with the parent's end-of-turn reconciliation.
 
-### Goals
+### Ticket completion criteria
 
-A `/goal` is a pass condition declared at the start of a session or sub-agent. After each turn, the goal evaluator checks the condition against the current state of the repos. The session is not "done" until the condition holds. This is what makes autonomous operation safe: the agent cannot claim completion by accident, by drift, or by skipping steps under time pressure. If the condition is not met, the agent is told to keep working.
+> **Note on `/goal`.** Earlier versions of this process leaned on a `/goal` slash command: a pass condition re-checked after every turn by a "goal evaluator". That mechanism never actually worked from a skill (only a human typing `/goal` invokes it, and one session can hold only one goal), so the `/goal` text was inert. It has been removed. What remains is the plain-English ticket completion criteria each stage carries, gated by the parent's end-of-turn reconciliation, described below. If hard, automatic enforcement is ever wanted back, the route is Claude Code `Stop`/`SubagentStop` hooks, not `/goal`.
 
-Every goal has two parts:
+**Ticket completion criteria** are the state a session or sub-agent must reach before it is "done". They are plain text in the agent's prompt. They are not self-enforcing: what makes the loop safe is that `pb:next` re-runs `next-tickets.ts` at the end of every turn and refuses to finish while `in-progress/` is non-empty, and that the criteria demand their proof on disk. So an agent cannot quietly claim completion: the queue state and the evidence files are the record, not the agent's say-so.
+
+The criteria have two parts:
 - **Success condition:** the externally observable state that means the work is finished (files in specific queues, tests passing, checks green, docs updated, commits made).
 - **Abort condition:** a hard stop so a stuck agent does not loop forever: a turn-count limit, or an environmental-failure signal (see [Handling Failures](#handling-failures)). A single stuck ticket does not abort the run; it is parked in `blocked/` and the loop carries on.
 
-Claude Code's hooks (`PreToolUse` / `PostToolUse`) were considered for these two jobs (moving tickets between queues and enforcing the lint/test/format gates) and rejected in favour of the per-sub-agent `/goal`. The goal's pass conditions already cover both the queue transition (the directory must be in the target queue) and the quality bar (lint clean, tests pass, evidence on disk), so the agent cannot claim done until both hold. Keeping enforcement in the goal puts it in one place and removes a layer of moving parts: no separate hook config to maintain, and no second mechanism that can disagree with the goal about whether a ticket is finished.
+The completion criteria cover both jobs that automatic hooks would otherwise handle:
 
-Goals cover both responsibilities that hooks would otherwise handle:
-
-- **Queue transitions.** The success condition names the target queue ("the ticket directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready. A small shared utility (`bun ../scripts/move.ts <id> <target-queue>`, run from `state/`) handles the mechanics so the agent does not have to think about paths, but the agent decides when to call it.
-- **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass. Because the goal evaluator re-checks after each turn, the agent cannot pretend it is done.
+- **Queue transitions.** The success condition names the target queue ("the ticket directory has been moved from `in-progress/` to `agent-review/`"). The sub-agent moves the directory itself when it is ready, via `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`), which handles the paths.
+- **Quality checks.** The success condition names the checks that must pass ("lint clean, unit tests pass, smoke tests pass, e2e tests pass"). The sub-agent runs them and fixes failures until they pass; the captured output on disk is the proof.
 - **Evidence.** The success condition requires the proof to exist on disk, not just the agent's say-so ("the test output and screenshots are captured to the ticket's `evidence/` subdir"). This turns "should pass" into a file the developer can open. See Verification and Evidence.
 
 The development loop relies on this in three places:
 
-- `/pb:next`'s own top-level goal terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` ticket moved downstream).
-- Each per-ticket sub-agent (merge, implement, agent-review) has its own goal scoped to that ticket, with its own timeout.
-- A sub-agent that cannot meet its goal records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
+- `/pb:next`'s own top-level loop condition terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` ticket moved downstream).
+- Each per-ticket sub-agent (merge, implement, agent-review) has its own completion criteria scoped to that ticket, with its own timeout.
+- A sub-agent that cannot meet its completion criteria records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
 
-The full goal text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
+The full criteria text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). To interrupt early, stop the run; `/pb:status` shows the live state from the queues.
 
 ### Sandbox VM (Multipass or similar)
 
@@ -663,4 +663,3 @@ This applies to both repos, by two distinct mechanisms:
 
 - **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `merge-ticket.ts` stacks the approved worktrees onto one train worktree and fast-forwards them onto the project branch together.
 - **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a failure recorded, a failure reset, a ticket created, a `current-state.md` update) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted.
-

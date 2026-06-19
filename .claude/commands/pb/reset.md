@@ -1,6 +1,6 @@
 ---
 name: pb:reset
-description: Invoke to unwind an interrupted or abandoned pb:next run back to a clean slate. Moves every in-progress ticket back to todo, then force-removes every ticket worktree and deletes its branch, discarding any unmerged work in them. Use to recover from a crashed run or to abandon in-flight work; it does not merge anything. Keywords: reset, abandon, unwind, recover, crashed run, clean up worktrees, requeue, start over, in-progress stuck, discard work, delete worktrees, delete branches, scrap the run.
+description: "Invoke to unwind an interrupted or abandoned pb:next run back to a clean slate. Moves every in-progress ticket back to todo, then force-removes every ticket worktree and deletes its branch, discarding any unmerged work in them. Use to recover from a crashed run or to abandon in-flight work; it does not merge anything. Keywords: reset, abandon, unwind, recover, crashed run, clean up worktrees, requeue, start over, in-progress stuck, discard work, delete worktrees, delete branches, scrap the run."
 ---
 
 # pb:reset

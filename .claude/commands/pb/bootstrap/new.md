@@ -1,6 +1,6 @@
 ---
 name: pb:bootstrap:new
-description: Invoke once to set up a brand-new greenfield project under this process. Interviews the developer, creates the project repo from templates/project/ and the state repo from templates/state/, writes the initial spec, testing manual, and docs/rules/ rule set, and populates current-state.md with empty queues. Use when there is no existing code yet. Keywords: bootstrap, new project, greenfield, set up, scaffold, start a project, initialise, from scratch, create repos.
+description: "Invoke once to set up a brand-new greenfield project under this process. Interviews the developer, creates the project repo from templates/project/ and the state repo from templates/state/, writes the initial spec, testing manual, and docs/rules/ rule set, and populates current-state.md with empty queues. Use when there is no existing code yet. Keywords: bootstrap, new project, greenfield, set up, scaffold, start a project, initialise, from scratch, create repos."
 ---
 
 # pb:bootstrap:new

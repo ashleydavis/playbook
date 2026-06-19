@@ -1,6 +1,6 @@
 ---
 name: pb:bootstrap:existing
-description: Invoke once to bring an existing codebase under this process. Interviews the developer, clones the project into project/ and creates the state repo from templates/state/ at state/, analyses the project repo for missing process artifacts, queues a ticket per gap in todo/, and populates current-state.md. Use when there is already code. Keywords: bootstrap, existing project, adopt, onboard, brownfield, retrofit, set up process on existing code, analyse gaps, create state repo.
+description: "Invoke once to bring an existing codebase under this process. Interviews the developer, clones the project into project/ and creates the state repo from templates/state/ at state/, analyses the project repo for missing process artifacts, queues a ticket per gap in todo/, and populates current-state.md. Use when there is already code. Keywords: bootstrap, existing project, adopt, onboard, brownfield, retrofit, set up process on existing code, analyse gaps, create state repo."
 ---
 
 # pb:bootstrap:existing

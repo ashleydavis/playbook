@@ -1,6 +1,6 @@
 ---
 name: pb:unblock
-description: Invoke to re-admit one or more blocked tickets back into the loop. Lists every ticket in blocked/ as a numbered menu; the developer picks one, several, or all by number, and each selected ticket has its failure count reset to 0 and is moved back to todo/ so pb:next picks it up again. Use when a blocked ticket's cause has been addressed (or you just want to give it another run). Keywords: unblock, re-admit, blocked, requeue blocked, reset failures, retry blocked, move blocked to todo, clear block, give it another go, unstick.
+description: "Invoke to re-admit one or more blocked tickets back into the loop. Lists every ticket in blocked/ as a numbered menu; the developer picks one, several, or all by number, and each selected ticket has its failure count reset to 0 and is moved back to todo/ so pb:next picks it up again. Use when a blocked ticket's cause has been addressed (or you just want to give it another run). Keywords: unblock, re-admit, blocked, requeue blocked, reset failures, retry blocked, move blocked to todo, clear block, give it another go, unstick."
 ---
 
 # pb:unblock

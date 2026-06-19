@@ -1,6 +1,6 @@
 ---
 name: pb:debug
-description: Invoke when something is broken and the root cause is not yet known. Files a Debug ticket that proves the root cause (four-phase method, no fix, throwaway worktree); on review it spawns a Fix ticket, and both flow through the normal pipeline. If the developer already knows the fix, use pb:add instead. Keywords: debug, broken, bug, failing, root cause, investigate, why is this failing, crash, error, reproduce, diagnose, find the cause.
+description: "Invoke when something is broken and the root cause is not yet known. Files a Debug ticket that proves the root cause (four-phase method, no fix, throwaway worktree); on review it spawns a Fix ticket, and both flow through the normal pipeline. If the developer already knows the fix, use pb:add instead. Keywords: debug, broken, bug, failing, root cause, investigate, why is this failing, crash, error, reproduce, diagnose, find the cause."
 ---
 
 # pb:debug
@@ -38,7 +38,7 @@ The agent experiments freely, writing no production code that needs to last:
 3. **Hypothesis and testing.** State a specific theory of the root cause. Test it with throwaway experiments (logging, probes, toggling the suspected cause), one variable at a time. Confirm it, or discard it and form a new one.
 4. **Conclusion.** Write the proven root cause into `detail.md` with the supporting evidence, then discard the worktree's code changes. No fix is written here.
 
-Because nothing is committed, the in-progress goal drops the "changes committed, code lints clean" conditions. Its success condition is only that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/implementation-N/`, and the ticket has moved to `agent-review/`.
+Because nothing is committed, the in-progress completion criteria drop the "changes committed, code lints clean" requirements. The only success condition is that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/implementation-N/`, and the ticket has moved to `agent-review/`.
 
 **Escalation rule:** if three or more hypotheses fail to land, stop. That signals the design is wrong, not a single line. Surface it via `current-state.md` and raise it in `pb:plan` rather than continuing to probe.
 
@@ -56,7 +56,7 @@ The Fix ticket then flows through the full pipeline normally (in-progress -> age
 - The fix targets the proven root cause, not the symptom.
 - The fix is minimal and simple: the smallest change that solves the problem, no extra scope.
 
-For a Fix ticket, the agent-review goal additionally verifies that the fix actually solves the proven problem (the reproduction passes), that it is the minimal/simplest change that does so, and that the evidence of the fix working is present. If all hold, the Fix ticket moves to `human-review/`. Otherwise the review agent records what failed in History, runs `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the `**Failures:**` count, and reads it: below three it returns the ticket to `todo/` for another attempt with that feedback; at three it moves to `blocked/` for the developer.
+For a Fix ticket, the agent-review stage additionally verifies that the fix actually solves the proven problem (the reproduction passes), that it is the minimal/simplest change that does so, and that the evidence of the fix working is present. If all hold, the Fix ticket moves to `human-review/`. Otherwise the review agent records what failed in History, runs `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the `**Failures:**` count, and reads it: below three it returns the ticket to `todo/` for another attempt with that feedback; at three it moves to `blocked/` for the developer.
 
 `pb:debug` is for when the cause is unknown. If no debugging is required because the developer already knows the fix, they skip it entirely and use `pb:add` to queue the fix as an ordinary ticket (Type `Fix`, or whatever fits). The two-ticket Debug-then-Fix flow only applies when the root cause has to be found first.
 

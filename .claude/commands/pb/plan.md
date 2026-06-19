@@ -1,6 +1,6 @@
 ---
 name: pb:plan
-description: Invoke when you want to plan a new feature or revise an existing one before any code is written. Brainstorms the design with the developer when the feature is unclear, then updates docs/spec/ and docs/testing-manual/, and optionally breaks the feature into tickets in todo/ with dependencies. Keywords: plan, planning, new feature, design, spec, brainstorm, update the spec, refine an idea, scope a feature, break into tickets, testing manual.
+description: "Invoke when you want to plan a new feature or revise an existing one before any code is written. Brainstorms the design with the developer when the feature is unclear, then updates docs/spec/ and docs/testing-manual/, and optionally breaks the feature into tickets in todo/ with dependencies. Keywords: plan, planning, new feature, design, spec, brainstorm, update the spec, refine an idea, scope a feature, break into tickets, testing manual."
 ---
 
 # pb:plan

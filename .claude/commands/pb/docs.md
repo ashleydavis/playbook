@@ -1,6 +1,6 @@
 ---
 name: pb:docs
-description: Invoke when documentation needs writing or updating (spec, testing manual, how-it-works, roadmap, user guide) outside of planning a feature. Writes or updates the relevant files in docs/, and queues tickets in todo/ if the doc changes imply code or test changes. Keywords: docs, documentation, write docs, update docs, how-it-works, user guide, roadmap, README, document, keep docs current.
+description: "Invoke when documentation needs writing or updating (spec, testing manual, how-it-works, roadmap, user guide) outside of planning a feature. Writes or updates the relevant files in docs/, and queues tickets in todo/ if the doc changes imply code or test changes. Keywords: docs, documentation, write docs, update docs, how-it-works, user guide, roadmap, README, document, keep docs current."
 ---
 
 # pb:docs

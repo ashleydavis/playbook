@@ -1,13 +1,13 @@
 ---
 name: pb:next
-description: Invoke to drive the development loop forward without human input: merge any approved tickets, then implement the next batch of up to 10 unblocked tickets through to human review. Run it once and let it drain the queues; you do not run it again until the developer has unblocked something (e.g. by completing reviews). Keywords: next, work next, run the loop, drive the pipeline, implement, merge, drain the queue, autonomous, batch, keep going, do the work.
+description: "Invoke to drive the development loop forward without human input: merge any approved tickets, then implement the next batch of up to 10 unblocked tickets through to human review. Run it once and let it drain the queues; you do not run it again until the developer has unblocked something (e.g. by completing reviews). Keywords: next, work next, run the loop, drive the pipeline, implement, merge, drain the queue, autonomous, batch, keep going, do the work."
 ---
 
 # pb:next
 
-Drain every ticket the queues can move without human input. `pb:next` sets a `/goal` for itself and keeps running turns until the queues stop making forward progress, so a single invocation is enough. You do not run it again until the developer has unblocked something (e.g. by completing reviews in `pb:review`). The one exception is an **interruption** (a session or rate limit, or the developer stopping the run): that is not a completion, so the developer re-runs `pb:next` to resume from the live queue state (see **When the run is interrupted** below).
+Drain every ticket the queues can move without human input. `pb:next` keeps running turns until the queues stop making forward progress, so a single invocation is enough. You do not run it again until the developer has unblocked something (e.g. by completing reviews in `pb:review`). The one exception is an **interruption** (a session or rate limit, or the developer stopping the run): that is not a completion, so the developer re-runs `pb:next` to resume from the live queue state (see **When the run is interrupted** below).
 
-Each ticket passes through stages: merge, implement, agent-review. The parent agent does none of this work itself. For each ticket at each stage it spawns a sub-agent, started with its working directory set to that ticket's worktree so it cannot touch the main project repo by accident. The sub-agent moves the ticket directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its goal is met.
+Each ticket passes through stages: merge, implement, agent-review. The parent agent does none of this work itself. For each ticket at each stage it spawns a sub-agent, started with its working directory set to that ticket's worktree so it cannot touch the main project repo by accident. The sub-agent moves the ticket directory itself with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`) when its ticket completion criteria are met.
 
 Every check a sub-agent runs follows the verification rule: run fresh in the foreground (never backgrounded to be woken later), read in full, and captured to the ticket's current evidence subdir (`implementation-N/`, `review-N/`, or `merge/`) before any pass is claimed. A check that cannot finish within the turn's budget becomes a failure, not an idle wait.
 
@@ -51,7 +51,7 @@ The one exception is a **broken main**: a merge train lands only after its check
 
 ## When the run is interrupted
 
-An interruption is the run being cut off from outside, not a ticket failing: a **session or rate limit** (the most common), the developer stopping the run (`/goal clear`), or the agent or machine dying. This is **never** a failure, environmental failure, or systemic/systematic problem, and the correct response is simply to stop and let the developer resume later.
+An interruption is the run being cut off from outside, not a ticket failing: a **session or rate limit** (the most common), the developer stopping the run, or the agent or machine dying. This is **never** a failure, environmental failure, or systemic/systematic problem, and the correct response is simply to stop and let the developer resume later.
 
 - **Stop, don't reconcile-as-failure.** The instant a session/rate limit hits (the parent's own, or a sub-agent returning a limit message), stop launching new work and hand back. Do **not** run `fail-ticket.ts`, do **not** increment any `**Failures:**` count, do **not** route anything to `blocked/`, and do **not** write a `Run halted: environmental failure` entry. A ticket the interruption left mid-stage stays exactly where it is.
 - **Leave the queues as the record.** The queues are the durable state, so there is nothing to clean up. If the parent still has capacity, add a one-line `Run interrupted (session limit); resume with pb:next` note to the top of `current-state.md` and commit it; if it does not, the queues themselves are the record and `pb:status` will show the in-flight state.
@@ -68,33 +68,27 @@ A sub-agent must leave nothing running and nothing stray behind when it returns,
 
 ## Verification and Evidence
 
-A goal is met only when the evidence proving it is on disk. Each sub-agent goal requires "the evidence required by Verification and Evidence" captured to the pass's subdir; this section defines what that evidence is, so the goals never enumerate it themselves.
+A ticket's completion criteria are met only when the evidence proving them is on disk. This section defines what that evidence is.
 
 **One subdir per pass.** Implement passes write `evidence/implementation-N/`, review passes `evidence/review-N/` (N one more than the highest existing for that kind), and merge writes `evidence/merge/`. Evidence lives in the ticket's own directory and travels with it through every queue move.
 
 **What counts as sufficient evidence:**
 
-- **Check output.** The full, fresh output of every check the goal names (compile, lint, unit, smoke, e2e, and any judgement check), with its exit code visible, one file per suite. Captured per the verification rule (run fresh, in the foreground, read in full).
+- **Check output.** The full, fresh output of every check the criteria name (compile, lint, unit, smoke, e2e, and any judgement check), with its exit code visible, one file per suite. Captured per the verification rule (run fresh, in the foreground, read in full).
 - **UI screenshots.** Any change that affects the UI must be captured as a screenshot of **every** affected view in **both light and dark mode** (every UI screenshot exists in both modes). A single representative page is not enough: if the change is applied to several pages (e.g. pods, nodes, deployments, statefulsets, daemonsets), capture each one, in both modes. **Every screenshot lives in a `screenshots/` subdirectory** of the pass's evidence dir (e.g. `evidence/implementation-N/screenshots/`); never put a screenshot loose in the evidence dir. Capture them however works, but never by committing capture code to `project/`: the capture script lives in the ticket's `evidence/` or a temp dir and is discarded (see Agent cleanup).
 - **Command transcripts.** For anything else a claim rests on (a build log, a bug reproduction), the captured command and its output.
 
-Sufficient means enough that the developer can confirm every part of the goal from the files alone, without re-running anything.
+Sufficient means enough that the developer can confirm every part of the criteria from the files alone, without re-running anything.
 
 ## Steps
 
-1. Set the overall goal for this turn of the development loop:
-
-   ```
-   /goal Forward progress is exhausted: in-progress/ is empty (no ticket left mid-stage), merge-queue/ and agent-review/ are empty, and every unblocked ticket in todo/ has moved downstream (what remains is in human-review/, done/, blocked/, or blocked by unmet dependencies). Abort early if two or more tickets fail the same stage or check in one run (an environmental failure), or after 50 turns; a single failure does not abort the loop. Even on an environmental-failure abort, in-progress/ must be empty first: reconcile every failed ticket before handing back.
-   ```
+1. Keep running turns until this loop condition holds: forward progress is exhausted (in-progress/ is empty with no ticket left mid-stage, merge-queue/ and agent-review/ are empty, and every unblocked ticket in todo/ has moved downstream, so what remains is in human-review/, done/, blocked/, or blocked by unmet dependencies). Stop early if two or more tickets fail the same stage or check in one run (an environmental failure), or after 50 turns; a single failure does not stop the loop. Even on an environmental-failure stop, in-progress/ must be empty first: reconcile every failed ticket before handing back.
 
 2. Each turn, work the queues in processing order (**`merge-queue` → `agent-review` → `todo` → `in-progress`**; see Processing order above). **Begin every step by re-running `bun ../scripts/next-tickets.ts`**, because an earlier step may have moved tickets into this step's queue (the todo step feeds `in-progress`). It is cheap and deterministic, so always act on a freshly generated report, never a stale one:
 
-   1. **Run the report, then merge its whole `merge-queue` list as one train.** If `merge-queue` is non-empty, spawn a single merge sub-agent (not one per ticket) with:
+   1. **Run the report, then merge its whole `merge-queue` list as one train.** If `merge-queue` is non-empty, spawn a single merge sub-agent (not one per ticket). Give it these ticket completion criteria:
 
-      ```
-      /goal Every ticket the report listed in merge-queue/ is resolved: either merged into main and moved to done/ with the post-merge checks captured to its evidence/merge/, or dropped back to todo/ (blocked/ at the third failure) as a failure because it conflicts or breaks the suite. No train worktree is left behind. Or stop after 20 turns.
-      ```
+      > Every ticket the report listed in merge-queue/ is resolved: either merged into main and moved to done/ with the post-merge checks captured to its evidence/merge/, or dropped back to todo/ (blocked/ at the third failure) as a failure because it conflicts or breaks the suite. No train worktree is left behind. Or stop after 20 turns.
 
       The sub-agent merges the batch with one tool, `bun ../scripts/merge-ticket.ts` (run from `state/`), which stacks the tickets onto a single throwaway **train** worktree so the post-merge checks run **once** on the combined result instead of once per ticket. **Never run `git worktree`, the merge, or the `done/` move by hand**; the script resolves the paths, lands the merge, moves each ticket to `done/`, and cleans up. The flow:
 
@@ -109,11 +103,9 @@ Sufficient means enough that the developer can confirm every part of the goal fr
 
       Problem (timeout or exhausted budget): if no train ever landed (main is unchanged, every ticket still in `merge-queue/`), handle each as a failure (see **When anything fails**) and carry on. If a train landed but a later check on main then fails, those tickets are already merged and stay **done**: record the broken main, surface it in `current-state.md`, and stop the run because every later ticket builds on main (the broken-main exception in **When anything fails**). The developer resolves it before invoking `pb:next` again.
 
-   2. **Run the report, then for each ID in its `agent-review` list,** spawn a sub-agent with:
+   2. **Run the report, then for each ID in its `agent-review` list,** spawn a sub-agent with these ticket completion criteria:
 
-      ```
-      /goal <id> has passed agent review and moved from agent-review/ to human-review/, with the evidence required by Verification and Evidence captured to evidence/review-N/ (N one more than the highest existing review-N), or it has been rejected back to todo/ as a failure (a ticket with any unticked issue in its `## Issues` section, or a ticked issue that is not actually fixed, is rejected automatically). Or stop after 10 turns.
-      ```
+      > <id> has passed agent review and moved from agent-review/ to human-review/, with the evidence required by Verification and Evidence captured to evidence/review-N/ (N one more than the highest existing review-N), or it has been rejected back to todo/ as a failure (a ticket with any unticked issue in its `## Issues` section, or a ticked issue that is not actually fixed, is rejected automatically). Or stop after 10 turns.
 
       The sub-agent **reviews only**: it makes no code changes and writes nothing but the ticket's own state. It re-runs the deterministic checks fresh (lint, format, unit, smoke, and any others), runs the judgement checks (every file in `docs/rules/`, the touched `CLAUDE.md` files, and `documentation.md`), and reviews the committed diff hunk by hunk against the acceptance criteria, capturing all of it to `evidence/review-N/`.
 
@@ -134,15 +126,13 @@ Sufficient means enough that the developer can confirm every part of the goal fr
 
    3. **Run the report, then admit each ID in its `todo` list.** These are the actionable tickets (dependencies are already resolved); take them as-is without opening their files. For each ID, run `bun ../scripts/setup-ticket.ts <id>` from `state/`. That one command does the whole admission: it moves the directory from `todo/` to `in-progress/` and creates the ticket's worktree against the project repo at `project/worktrees/<id>`, on a new branch `worktrees/<id>` at the project's current commit. It resolves all the paths itself, so **never run `git worktree` by hand**. It is idempotent: re-running for an already-admitted ticket is a safe no-op.
 
-   4. **Run the report, then for each ID in its `in-progress` list** (the tickets just admitted from `todo/`, plus any left from an interrupted earlier run), spawn a sub-agent in parallel with:
+   4. **Run the report, then for each ID in its `in-progress` list** (the tickets just admitted from `todo/`, plus any left from an interrupted earlier run), spawn a sub-agent in parallel with these ticket completion criteria:
 
-      ```
-      /goal <id>'s acceptance criteria are implemented in its worktree, with every Test Plan test (unit, smoke, and e2e where applicable) passing, the code compiling and linting clean, and the evidence required by Verification and Evidence captured to evidence/implementation-N/ (N one more than the highest existing implementation-N). The relevant docs are updated, every issue in the ticket's `## Issues` section (in detail.md) is resolved and its checkbox ticked, only the changes that implement the ticket are committed, and the directory has moved from in-progress/ to agent-review/. Or stop after 20 turns.
-      ```
+      > <id>'s acceptance criteria are implemented in its worktree, with every Test Plan test (unit, smoke, and e2e where applicable) passing, the code compiling and linting clean, and the evidence required by Verification and Evidence captured to evidence/implementation-N/ (N one more than the highest existing implementation-N). The relevant docs are updated, every issue in the ticket's `## Issues` section (in detail.md) is resolved and its checkbox ticked, only the changes that implement the ticket are committed, and the directory has moved from in-progress/ to agent-review/. Or stop after 20 turns.
 
-      The sub-agent first reads the ticket's `## Issues` section in `detail.md` (if present) and **must resolve every issue listed there**, ticking each issue's checkbox only once that issue is genuinely fixed (tick the box, never delete it: resolved issues stay in the section as a permanent record). The ticket must not move to `agent-review/` while any issue checkbox is unticked. Any further issue the sub-agent discovers and fixes during implementation must also be recorded as a ticked checkbox in the `## Issues` section (in addition to any History note), so the section is the complete ledger of issues raised and resolved. It then implements the code, writes tests, and updates docs (ticking the matching acceptance-criteria boxes in the feature's `detail.md`, the testing manual, and any other docs the change touches). It captures the evidence required by Verification and Evidence to the pass's `evidence/implementation-N/`, collecting it however works but **committing no capture code to `project/`**. It commits only the changes that implement the ticket, per the commit template, and moves the directory to `agent-review/` once every completion criterion is met. Problem (timeout, exhausted budget, check failure): the parent handles it as a failure, recording it and routing the ticket by its count, then continues with the rest (see **When anything fails**).
+      The sub-agent **first sets up its worktree** by running the project's worktree setup from `docs/setup.md` (e.g. installing dependencies) before it compiles, tests, or runs anything: a fresh worktree has its own empty dependency state, so skipping this makes every later check fail. It then reads the ticket's `## Issues` section in `detail.md` (if present) and **must resolve every issue listed there**, ticking each issue's checkbox only once that issue is genuinely fixed (tick the box, never delete it: resolved issues stay in the section as a permanent record). The ticket must not move to `agent-review/` while any issue checkbox is unticked. Any further issue the sub-agent discovers and fixes during implementation must also be recorded as a ticked checkbox in the `## Issues` section (in addition to any History note), so the section is the complete ledger of issues raised and resolved. It then implements the code, writes tests, and updates docs (ticking the matching acceptance-criteria boxes in the feature's `detail.md`, the testing manual, and any other docs the change touches). It captures the evidence required by Verification and Evidence to the pass's `evidence/implementation-N/`, collecting it however works but **committing no capture code to `project/`**. It commits only the changes that implement the ticket, per the commit template, and moves the directory to `agent-review/` once every completion criterion is met. Problem (timeout, exhausted budget, check failure): the parent handles it as a failure, recording it and routing the ticket by its count, then continues with the rest (see **When anything fails**).
 
-      A **Debug** ticket is the exception (see `pb:debug`): it is a throwaway investigation, not an implementation. Its goal drops the commit/compile/lint conditions; the agent experiments freely, and its only success condition is that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/`, and the ticket has moved to `agent-review/`. The worktree's code changes are discarded.
+      A **Debug** ticket is the exception (see `pb:debug`): it is a throwaway investigation, not an implementation. Its criteria drop the commit/compile/lint requirements; the agent experiments freely, and its only success condition is that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/`, and the ticket has moved to `agent-review/`. The worktree's code changes are discarded.
 
 3. After each turn, **reconcile first, then record state.** This step runs every turn, including when the turn ended on an environmental-failure handback.
 
@@ -150,14 +140,14 @@ Sufficient means enough that the developer can confirm every part of the goal fr
    2. **Reap leaked processes (Agent cleanup safety net).** A sub-agent that died or timed out cannot run its own teardown, so the parent sweeps up after it: kill any process whose working directory is under `project/worktrees/` (a leftover `bun`/vite/backend dev server or watcher), and tear down any kwok cluster, controller, or lock a check left behind. This guarantees no orphaned server survives to collide with the next run on a shared port or exhaust the host's inotify watches. Do not end the turn with a process still rooted in a worktree.
    3. **Record state.** Now update `current-state.md` to reflect the tickets that moved or were created this turn (not only the abort cases but the normal forward progress, plus any Fix ticket spawned from a proven Debug, and every ticket the reconciliation just routed): add or amend only the entries these changes affect, leaving the rest of its existing content intact. Keep the file's shape: anything needing the developer (environmental failures, tickets in `human-review/`, blocked tickets) goes in the top `⚠ Needs your action` section, one or two plain lines each; routine forward progress goes in the `Progress` section below. If the turn ended on an environmental-failure handback, write the `Run halted: environmental failure` entry at the top (the shared stage or check, the tickets involved, the suspected cause, and the evidence path), since those tickets usually returned to `todo/` and would otherwise leave no record of why the run stopped. As the final action of this step, commit the narrative update as its own commit: `bun ../scripts/commit-state.ts "<turn summary>" current-state.md` (a one-line summary of the turn). The parent is the **sole** committer of `current-state.md`; sub-agents never touch it.
 
-   Then the `/goal` evaluator checks the condition. When forward progress is exhausted, the goal clears and `pb:next` stops. Tickets in `human-review/` wait for `pb:review`.
+   The parent then re-checks the loop condition from Step 1 against the freshly reconciled queues. When forward progress is exhausted, the loop stops and `pb:next` ends. Tickets in `human-review/` wait for `pb:review`.
 
-Use `/goal clear` to interrupt early. `/goal` with no argument shows status.
+To interrupt early, stop the run (the developer halts it); `pb:status` shows the live state from the queues.
 
 ## Example
 
 ```
-/goal set for the loop.
+Loop started.
 merge-queue/: 2 approved tickets (search-1, search-2). One merge sub-agent:
   -> merge-ticket.ts build search-1 search-2 -> train built clean.
   -> post-merge checks run once on the train -> all pass.
@@ -169,5 +159,5 @@ todo/: 3 unblocked tickets (search-3, search-4, infra-5). Took all 3.
 search-3, infra-5 passed implementation -> agent-review/.
 Next turn: agent-review/ drained first -> search-3, infra-5 reviewed -> human-review/.
 search-4 failed agent-review (committed a change unrelated to the ticket); reviewer recorded a History note and returned it to todo/; current-state.md updated by the parent, loop continued.
-Forward progress exhausted. Goal cleared. search-3 and infra-5 await pb:review.
+Forward progress exhausted. Loop stopped. search-3 and infra-5 await pb:review.
 ```

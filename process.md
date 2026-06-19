@@ -76,7 +76,7 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 
 ## Tickets
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Notes, History. Shape: [templates/ticket-template/](templates/ticket-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](templates/ticket-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
 - Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a hint at reading order, not the enforcement mechanism. `**Depends on:**` is what actually gates execution.
 - Refuse to implement a ticket with no acceptance criteria.
@@ -110,7 +110,7 @@ Handle it in this order:
 
 ## Interruption and resume
 
-An **interruption** is the run being cut off from outside, not a ticket failing: a session or rate limit, the developer stopping the run (`/goal clear`), or the agent or machine dying. The work was fine; it just stopped. An interruption is never an environmental, systemic, or systematic failure.
+An **interruption** is the run being cut off from outside, not a ticket failing: a session or rate limit, the developer stopping the run, or the agent or machine dying. The work was fine; it just stopped. An interruption is never an environmental, systemic, or systematic failure.
 
 Handle it like this:
 
@@ -149,13 +149,13 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:customize` | Tune the project's enforced rules in `docs/rules/` |
 | `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |
 
-## Goals
+## Ticket completion criteria
 
-`/goal` is a pass condition checked after every turn; the agent is not done until the goal is achieved. Skills instruct; goals enforce. Every goal has a **success condition** (observable state: files in queues, checks green, evidence on disk, commits made) and an **abort condition** (turn count or repeated-failure signal).
+Each stage carries **ticket completion criteria**: the observable state that marks it done (files in the right queues, checks green, evidence on disk, commits made). The criteria also include an **abort condition** (a turn count or a repeated-failure signal). The criteria are plain text in the agent's prompt, not a separate enforcement mechanism; what actually gates a stage is the end-of-turn reconciliation in `pb:next` (re-run `next-tickets.ts`, and `in-progress/` must be empty), backed by the evidence the criteria demand being on disk.
 
-`pb:next` uses goals in three places: its top-level loop goal (stops when forward progress is exhausted) and a per-ticket sub-agent goal for each of merge / implement / agent-review, each run in the ticket's worktree. Exact goal text lives in the [pb:next](.claude/commands/pb/next.md) skill. Use `/goal clear` to interrupt; `/goal` with no argument shows status.
+`pb:next` uses ticket completion criteria in three places: its top-level loop condition (stops when forward progress is exhausted) and a per-ticket sub-agent's criteria for each of merge / implement / agent-review, each run in the ticket's worktree. Exact text lives in the [pb:next](.claude/commands/pb/next.md) skill. To interrupt, stop the run; `pb:status` shows the live state from the queues.
 
-When a sub-agent cannot meet its goal, the ticket is recorded and routed per **Failures** above, the loop never works around a failure, and an environmental failure stops the whole loop (see [Environmental failure](#environmental-failure)).
+When a sub-agent cannot meet its completion criteria, the ticket is recorded and routed per **Failures** above, the loop never works around a failure, and an environmental failure stops the whole loop (see [Environmental failure](#environmental-failure)).
 
 ## Checks
 
@@ -170,7 +170,7 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 
 - Implement and merge stages run the deterministic checks (compile, lint, tests).
 - Agent-review is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
-- The goal evaluator confirms the evidence exists before the ticket moves on; the developer sees the same evidence in `pb:review`.
+- A ticket's completion criteria require the evidence on disk before the ticket moves on; the developer sees the same evidence in `pb:review`.
 
 **Every check result records the same fields**, whatever its kind:
 
@@ -205,7 +205,7 @@ Never claim a check passes on confidence. Before claiming, every agent at every 
 
 For a judgement check there is no command: the agent reads the rule and the code in place of steps 1-3, and captures its written assessment (rule named, verdict, reasoning) as the evidence.
 
-Confidence is not evidence: no claim of pass without a fresh run captured to `evidence/`. Passing earlier ≠ passing now; a sub-agent's report ≠ a verified result. Evidence (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, transcripts) travels in the ticket directory and is required by sub-agent goals before a ticket moves on.
+Confidence is not evidence: no claim of pass without a fresh run captured to `evidence/`. Passing earlier ≠ passing now; a sub-agent's report ≠ a verified result. Evidence (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, transcripts) travels in the ticket directory and is required by a ticket's completion criteria before a ticket moves on.
 
 **One evidence subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so the full round-trip history is preserved rather than overwritten:
 

@@ -1,6 +1,6 @@
 ---
 name: pb:help
-description: Invoke when the developer wants to understand this process: what it is, how to bootstrap a project, how to drive work forward, which skills do what, and which queues a ticket travels through. The orientation entry point for someone new to the playbook or coming back to it. Keywords: help, how does this work, how do I use this, getting started, what skills, what queues, explain the process, orientation, where do I start, what does pb:next do, pipeline, onboarding.
+description: "Invoke when the developer wants to understand this process: what it is, how to bootstrap a project, how to drive work forward, which skills do what, and which queues a ticket travels through. The orientation entry point for someone new to the playbook or coming back to it. Keywords: help, how does this work, how do I use this, getting started, what skills, what queues, explain the process, orientation, where do I start, what does pb:next do, pipeline, onboarding."
 ---
 
 # pb:help
@@ -18,7 +18,7 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 
 ## The short tour
 
-**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and `/goal` pass-conditions stop any agent from claiming "done" without evidence. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
+**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and each ticket has completion criteria checked against evidence on disk, so no agent advances a ticket without them. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
 
 **How to start a project (bootstrap, run once).** Launch Claude Code from the playbook repo root, then:
 - New codebase -> `pb:bootstrap:new`: interviews you, creates both repos from `templates/`, writes the initial spec, testing manual, and `docs/rules/`.
