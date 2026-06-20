@@ -58,7 +58,7 @@ For autonomous runs. The VM contains the blast radius so `/pb:next` works unatte
 
 1. On the host, clone the playbook (or your fork, if you made one).
 2. Spin up the VM (Multipass or equivalent) and share the host's playbook repo into it, so the host and the VM see the same files.
-3. In the VM, run `scripts/install-prereqs.sh` to install `git`, `bun`, and Claude Code (if not already installed).
+3. In the VM, run `scripts/install-prereqs.sh` to install `git`, `bun`, and Claude Code (if not already installed). It needs root for the `apt` step, so it uses `sudo` (run it as a user with sudo, or as root). The installers add `bun` and `claude` to your shell profile, so open a **new** shell afterwards (or `source ~/.bashrc`); otherwise `claude` is "command not found" in the current one.
 4. In the VM, set up git so the loop can commit (see [Git setup in the VM](#git-setup-in-the-vm) below).
 5. In the VM, install whatever the project itself needs to build, test, and run.
 6. In the VM, launch Claude Code from the playbook repo root, and authenticate it with your account. 

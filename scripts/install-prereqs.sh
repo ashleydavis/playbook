@@ -18,15 +18,26 @@ have() { command -v "$1" >/dev/null 2>&1; }
 echo "Installing prerequisites:"
 
 # --- git (plus curl/unzip, which the bun installer needs) ------------------
+# apt-get needs root. Use sudo when not already root; fail clearly if neither
+# is available, rather than letting set -e abort with a bare permission error.
 if have apt-get; then
     need=()
     for pkg in git curl unzip; do
         have "$pkg" || need+=("$pkg")
     done
     if [ "${#need[@]}" -gt 0 ]; then
+        if [ "$(id -u)" -eq 0 ]; then
+            SUDO=""
+        elif have sudo; then
+            SUDO="sudo"
+        else
+            warn "need to install ${need[*]} but am not root and sudo is not available."
+            warn "Re-run as root, or install ${need[*]} manually, then run this again."
+            exit 1
+        fi
         info "apt-get install: ${need[*]}"
-        apt-get update -y
-        apt-get install -y "${need[@]}"
+        $SUDO apt-get update -y
+        $SUDO apt-get install -y "${need[@]}"
     else
         info "ok    git, curl, unzip"
     fi
