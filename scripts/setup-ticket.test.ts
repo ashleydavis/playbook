@@ -100,4 +100,12 @@ describe("setupTicket()", () => {
         expect(result.worktreeCreated).toBe(false);
         expect(await isDir(join(ticketsDir, "in-progress", "feat-3"))).toBe(true);
     });
+
+    test("fails when the ticket is only in backlog/", async () => {
+        await makeTicket("backlog", "later-1");
+
+        await expect(
+            setupTicket("later-1", stateDir, async () => {}),
+        ).rejects.toThrow(/not in todo/);
+    });
 });

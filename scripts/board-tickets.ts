@@ -7,32 +7,43 @@
 //
 // Prints a JSON object keyed by queue (in board order), each value an object:
 //
-//   { count, truncated, tickets: [{ id, description, dependsOn }] }
+//   { count, truncated, tickets: [{ id, description, dependsOn, failures, priority }] }
 //
 //   count      total tickets in the queue (the real size, never capped).
 //   truncated  true when count exceeds DISPLAY_LIMIT, so the board should show a
 //              "..." marker to indicate there are more tickets than displayed.
 //   tickets    up to DISPLAY_LIMIT tickets, each with its ID, one-line
-//              description, and dependency IDs (from index.md).
+//              description, dependency IDs, failure count, and priority.
 //
 // Every queue is capped at DISPLAY_LIMIT tickets for display so a huge backlog
 // never floods the board; the count field still reports the true total. Queues
-// are listed in pipeline order, then the side pen (blocked), then done. Aborted
-// tickets are a dead end, so the board does not show them.
-// done/ is ordered most-recent-first (by directory mtime); every other queue is
-// ordered by ticket ID.
+// are listed in pipeline order with backlog (upcoming work) after todo, then the
+// side pen (blocked), then done. Aborted tickets are a dead end, so the board
+// does not show them.
+// done/ is ordered most-recent-first (by directory mtime); todo/ and backlog/
+// are ordered by priority then ID; every other queue is ordered by ticket ID.
 
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import { parseFailures } from "./fail-ticket";
-import { parseDependsOn } from "./next-tickets";
+import {
+    compareTickets,
+    parseDependsOn,
+    parseDescription,
+    parsePriority,
+} from "./ticket-meta";
+
+// Re-export for backward compatibility.
+export { parseDescription } from "./ticket-meta";
 
 // Every queue and side pen the board shows, in display order: the pipeline
-// queues first, then the side pen, then recently completed work. Aborted
-// tickets are a dead end and are deliberately left off the board.
+// queues first (with backlog after todo), then the side pen, then recently
+// completed work. Aborted tickets are a dead end and are deliberately left off
+// the board.
 export const QUEUES = [
     "todo",
+    "backlog",
     "in-progress",
     "agent-review",
     "human-review",
@@ -61,7 +72,6 @@ export function truncateDescription(
     if (oneLine.length <= limit) {
         return oneLine;
     }
-    // Reserve one character for the ellipsis, then drop a trailing partial word.
     return oneLine.slice(0, limit - 1).replace(/\s+\S*$/, "") + "…";
 }
 
@@ -70,36 +80,16 @@ export interface BoardTicket {
     description: string;
     dependsOn: string[];
     failures: number;
+    priority: number;
 }
 
 export interface QueueBoard {
-    // Total tickets in the queue, never capped.
     count: number;
-    // True when count > DISPLAY_LIMIT, so the board shows a "..." marker.
     truncated: boolean;
-    // Up to DISPLAY_LIMIT tickets to display.
     tickets: BoardTicket[];
 }
 
 export type Board = Record<BoardQueue, QueueBoard>;
-
-// Pull the one-line description out of an index.md: the first non-empty body
-// line that is not a heading, a metadata field, or an HTML comment. Returns ""
-// when there is no description line.
-export function parseDescription(indexMd: string): string {
-    for (const raw of indexMd.split("\n")) {
-        const line = raw.trim();
-        if (line.length === 0) {
-            continue;
-        }
-        // Skip headings, **Field:** metadata lines, and HTML comment markers.
-        if (line.startsWith("#") || line.startsWith("**") || line.startsWith("<!--")) {
-            continue;
-        }
-        return line;
-    }
-    return "";
-}
 
 // List the ticket directory names in a queue. Returns [] if the queue directory
 // does not exist. `recentFirst` orders by directory mtime (newest first) for
@@ -120,7 +110,6 @@ async function listQueue(
         return names.sort();
     }
 
-    // Order done/ most-recent-first by directory mtime.
     const withTimes = await Promise.all(
         names.map(async (name) => {
             const { mtimeMs } = await stat(join(queueDir, name));
@@ -132,8 +121,7 @@ async function listQueue(
         .map((e) => e.name);
 }
 
-// Read a single ticket's display fields from its index.md. Missing or unreadable
-// index.md yields an empty description and no dependencies.
+// Read a single ticket's display fields from its index.md.
 export async function readTicket(
     ticketsDir: string,
     queue: string,
@@ -150,22 +138,45 @@ export async function readTicket(
         description: truncateDescription(parseDescription(indexMd)),
         dependsOn: parseDependsOn(indexMd),
         failures: parseFailures(indexMd),
+        priority: parsePriority(indexMd),
     };
 }
 
+async function orderedIds(
+    ticketsDir: string,
+    queue: BoardQueue,
+    limit: number,
+): Promise<string[]> {
+    const queueDir = join(ticketsDir, queue);
+    const ids = await listQueue(queueDir, queue === "done");
+
+    if (queue === "todo" || queue === "backlog") {
+        const withPriority = await Promise.all(
+            ids.map(async (id) => {
+                const ticket = await readTicket(ticketsDir, queue, id);
+                return { id, priority: ticket.priority };
+            }),
+        );
+        withPriority.sort(compareTickets);
+        return withPriority.slice(0, limit).map((t) => t.id);
+    }
+
+    return ids.slice(0, limit);
+}
+
 // Core logic: given the tickets/ directory, return the per-queue board.
-// `ticketsDir` is the path to the state repo's `tickets/` directory.
 export async function board(
     ticketsDir: string,
     limit: number = DISPLAY_LIMIT,
 ): Promise<Board> {
     const result = {} as Board;
     for (const queue of QUEUES) {
-        const ids = await listQueue(join(ticketsDir, queue), queue === "done");
-        const shown = ids.slice(0, limit);
+        const queueDir = join(ticketsDir, queue);
+        const allIds = await listQueue(queueDir, queue === "done");
+        const shown = await orderedIds(ticketsDir, queue, limit);
         result[queue] = {
-            count: ids.length,
-            truncated: ids.length > limit,
+            count: allIds.length,
+            truncated: allIds.length > limit,
             tickets: await Promise.all(
                 shown.map((id) => readTicket(ticketsDir, queue, id)),
             ),
@@ -174,7 +185,6 @@ export async function board(
     return result;
 }
 
-// Thin CLI wrapper. Not exercised by the unit tests.
 async function main(): Promise<void> {
     const ticketsDir = join(process.cwd(), "tickets");
     try {
@@ -188,7 +198,6 @@ async function main(): Promise<void> {
     console.log(JSON.stringify(await board(ticketsDir)));
 }
 
-// Only run the CLI when invoked directly, not when imported by tests.
 if (process.argv[1] === __filename) {
     main().catch((err) => {
         console.error(err);

@@ -14,6 +14,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { readTicket, type BoardTicket } from "./board-tickets";
+import { compareTickets } from "./ticket-meta";
 
 export type SelectionMode = "pick-many" | "pick-one-loop";
 
@@ -64,34 +65,21 @@ export function queueLabel(queue: string): string {
     );
 }
 
-function parsePriority(indexMd: string): number | undefined {
-    const match = indexMd.match(/^\*\*Priority:\*\*\s*(\d+)\s*$/m);
-    if (!match) {
-        return undefined;
-    }
-    const n = Number(match[1]);
-    return Number.isFinite(n) ? n : undefined;
-}
-
 function boardToSelection(
     ticket: BoardTicket,
     queue: string,
-    indexMd: string,
 ): SelectionTicket {
     const sel: SelectionTicket = {
         id: ticket.id,
         description: ticket.description,
         queue,
+        priority: ticket.priority,
     };
     if (ticket.dependsOn.length > 0) {
         sel.dependsOn = ticket.dependsOn;
     }
     if (ticket.failures !== undefined && ticket.failures > 0) {
         sel.failures = ticket.failures;
-    }
-    const priority = parsePriority(indexMd);
-    if (priority !== undefined) {
-        sel.priority = priority;
     }
     return sel;
 }
@@ -259,19 +247,12 @@ export async function loadQueueTickets(
     }
     const ids = entries
         .filter((e) => e.isDirectory())
-        .map((e) => e.name)
-        .sort();
+        .map((e) => e.name);
 
     const tickets: SelectionTicket[] = [];
     for (const id of ids) {
-        let indexMd = "";
-        try {
-            indexMd = await readFile(join(queueDir, id, "index.md"), "utf8");
-        } catch {
-            // readTicket tolerates missing index.md
-        }
         const board = await readTicket(ticketsDir, queue, id);
-        const sel = boardToSelection(board, queue, indexMd);
+        const sel = boardToSelection(board, queue);
         if (!fields.has("dependsOn")) {
             delete sel.dependsOn;
         }
@@ -283,6 +264,12 @@ export async function loadQueueTickets(
         }
         tickets.push(sel);
     }
+    tickets.sort((a, b) =>
+        compareTickets(
+            { id: a.id, priority: a.priority ?? 100 },
+            { id: b.id, priority: b.priority ?? 100 },
+        ),
+    );
     return tickets;
 }
 

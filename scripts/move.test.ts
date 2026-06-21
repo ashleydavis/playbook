@@ -159,4 +159,19 @@ describe("move()", () => {
         expect(result.to).toBe("agent-review");
         expect(await isDir(join(ticketsDir, "agent-review", "ticket-4"))).toBe(true);
     });
+
+    test("moves a ticket backlog ↔ todo round trip", async () => {
+        await makeTicket("backlog", "later-1");
+
+        const promoted = await move("later-1", "todo", ticketsDir);
+        expect(promoted.from).toBe("backlog");
+        expect(promoted.to).toBe("todo");
+        expect(await isDir(join(ticketsDir, "todo", "later-1"))).toBe(true);
+        expect(await isDir(join(ticketsDir, "backlog", "later-1"))).toBe(false);
+
+        const demoted = await move("later-1", "backlog", ticketsDir);
+        expect(demoted.from).toBe("todo");
+        expect(demoted.to).toBe("backlog");
+        expect(await isDir(join(ticketsDir, "backlog", "later-1"))).toBe(true);
+    });
 });

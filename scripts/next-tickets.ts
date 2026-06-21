@@ -5,20 +5,21 @@
 //   bun playbook/scripts/next-tickets.ts
 //
 // Prints a JSON object keyed by the four queues pb:next drives, each value the
-// list of ticket IDs to act on in that queue (sorted by ID). The keys are in the
-// order pb:next processes them each turn (merge-queue, then agent-review, then
-// todo, then in-progress: finish work nearest to done before starting new work):
+// list of ticket IDs to act on in that queue. The keys are in the order pb:next
+// processes them each turn (merge-queue, then agent-review, then todo, then
+// in-progress: finish work nearest to done before starting new work):
 //
 //   merge-queue, agent-review, in-progress: every ticket in the queue.
-//   todo: only the actionable tickets (dependencies resolved), capped so that
-//         todo + in-progress together never exceed LIMIT tickets in flight.
+//   todo: only the actionable tickets (dependencies resolved), sorted by
+//         **Priority:** ascending then ID, capped so that todo + in-progress
+//         together never exceed LIMIT tickets in flight.
 //
 // A todo ticket is actionable only when every one of its dependencies is in done/
 // (merged): tickets cannot start until their dependencies are merged. A dependency
 // sitting anywhere else (todo, in-progress, agent-review, human-review,
 // merge-queue) or missing entirely leaves the ticket blocked. done/ is read only
-// to resolve dependencies; it is not reported. human-review/ is neither driven
-// nor read.
+// to resolve dependencies; it is not reported. human-review/ and backlog/ are
+// neither driven nor read.
 //
 // The todo cap shares one budget with in-progress: the implementation stage runs
 // at most LIMIT tickets at once, so todo is trimmed to LIMIT minus however many are
@@ -26,6 +27,15 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+
+import {
+    compareTickets,
+    parseDependsOn,
+    parsePriority,
+} from "./ticket-meta";
+
+// Re-export for backward compatibility (tests and board-tickets import from here).
+export { parseDependsOn } from "./ticket-meta";
 
 // The queues pb:next drives, in the order it processes them each turn
 // (finish work nearest to done before starting anything new). Reported in this
@@ -44,22 +54,6 @@ export type NextTicketsReport = Record<ReportedQueue, string[]>;
 // Most tickets in flight in the implementation stage at once (todo admitted this
 // pass plus tickets already in-progress, combined).
 export const LIMIT = 10;
-
-// Pull the dependency IDs out of an index.md's `**Depends on:**` line.
-// Returns [] when the line is absent (the template drops it when there are
-// none), lists nothing, or uses the literal "none" sentinel (some generators
-// write `**Depends on:** none` instead of removing the line).
-export function parseDependsOn(indexMd: string): string[] {
-    const match = indexMd.match(/^\*\*Depends on:\*\*(.*)$/m);
-    if (!match) {
-        return [];
-    }
-    return match[1]
-        .split(",")
-        .map((id) => id.trim())
-        .filter((id) => id.length > 0)
-        .filter((id) => id.toLowerCase() !== "none");
-}
 
 // List the ticket directory names in a queue, sorted. Returns [] if the queue
 // directory does not exist.
@@ -83,19 +77,13 @@ export async function nextTickets(
     limit: number = LIMIT,
 ): Promise<NextTicketsReport> {
     const inProgress = await listQueue(join(ticketsDir, "in-progress"));
-    // The implementation stage runs at most `limit` tickets at once, and todo +
-    // in-progress share that budget. Trim todo to what is left after the tickets
-    // already in-progress (zero once in-progress is full).
     const todoBudget = Math.max(0, limit - inProgress.length);
 
     const todoIds = await listQueue(join(ticketsDir, "todo"));
     const done = new Set(await listQueue(join(ticketsDir, "done")));
 
-    const todoReady: string[] = [];
+    const actionable: Array<{ id: string; priority: number }> = [];
     for (const id of todoIds) {
-        if (todoReady.length >= todoBudget) {
-            break;
-        }
         let indexMd: string;
         try {
             indexMd = await readFile(
@@ -103,15 +91,16 @@ export async function nextTickets(
                 "utf8",
             );
         } catch {
-            // No index.md: nothing to read dependencies from, treat as ready.
             indexMd = "";
         }
         const deps = parseDependsOn(indexMd);
-        // Ready only when every dependency has been merged (is in done/).
         if (deps.every((dep) => done.has(dep))) {
-            todoReady.push(id);
+            actionable.push({ id, priority: parsePriority(indexMd) });
         }
     }
+
+    actionable.sort(compareTickets);
+    const todoReady = actionable.slice(0, todoBudget).map((t) => t.id);
 
     return {
         "merge-queue": await listQueue(join(ticketsDir, "merge-queue")),

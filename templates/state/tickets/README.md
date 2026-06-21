@@ -13,17 +13,23 @@ The queues are flat: ticket directories sit directly under the queue with no nes
 
 ## Queues
 
-- `todo/` — Pending tickets. New tickets always start here.
+- `todo/` — Pending tickets ready for `pb:next` to pick up.
+- `backlog/` — Captured work not yet a contender for implementation. `pb:next` never reads this queue; promote tickets to `todo/` via `pb:promote` or `move.ts` when ready.
 - `in-progress/` — Tickets currently being implemented.
 - `agent-review/` — Tickets awaiting automated review.
 - `human-review/` — Tickets awaiting developer review.
 - `merge-queue/` — Approved tickets waiting to merge.
 - `done/` — Completed tickets (immutable history).
 
-Two side pens sit outside the pipeline:
+Two more side pens sit outside the pipeline:
 
+- `backlog/` — Work captured for later. Not picked by `pb:next` until promoted to `todo/`.
 - `blocked/` — Parked after a hard or repeated failure; a human re-admits it to `todo/` once the cause is fixed.
 - `aborted/` — Killed by the developer during `pb:review`; the work is abandoned (terminal, immutable history).
+
+## Upgrading
+
+If your state repo was bootstrapped before `backlog/` existed, create `state/tickets/backlog/` (with a `.gitkeep` if empty) and commit via `commit-state.ts`. Existing tickets need no `**Priority:**` line; they default to `100`.
 
 ## ID rule
 

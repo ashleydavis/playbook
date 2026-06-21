@@ -17,18 +17,23 @@ let ticketsDir: string;
 let root: string;
 
 // Create a ticket directory `id` in `queue` with an index.md listing `deps`.
-// Pass null to omit the Depends on line entirely (as the template does when
-// there are no dependencies).
+// Pass optional priority in index.md via the priority argument.
 async function makeTicket(
     queue: string,
     id: string,
     deps: string[] | null = null,
+    priority?: number,
 ): Promise<void> {
     const dir = join(ticketsDir, queue, id);
     await mkdir(dir, { recursive: true });
     const dependsLine =
         deps === null ? "" : `**Depends on:** ${deps.join(", ")}\n`;
-    await writeFile(join(dir, "index.md"), `# ${id}\n\n**ID:** ${id}\n${dependsLine}`);
+    const priorityLine =
+        priority !== undefined ? `**Priority:** ${priority}\n` : "";
+    await writeFile(
+        join(dir, "index.md"),
+        `# ${id}\n\n**ID:** ${id}\n${dependsLine}${priorityLine}`,
+    );
 }
 
 beforeEach(async () => {
@@ -97,7 +102,19 @@ describe("nextTickets()", () => {
         expect(report.todo).toEqual([]);
     });
 
-    test("todo lists only actionable tickets (deps merged), sorted", async () => {
+    test("todo lists actionable tickets sorted by priority then ID", async () => {
+        await makeTicket("todo", "auth-1", null, 50);
+        await makeTicket("todo", "auth-9", null, 10);
+        await makeTicket("todo", "search-1", null, 100);
+
+        expect((await nextTickets(ticketsDir)).todo).toEqual([
+            "auth-9",
+            "auth-1",
+            "search-1",
+        ]);
+    });
+
+    test("todo lists only actionable tickets (deps merged), sorted by ID when priority ties", async () => {
         await makeTicket("done", "merged-9"); // a merged dependency
         await makeTicket("todo", "auth-1");
         await makeTicket("todo", "auth-2", ["auth-1"]); // dep only in todo -> blocked

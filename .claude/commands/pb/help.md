@@ -37,7 +37,8 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 todo/ -> in-progress/ -> agent-review/ -> human-review/ -> merge-queue/ -> done/
 ```
 
-- `todo/`: pending, waiting to be picked up.
+- `todo/`: pending, ready for `pb:next` (ordered by `**Priority:**` then ID among actionable tickets).
+- `backlog/`: side pen for captured work not yet a contender; `pb:next` never reads it. Pull to `todo/` with `pb:promote`.
 - `in-progress/`: an implement sub-agent is building it in a worktree.
 - `agent-review/`: automated review against `project/docs/rules/`.
 - `human-review/`: waiting on you (`pb:review`).
@@ -55,9 +56,12 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 | `pb:status` | Summarise queue state, recommend the next skill |
 | `pb:plan` | Update spec, docs, testing manual; queue tickets |
 | `pb:docs` | Write/update docs; queue tickets |
-| `pb:add` | Create a single ticket in `todo/` |
+| `pb:add` | Create a single ticket in `todo/` or `backlog/` |
+| `pb:promote` | Pull tickets from `backlog/` to `todo/` |
+| `pb:rank` | Set or change `**Priority:**` on tickets in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel through to human review |
 | `pb:review` | Walk you through `human-review/` |
+| `pb:unblock` | Re-admit blocked tickets (reset failures, move to `todo/`) |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
 | `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:bootstrap:new` | Set up a greenfield project (run once) |

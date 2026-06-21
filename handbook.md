@@ -265,7 +265,8 @@ Manages the project's state, so both the developer and Claude know what is happe
 state/
   current-state.md    # Snapshot of current state.
   tickets/
-    todo/             # Pending tickets
+    todo/             # Pending tickets (pb:next picks by priority then ID)
+    backlog/          # Captured for later (not a pipeline stage; promote to todo/)
     in-progress/      # Tickets currently being implemented
     agent-review/     # Tickets awaiting automated review
     human-review/     # Tickets awaiting developer review
@@ -275,7 +276,9 @@ state/
     aborted/          # Killed by the developer during pb:review (abandoned, terminal; not a pipeline stage)
 ```
 
-Each queue holds one directory per ticket, named by the ticket's ID. The directory travels between queues as a unit, so the ticket and its evidence always stay together and lands in together in `done/<id>/`:
+Each queue holds one directory per ticket, named by the ticket's ID. The directory travels between queues as a unit, so the ticket and its evidence always stay together and lands in together in `done/<id>/`.
+
+**Upgrading:** state repos bootstrapped before `backlog/` existed should create `state/tickets/backlog/` (with `.gitkeep` if empty) and commit. Existing tickets need no `**Priority:**` line; they default to `100`.
 
 ```bash
 todo/
@@ -293,7 +296,7 @@ Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **n
 
 ## Skills
 
-Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:plan`, `/pb:docs`, `/pb:add`, `/pb:next`, `/pb:review`, `/pb:debug`, `/pb:customize`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
+Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:board`, `/pb:plan`, `/pb:docs`, `/pb:add`, `/pb:promote`, `/pb:rank`, `/pb:next`, `/pb:review`, `/pb:unblock`, `/pb:debug`, `/pb:customize`, `/pb:reset`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
 
 ### pb:status
 
@@ -301,15 +304,23 @@ Reads `state/current-state.md` and the queues, summarises what was completed, wh
 
 ### pb:plan
 
-Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `project/docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `state/tickets/todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
+Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `project/docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `state/tickets/todo/` or `backlog/` (the skill asks once per batch). Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
 
 ### pb:docs
 
-Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing tickets in `todo/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
+Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing tickets in `todo/` or `backlog/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
 
 ### pb:add
 
-Creates one structured ticket in `todo/` for a single, well-understood task. See [.claude/commands/pb/add.md](.claude/commands/pb/add.md).
+Creates one structured ticket in `todo/` or `backlog/` for a single, well-understood task. The skill always asks where the ticket should land before creating it. See [.claude/commands/pb/add.md](.claude/commands/pb/add.md).
+
+### pb:promote
+
+Pulls one or more tickets from `backlog/` into `todo/` so `/pb:next` can pick them up. Use when captured work is ready to become a contender. See [.claude/commands/pb/promote.md](.claude/commands/pb/promote.md).
+
+### pb:rank
+
+Sets or changes `**Priority:**` on tickets in `todo/` or `backlog/`. Lower number = sooner admission by `/pb:next` among actionable `todo/` tickets whose dependencies are merged. Priority only orders tickets that are already unblocked; a high-priority ticket still waiting on an unmerged dependency is omitted from `/pb:next`'s report. See [.claude/commands/pb/rank.md](.claude/commands/pb/rank.md).
 
 ### pb:next
 

@@ -23,6 +23,7 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 - [state/tickets/CLAUDE.md](state/tickets/CLAUDE.md): queue and ticket rules.
 - [state/tickets/README.md](state/tickets/README.md): tickets orientation.
 - `state/tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).
+- `state/tickets/backlog/`: a side pen for tickets captured but not yet contenders for `pb:next` (empty, with `.gitkeep`).
 - `state/tickets/blocked/`: a side pen for tickets that hit a problem and need human attention (empty, with `.gitkeep`).
 - `state/tickets/aborted/`: a side pen for tickets the developer kills during `pb:review` (abandoned, terminal; empty, with `.gitkeep`).
 
@@ -31,7 +32,7 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 The shape of a single feature or ticket. `pb:plan` and `pb:add` copy these when creating tickets in a project; the template files themselves stay in the playbook.
 
 - [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied by `pb:plan` into `project/docs/spec/<id>/`.
-- [ticket-template/](ticket-template/): the shape of a ticket's `index.md` + `detail.md`. Copied by `pb:add` into `state/tickets/todo/<id>/`.
+- [ticket-template/](ticket-template/): the shape of a ticket's `index.md` + `detail.md`. Copied by `pb:add` into `state/tickets/<queue>/<id>/`.
 
 ## Commit template
 

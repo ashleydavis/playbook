@@ -7,7 +7,7 @@ description: "Invoke when something is broken and the root cause is not yet know
 
 The process is built around forward feature work; `pb:debug` is the path for "something is broken, find out why." The rule is **no fix without a proven root cause first.** Debugging and fixing are split into two separate tickets that each flow through the normal pipeline, so the investigation is reviewed on its own merits before any fix is written, and the fix is reviewed against a root cause that has already been proven.
 
-`pb:debug` does not investigate inline. It creates a **Debug** ticket (`**Type:** Debug`) in `todo/` describing the symptom. The Debug ticket's job is to **find the root cause and then prove it.**
+`pb:debug` does not investigate inline. It creates a **Debug** ticket (`**Type:** Debug`) in `todo/` describing the symptom. Debug tickets always land in `todo/` (immediate attention); the skill does not ask `todo` vs `backlog`. The Debug ticket's job is to **find the root cause and then prove it.**
 
 ## Output style
 

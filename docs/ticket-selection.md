@@ -14,6 +14,7 @@ Applies to skills that ask the developer to choose ticket(s) before acting. Does
 Build the menu from each ticket's `index.md` only: ID, one-line description, `**Depends on:**`, `**Failures:**`, and `**Priority:**` when present. Never read `detail.md` before a ticket is selected.
 
 Prefer:
+Hand-formatting is allowed only when the script cannot represent the case; document the exception in the skill.
 
 ```bash
 (cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")')
@@ -25,7 +26,7 @@ Hand-formatting is allowed only when the script cannot represent the case; docum
 
 | Mode | Use when | Developer picks | Loop |
 |---|---|---|---|
-| `pick-many` | One-shot action on one or more tickets (`pb:unblock`, future `pb:promote`, `pb:rank`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No — act once, then report |
+| `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No — act once, then report |
 | `pick-one-loop` | Repeated single-ticket work until done or stop (`pb:review`) | One number or ticket ID per turn; `q` / `quit` / `stop` ends the loop | Yes — reprint menu after each ticket is processed |
 
 ## Numbering rules (both modes)
@@ -78,7 +79,20 @@ Blocked (2)
 Which to unblock? (number, several numbers, ticket ID, or "all")
 ```
 
-### `pick-many` — multi-queue with priority (future `pb:rank`)
+### `pick-many` — backlog promote (`pb:promote`)
+
+```
+Backlog (2)
+1. infra-2 — upgrade test runner
+   priority: 100
+2. docs-5 — rewrite onboarding guide
+   priority: 50
+   depends on: docs-1
+
+Which to pull into todo? (number, several numbers, ticket ID, or "all")
+```
+
+### `pick-many` — multi-queue rank (`pb:rank`)
 
 ```
 Todo (2)

@@ -23,21 +23,23 @@ let ticketsDir: string;
 let root: string;
 
 // Create a ticket directory `id` in `queue` with an index.md carrying the given
-// description and dependencies. Pass null for deps to omit the Depends on line
-// (as the template does when there are none).
+// description, dependencies, and optional priority.
 async function makeTicket(
     queue: string,
     id: string,
     description = "",
     deps: string[] | null = null,
+    priority?: number,
 ): Promise<void> {
     const dir = join(ticketsDir, queue, id);
     await mkdir(dir, { recursive: true });
     const dependsLine =
         deps === null ? "" : `**Depends on:** ${deps.join(", ")}\n`;
+    const priorityLine =
+        priority !== undefined ? `**Priority:** ${priority}\n` : "";
     await writeFile(
         join(dir, "index.md"),
-        `# ${id}: a title\n\n**ID:** ${id}\n**Type:** Tweak\n${dependsLine}**Failures:** 0\n\n${description}\n`,
+        `# ${id}: a title\n\n**ID:** ${id}\n**Type:** Tweak\n${dependsLine}**Failures:** 0\n${priorityLine}\n${description}\n`,
     );
 }
 
@@ -113,11 +115,35 @@ describe("board()", () => {
         expect(result.todo.count).toBe(1);
         expect(result.todo.truncated).toBe(false);
         expect(result.todo.tickets).toEqual([
-            { id: "feat-2", description: "paginate results", dependsOn: ["feat-1"], failures: 0 },
+            {
+                id: "feat-2",
+                description: "paginate results",
+                dependsOn: ["feat-1"],
+                failures: 0,
+                priority: 100,
+            },
         ]);
     });
 
-    test("orders pipeline queues by ticket ID", async () => {
+    test("orders todo and backlog by priority then ID", async () => {
+        await makeTicket("todo", "feat-3", "", null, 30);
+        await makeTicket("todo", "feat-1", "", null, 10);
+        await makeTicket("todo", "feat-2", "", null, 20);
+        await makeTicket("backlog", "infra-2", "", null, 50);
+        await makeTicket("backlog", "infra-1", "", null, 5);
+        const result = await board(ticketsDir);
+        expect(result.todo.tickets.map((t) => t.id)).toEqual([
+            "feat-1",
+            "feat-2",
+            "feat-3",
+        ]);
+        expect(result.backlog.tickets.map((t) => t.id)).toEqual([
+            "infra-1",
+            "infra-2",
+        ]);
+    });
+
+    test("orders pipeline queues by ticket ID when not todo/backlog", async () => {
         await makeTicket("todo", "feat-3");
         await makeTicket("todo", "feat-1");
         await makeTicket("todo", "feat-2");
@@ -179,8 +205,18 @@ describe("board()", () => {
         await mkdir(join(ticketsDir, "todo", "broken-1"), { recursive: true });
         const result = await board(ticketsDir);
         expect(result.todo.tickets).toEqual([
-            { id: "broken-1", description: "", dependsOn: [], failures: 0 },
+            { id: "broken-1", description: "", dependsOn: [], failures: 0, priority: 100 },
         ]);
+    });
+
+    test("includes backlog queue in the board", async () => {
+        await makeTicket("backlog", "later-1", "upgrade runner", null, 40);
+        const result = await board(ticketsDir);
+        expect(result.backlog.count).toBe(1);
+        expect(result.backlog.tickets[0]).toMatchObject({
+            id: "later-1",
+            priority: 40,
+        });
     });
 
     test("parses failures from index.md", async () => {

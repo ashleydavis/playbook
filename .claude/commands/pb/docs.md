@@ -17,7 +17,13 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 1. Ask the developer what documentation needs writing or updating.
 2. Write or update the relevant files in `project/docs/` (spec, testing manual, how-it-works, or roadmap as appropriate).
-3. If the doc changes imply code or test changes, create tickets in `state/tickets/todo/` to cover them. When you create more than one, set each ticket's `**Depends on:**` field to capture the dependencies between them so they implement in the right order, and where possible number them in execution order so a dependent ticket gets a higher number than the tickets it depends on. Commit each new ticket to the state repo as you write it: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`). (The doc files themselves live in the project repo, not the state repo.)
+3. If the doc changes imply code or test changes, ask once per batch where new tickets should land (no default):
+   ```
+   Where should this ticket go?
+   1. todo — ready for pb:next to pick up
+   2. backlog — captured for later; pull to todo when ready
+   ```
+   Accept `1`/`2`, or `todo`/`backlog`. Create tickets in `state/tickets/<queue>/<id>/`. When you create more than one, set each ticket's `**Depends on:**` field to capture the dependencies between them so they implement in the right order, and where possible number them in execution order so a dependent ticket gets a higher number than the tickets it depends on. Commit each new ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`). (The doc files themselves live in the project repo, not the state repo.)
 4. If you queued any tickets, update `state/current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example

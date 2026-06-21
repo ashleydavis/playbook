@@ -7,6 +7,7 @@
 // Performs the two fiddly steps of admission as one atomic, tested operation so
 // the agent never has to compute paths or run `git worktree` by hand:
 //   1. Move tickets/todo/<id>/ -> tickets/in-progress/<id>/.
+//      Tickets in backlog/ must be promoted to todo/ first (pb:promote or move.ts).
 //   2. Create a git worktree for the ticket against the PROJECT repo
 //      (../project) at ../project/worktrees/<id>, on a new branch named
 //      worktrees/<id> based at the project's current HEAD.
@@ -93,6 +94,14 @@ export async function setupTicket(
 
     if (!(await exists(projectDir))) {
         throw new SetupError(`no project repo at ${projectDir}`);
+    }
+
+    const todoPath = join(ticketsDir, "todo", id);
+    const inProgressPath = join(ticketsDir, "in-progress", id);
+    if (!(await exists(todoPath)) && !(await exists(inProgressPath))) {
+        throw new SetupError(
+            `ticket '${id}' is not in todo/: promote from backlog/ first`,
+        );
     }
 
     // Create the worktree first, so a git failure leaves the ticket untouched in

@@ -52,9 +52,11 @@ Three repos, each a separate concern:
 
 ## Queues
 
-`state/tickets/` has six pipeline queue directories, in order, plus two side pens:
+`state/tickets/` has six pipeline queue directories, in order, plus three side pens:
 
 `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`
+
+`backlog/` is a side pen for work captured but not yet a contender for implementation. It is **not** a pipeline stage: `pb:next` never reads it. Pull tickets to `todo/` explicitly via `pb:promote` or `move.ts` when ready to build.
 
 `blocked/` is a side pen. It is **not** a pipeline stage: it is where a ticket lands after its third failure (see **Failures**). A blocked ticket is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
 
@@ -82,9 +84,16 @@ In the project repo (`project/`):
 
 ## Tickets
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), optional `**Priority:**` (lower = sooner; default `100` when absent; tie-break by ID among actionable `todo/` tickets), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
-- Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a hint at reading order, not the enforcement mechanism. `**Depends on:**` is what actually gates execution.
+- Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a reading-order hint only; `**Depends on:**` gates execution and `**Priority:**` orders actionable `todo/` tickets for `pb:next`.
+- Before writing any new ticket directory, the creating skill **always** asks where it should land (no default):
+  ```
+  Where should this ticket go?
+  1. todo — ready for pb:next to pick up
+  2. backlog — captured for later; pull to todo when ready
+  ```
+  Accept `1`/`2`, or the words `todo`/`backlog`. `pb:plan` and `pb:docs` ask once per batch. `pb:debug` is the exception (Debug tickets always land in `todo/`).
 - Refuse to implement a ticket with no acceptance criteria.
 - A Test Plan is required. For tickets with no testable behaviour, use `N/A: <reason>` with a Manual Verification section. Nothing reaches `merge-queue/` without a check.
 - Dependent tickets cannot start until their dependencies are merged.
@@ -147,10 +156,12 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:board` | Bare listing of every queue and its tickets (no narrative) |
 | `pb:plan` | Update spec, docs, testing manual; queue tickets |
 | `pb:docs` | Write/update docs; queue tickets |
-| `pb:add` | Create a ticket in `todo/` |
+| `pb:add` | Create a ticket in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |
 | `pb:review` | Walk the developer through `human-review/` |
 | `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
+| `pb:promote` | Pull tickets from `backlog/` to `todo/` |
+| `pb:rank` | Set or change `**Priority:**` on tickets in `todo/` or `backlog/` |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
 | `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |

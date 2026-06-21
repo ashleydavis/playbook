@@ -17,18 +17,21 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ## Steps
 
-1. Read `state/current-state.md` and inspect each queue in `state/tickets/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `blocked/`, and the most recent entries in `done/`.
+1. Read `state/current-state.md` and inspect each queue in `state/tickets/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `backlog/`, `blocked/`, and the most recent entries in `done/`.
 2. Summarise, **action items first** (lead with what needs the developer, then the informational state):
    - **Run halted: systemic failure:** any systemic-failure entry left by `pb:next` when a run aborted (the shared stage or check, the tickets involved, the suspected environmental cause, the evidence path). Lead with this when present: the tickets it hit usually went back to `todo/`, so this entry is the only signal of why the last run stopped, and the cause must be fixed before re-running `pb:next`.
    - **Awaiting review:** every ticket in `human-review/` (ID + one-line description). These need the developer to run `pb:review`.
    - **Blocked:** every ticket in `blocked/` (these hit 3 failures and need you), plus anything stuck on an unmet dependency. For each blocked ticket, read its History note for the reason. Blocked tickets are parked and will not move until you act.
+   - **Backlog:** when `backlog/` is non-empty, count + one line per ticket (informational). Suggest `pb:promote` to pull work forward or `pb:rank` to reorder `todo/`.
    - **In flight:** tickets still moving on their own (`in-progress/`, `agent-review/`, `merge-queue/`) and the stage each sits at. Informational; nothing needed.
    - **Completed since last session:** the most recent tickets in `done/`. Informational.
 
    Keep the action items short and plain so they cannot be missed. If there are no action items, say so in one line ("Nothing needs you; the loop is healthy") before the informational summary.
 3. Recommend a next step from the queue state:
    - A `Run halted: systemic failure` entry in **⚠ Needs your action** -> tell the developer to fix the named environmental cause before re-running `pb:next`, then clear the entry once it is resolved.
-   - Tickets in `blocked/` -> tell the developer to resolve each (read the History note, fix the cause) and re-admit it with `bun ../scripts/move.ts <id> todo` from `state/`.
+   - Tickets in `blocked/` -> tell the developer to resolve each (read the History note, fix the cause) and re-admit with `pb:unblock` or `move.ts`.
+   - Non-empty `backlog/` with nothing urgent in `todo/` -> suggest `pb:promote` to pull contenders forward.
+   - Reordering `todo/` -> suggest `pb:rank`.
    - Tickets in `human-review/` -> suggest `pb:review`.
    - Tickets in `merge-queue/`, or unblocked tickets in `todo/` -> suggest `pb:next`.
    - Empty queues with ideas in `project/docs/roadmap.md` -> suggest `pb:plan`.

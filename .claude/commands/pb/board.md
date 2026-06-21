@@ -1,6 +1,6 @@
 ---
 name: pb:board
-description: "Invoke for a quick, bare listing of every ticket queue and what sits in each, without the narrative or recommendation that pb:status gives. Lists the IDs (and one-line descriptions) in todo, in-progress, agent-review, human-review, merge-queue, blocked, and the most recent in done. Use when you just want to see the board. Keywords: board, list queues, ls queues, show the board, queue contents, what's in the queue, list tickets, kanban, quick list, where are the tickets."
+description: "Invoke for a quick, bare listing of every ticket queue and what sits in each, without the narrative or recommendation that pb:status gives. Lists the IDs (and one-line descriptions) in todo, backlog, in-progress, agent-review, human-review, merge-queue, blocked, and the most recent in done. Use when you just want to see the board. Keywords: board, list queues, ls queues, show the board, queue contents, what's in the queue, list tickets, kanban, quick list, where are the tickets."
 ---
 
 # pb:board
@@ -18,21 +18,25 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ## Steps
 
-1. From the state repo, run the board script: `(cd state && bun ../scripts/board-tickets.ts)`. It prints JSON keyed by queue, in board order (`todo`, `in-progress`, `agent-review`, `human-review`, `merge-queue`, then the side pen `blocked`, then `done` most-recent-first). Aborted tickets are a dead end and are deliberately left off the board. Do not list the queues by hand; do not read `detail.md`.
-2. Each queue value is `{ count, truncated, tickets: [{ id, description, dependsOn }] }`. `count` is the true total; `tickets` is capped at 5 for display; `truncated` is true when the queue holds more than 5. Each `description` is already shortened to one short line (it ends in `…` when cut), so print it as-is.
-3. Print the board grouped by queue, with the `count` beside each queue name. Per ticket: the ID on its own line, then the description indented under it, then a `depends on: <ids>` line indented under it when `dependsOn` is non-empty. Put a blank line after each ticket so the list is easy to scan. Show empty queues as empty. When `truncated` is true, add a `...` line after that queue's tickets to show there are more than displayed.
+1. From the state repo, run the board script: `(cd state && bun ../scripts/board-tickets.ts)`. It prints JSON keyed by queue, in board order (`todo`, `backlog`, `in-progress`, `agent-review`, `human-review`, `merge-queue`, then the side pen `blocked`, then `done` most-recent-first). Aborted tickets are a dead end and are deliberately left off the board. Do not list the queues by hand; do not read `detail.md`.
+2. Each queue value is `{ count, truncated, tickets: [{ id, description, dependsOn, failures, priority }] }`. `count` is the true total; `tickets` is capped at 5 for display; `truncated` is true when the queue holds more than 5. Each `description` is already shortened to one short line (it ends in `…` when cut), so print it as-is.
+3. Print the board grouped by queue, with the `count` beside each queue name. Per ticket: the ID on its own line as `<id> [Pn]` (e.g. `search-4 [P50]` — priority at the end of the ID, not as a prefix), then the description indented under it, then an indented `depends on:` line when `dependsOn` is non-empty. Put a blank line after each ticket so the list is easy to scan. Show empty queues as empty. When `truncated` is true, add a `...` line after that queue's tickets to show there are more than displayed.
 4. Do not summarise, recommend a next skill, flag what needs the developer, or read `state/current-state.md`: that is `pb:status`.
 
 ## Example
 
 ```
 todo (2)
-  search-3
+  search-3 [P100]
     add result ranking
 
-  search-4
+  search-4 [P50]
     paginate results
     depends on: search-3
+
+backlog (1)
+  infra-2 [P100]
+    upgrade test runner
 
 in-progress (1)
   auth-2
