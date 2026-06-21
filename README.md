@@ -43,6 +43,7 @@ cd playbook
 
 ## Next steps
 
+- [Handbook](handbook.md#setup): read the Playbook handbook.
 - [Setup](handbook.md#setup): the detailed setup steps.
 - [Project bootstrap](handbook.md#project-bootstrap): the detailed bootstrap steps.
 - [Host + VM](handbook.md#host--vm): a more autonomous, VM-based setup.
