@@ -18,13 +18,13 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ## The short tour
 
-**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and each ticket has completion criteria checked against evidence on disk, so no agent advances a ticket without them. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code) and a **state repo** (the queues and `current-state.md`).
+**What this is.** A semi-autonomous development process. A work queue is the source of truth, Claude skills drive each stage, and each ticket has completion criteria checked against evidence on disk, so no agent advances a ticket without them. Three repos: the **playbook** (this repo, cloned once per project: process, skills, templates, scripts), and per project a **project repo** (the code at `project/`) and a **state repo** (the queues and `state/current-state.md`).
 
 **How to start a project (bootstrap, run once).** Launch Claude Code from the playbook repo root, then:
-- New codebase -> `pb:bootstrap:new`: interviews you, creates both repos from `templates/`, writes the initial spec, testing manual, and `docs/rules/`.
+- New codebase -> `pb:bootstrap:new`: interviews you, creates both repos from `templates/`, writes the initial spec, testing manual, and `project/docs/rules/`.
 - Existing codebase -> `pb:bootstrap:existing`: creates the state repo, analyses the project repo for gaps, and queues tickets to fill them.
 
-**How to drive it forward (the loop).** Check `current-state.md`, run a skill, repeat:
+**How to drive it forward (the loop).** Check `state/current-state.md`, run a skill, repeat:
 1. `pb:status` (usual session start): summarises the queues, recommends the next skill.
 2. `pb:plan` / `pb:docs` / `pb:add`: get work into `todo/`.
 3. `pb:next`: drains the queues without you, implementing up to 10 unblocked tickets in parallel through to human review. Run it once; it keeps going until forward progress is exhausted.
@@ -39,7 +39,7 @@ todo/ -> in-progress/ -> agent-review/ -> human-review/ -> merge-queue/ -> done/
 
 - `todo/`: pending, waiting to be picked up.
 - `in-progress/`: an implement sub-agent is building it in a worktree.
-- `agent-review/`: automated review against `docs/rules/`.
+- `agent-review/`: automated review against `project/docs/rules/`.
 - `human-review/`: waiting on you (`pb:review`).
 - `merge-queue/`: approved, waiting for the merge agent to land it on main.
 - `done/`: merged, with its evidence archived alongside.
@@ -59,7 +59,7 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel through to human review |
 | `pb:review` | Walk you through `human-review/` |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
-| `pb:customize` | Tune the project's enforced rules in `docs/rules/` |
+| `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:bootstrap:new` | Set up a greenfield project (run once) |
 | `pb:bootstrap:existing` | Set up an existing project (run once) |
 

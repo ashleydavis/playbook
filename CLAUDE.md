@@ -23,8 +23,8 @@ TODO: Is this in process.md ?
 Three repos (full detail in `docs/process.md`):
 
 - **Playbook** (the playbook repo root): this process, the skills, the templates, the scripts. One clone per project, launched from the root. You are reading its instructions now.
-- **Project repo** (per project): the code, its spec (`docs/spec/`), testing manual, and rules. Has its own `CLAUDE.md` that takes precedence when you are working inside it.
-- **State repo** (per project): the ticket queues (`tickets/`) and `current-state.md`. Lives beside the project repo.
+- **Project repo** (per project): the code at `project/`, its spec (`project/docs/spec/`), testing manual, and rules. Has its own `CLAUDE.md` that takes precedence when you are working inside it.
+- **State repo** (per project): at `state/`, the ticket queues (`state/tickets/`) and `state/current-state.md`. Lives beside the project repo.
 
 When you are inside a project's work or state repo, that repo's `CLAUDE.md` applies on top of this file.
 
@@ -32,6 +32,6 @@ When you are inside a project's work or state repo, that repo's `CLAUDE.md` appl
 
 TODO: Should this be in process.md?
 
-- If a project's project and state repos already exist, start with `/pb:status`: read `current-state.md`, summarise what is in flight and blocked, and recommend the next skill (`/pb:next`, `/pb:review`, `/pb:plan`, ...).
+- If a project's project and state repos already exist, start with `/pb:status`: read `state/current-state.md`, summarise what is in flight and blocked, and recommend the next skill (`/pb:next`, `/pb:review`, `/pb:plan`, ...).
 - If the project is not set up yet, run `/pb:bootstrap:new` (greenfield) or `/pb:bootstrap:existing` (existing code) to scaffold the project and state repos, then begin the loop.
 - Move tickets only with `(cd state && bun ../scripts/move.ts <id> <target-queue>)`, using the subshell so the working directory does not persist. Never move queue directories by hand.

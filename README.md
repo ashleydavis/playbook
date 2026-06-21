@@ -91,8 +91,8 @@ playbook/
 
 ## How it fits with project and state repos
 Each project has two further repos, nested in the playbook repo root:
-- **Project repo**: the product you are building, its code, its spec (`docs/spec/`), testing manual, and enforced rules. Source of truth for the project.
-- **State repo**: tracks the state of the project, the ticket queues (`tickets/`) and `current-state.md`, tracking what is in flight.
+- **Project repo**: the product you are building at `project/`, its code, its spec (`project/docs/spec/`), testing manual, and enforced rules. Source of truth for the project.
+- **State repo**: at `state/`, tracks the state of the project, the ticket queues (`state/tickets/`) and `state/current-state.md`, tracking what is in flight.
 
 Bootstrap (`pb:bootstrap:new` / `pb:bootstrap:existing`) scaffolds both from [templates/](templates/). The project repo is decoupled from the playbook which remains separate and shareable between multiple projects.
 

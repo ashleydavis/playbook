@@ -30,7 +30,7 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 
 The shape of a single feature or ticket. `pb:plan` and `pb:add` copy these when creating tickets in a project; the template files themselves stay in the playbook.
 
-- [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied by `pb:plan` into `docs/spec/<id>/`.
+- [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied by `pb:plan` into `project/docs/spec/<id>/`.
 - [ticket-template/](ticket-template/): the shape of a ticket's `index.md` + `detail.md`. Copied by `pb:add` into `state/tickets/todo/<id>/`.
 
 ## Commit template

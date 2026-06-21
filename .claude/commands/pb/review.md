@@ -88,8 +88,8 @@ For the chosen ticket:
    For each pick you either **show the developer how** to do it themselves, or **do it for them**. When you do it for them, **first print a one-line description of what you are about to do, then do it.** After the option finishes, reprint the menu and wait. The options:
 
    1. **Show the screenshots.** State each screenshot's **full file path on disk** (e.g. `state/tickets/human-review/<id>/evidence/implementation-N/screenshots/<name>.png`), then **open them for the developer** in their image viewer (`xdg-open <path>` on Linux, `open <path>` on macOS), one command per screenshot, and also render each inline. List every path. Showing the paths is mandatory, not optional. **Every affected view must be captured, each in both light and dark mode.** If any affected view is missing, or is in only one mode (or has no screenshot), flag that coverage gap to the developer as a defect, since agent-review should have required a both-mode screenshot of every affected view.
-   2. **Run it by hand.** Work out which part of the app this ticket changed (from its `detail.md` and diff), then give the developer everything they need to run and explore it themselves. Pull the exact commands from the **testing manual** (`docs/testing-manual/`); do not invent them. Cover all six, in order:
-      1. **Point to the testing manual.** Name the file and section in `docs/testing-manual/` that covers running the app and testing this feature.
+   2. **Run it by hand.** Work out which part of the app this ticket changed (from its `detail.md` and diff), then give the developer everything they need to run and explore it themselves. Pull the exact commands from the **testing manual** (`project/docs/testing-manual/`); do not invent them. Cover all six, in order:
+      1. **Point to the testing manual.** Name the file and section in `project/docs/testing-manual/` that covers running the app and testing this feature.
       2. **Setup commands.** The exact command(s) from the manual to set up (e.g. load database fixtures, start test clusters).
       3. **Start command(s).** The exact command(s) from the manual to start the app.
       4. **What to look for.** Exactly what in the app relates to the feature added or changed, and what they should see.
@@ -98,7 +98,7 @@ For the chosen ticket:
    3. **Start it for you.** Run the setup and start commands from the testing manual (option 2) to launch the app for the developer, then tell them what to look at in the app for this change (which view, what they should see). **Do not drive or navigate the app yourself** (no clicking, typing, or routing): just start it and hand it over. The developer explores it and closes it themselves when they are ready.
    4. **Run the automated tests.** Say which tests you will run (read the ticket's Test Plan in `detail.md` for which apply), then run them fresh in the foreground (unit, smoke, and/or e2e, picking the levels that match what changed) and show the output.
    5. **Show the doc changes.** Show the diff of the docs this ticket touched, naming the files.
-   6. **Read the docs yourself.** Do not show the diff: tell the developer which doc files and sections this ticket touched (name the paths in `docs/`) and how to read them, so they open and read the docs themselves.
+   6. **Read the docs yourself.** Do not show the diff: tell the developer which doc files and sections this ticket touched (name the paths under `project/docs/`) and how to read them, so they open and read the docs themselves.
    7. **Show the code diff.** Show the committed diff, naming the files changed.
    8. **View the code diff yourself.** Do not show the diff: give the developer the exact command(s) to find and view it themselves (e.g. `git -C project log` for the ticket's commit, then `git -C project show <sha>`), naming the files changed so they know what to look at.
 
@@ -109,7 +109,7 @@ For the chosen ticket:
    - the current feature's Notes, behaviour, acceptance criteria, or open questions in `detail.md`,
    - other features (edits to their specs, or new tickets in `todo/` to cover the change),
    - docs (testing manual, user guide, how-it-works),
-   - the roadmap (`docs/roadmap.md`) for forward-looking ideas.
+   - the roadmap (`project/docs/roadmap.md`) for forward-looking ideas.
 
 ### 3. Resolve
 

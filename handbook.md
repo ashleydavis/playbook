@@ -78,11 +78,11 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`/pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `docs/rules/`) from the answers. Leaves you with an empty `current-state.md` and queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `project/docs/rules/`) from the answers. Leaves you with an empty `state/current-state.md` and queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
-Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a ticket to fill each gap. These tickets become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
+Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `project/docs/spec/`, `project/docs/testing-manual/`, `project/docs/rules/`, `project/docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a ticket to fill each gap. These tickets become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
 
 ## Running a Session
 
@@ -93,7 +93,7 @@ Start Claude Code and check where the project stands, then pick a skill. There a
 
 A typical session (the host/VM labels apply only in host + VM mode; in host only, everything runs on the host):
 
-1. Check where things stand: read `current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
+1. Check where things stand: read `state/current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
 2. `/pb:plan`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
 3. `/pb:next` (VM) to implement everything unblocked through to human review.
 4. `/pb:review` (host) to approve or reject the tickets waiting for you; approved tickets merge.
@@ -105,7 +105,7 @@ New to the process? Run `/pb:help`.
 
 The loop has a simple rhythm: check where things stand, run a skill that prompts you through the substantive work (planning, reviewing, testing, reading docs, exploring the UI, etc.), then repeat. The skill is what gets invoked, but most of the actual work happens outside Claude. The skills and ticket completion criteria keep Claude on the rails.
 
-`current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
+`state/current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
 
 The full pipeline a ticket travels through, from session start to merge:
 
@@ -169,7 +169,7 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 **One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
-**The developer is told through `current-state.md`.** Anything that needs the developer (a block, a broken main, or an environmental failure) is recorded in the top `⚠ Needs your action` section of `current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it.
+**The developer is told through `state/current-state.md`.** Anything that needs the developer (a block, a broken main, or an environmental failure) is recorded in the top `⚠ Needs your action` section of `state/current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it.
 
 **Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the ticket still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later ticket builds on main.
 
@@ -297,11 +297,11 @@ Skills are the `pb:*` slash commands that drive each stage of the process. The d
 
 ### pb:status
 
-Reads `current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
+Reads `state/current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
 
 ### pb:plan
 
-Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
+Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `project/docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `state/tickets/todo/`. Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
 
 ### pb:docs
 
@@ -374,7 +374,7 @@ The path for "something is broken, find out why." The rule is **no fix without a
 
 ### pb:customize
 
-Tunes the project's enforced rule set in `docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review stage reads the whole directory, anything captured here is enforced on every ticket from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
+Tunes the project's enforced rule set in `project/docs/rules/` via an interview (coding style, required documents, testing rules, process rules). Because the agent-review stage reads the whole directory, anything captured here is enforced on every ticket from then on. See [.claude/commands/pb/customize.md](.claude/commands/pb/customize.md).
 
 ## Templates
 
@@ -535,7 +535,7 @@ A concise machine-readable description of this process. Claude reads it at sessi
 An `index.md` is a lightweight index: it names what lives in its directory and links to the children, so a whole tree can be enumerated by reading only the `index.md` files without opening the heavier content beside them. The convention recurs across the repos, and each is kept current as its directory's contents change:
 
 - The playbook's top-level [index.md](index.md) is the orientation map for Claude: what lives where across the playbook and a project's project/state repos. Cheap to load, enough to navigate without reading this handbook end to end.
-- In `docs/spec/` and `docs/testing-manual/`, each directory's `index.md` lists its features/sub-features with their IDs, so tooling resolves the full set without loading every `detail.md` (see Spec Format, Testing Manual Format).
+- In the project repo, in `docs/spec/` and `docs/testing-manual/`, each directory's `index.md` lists its features/sub-features with their IDs, so tooling resolves the full set without loading every `detail.md` (see Spec Format, Testing Manual Format).
 
 ## Checks
 
@@ -544,7 +544,7 @@ A **check** is any pass/fail verification of the work. Every check produces a bo
 ### Two kinds
 
 - **Deterministic checks** run a command that yields the verdict: compile, lint, format, unit, smoke, e2e. There is no discretion: the command passes or it does not.
-- **Judgement checks** require an agent to analyse the work against a named rule and decide. These cover anything in `docs/rules/`, the root and scoped `CLAUDE.md` files, and the documents required by `documentation.md`: is the documentation current after this code change, does the code conform to the rule, is the fix the minimal change that solves the problem. Discretion is required, but the output is still a single boolean.
+- **Judgement checks** require an agent to analyse the work against a named rule and decide. These cover anything in `project/docs/rules/`, the root and scoped `CLAUDE.md` files in the project repo, and the documents required by `documentation.md`: is the documentation current after this code change, does the code conform to the rule, is the fix the minimal change that solves the problem. Discretion is required, but the output is still a single boolean.
 
 The two are interchangeable in the pipeline. A judgement check is not "softer" than a unit test: it must pass before the ticket advances, exactly like a test. What differs is the evidence behind the verdict (see below).
 
@@ -574,7 +574,7 @@ Agent-review is the automated gate between implementation and the human review q
 For each review pass N it:
 
 1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
-2. **Runs the judgement checks:** reads every rule in `docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
+2. **Runs the judgement checks:** reads every rule in `project/docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
 3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the ticket, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
 4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-ticket.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
 

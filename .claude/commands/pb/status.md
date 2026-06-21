@@ -17,7 +17,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ## Steps
 
-1. Read `current-state.md` and inspect each queue in `tickets/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `blocked/`, and the most recent entries in `done/`.
+1. Read `state/current-state.md` and inspect each queue in `state/tickets/`: `merge-queue/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `blocked/`, and the most recent entries in `done/`.
 2. Summarise, **action items first** (lead with what needs the developer, then the informational state):
    - **Run halted: systemic failure:** any systemic-failure entry left by `pb:next` when a run aborted (the shared stage or check, the tickets involved, the suspected environmental cause, the evidence path). Lead with this when present: the tickets it hit usually went back to `todo/`, so this entry is the only signal of why the last run stopped, and the cause must be fixed before re-running `pb:next`.
    - **Awaiting review:** every ticket in `human-review/` (ID + one-line description). These need the developer to run `pb:review`.
@@ -31,7 +31,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
    - Tickets in `blocked/` -> tell the developer to resolve each (read the History note, fix the cause) and re-admit it with `bun ../scripts/move.ts <id> todo` from `state/`.
    - Tickets in `human-review/` -> suggest `pb:review`.
    - Tickets in `merge-queue/`, or unblocked tickets in `todo/` -> suggest `pb:next`.
-   - Empty queues with ideas in `docs/roadmap.md` -> suggest `pb:plan`.
+   - Empty queues with ideas in `project/docs/roadmap.md` -> suggest `pb:plan`.
    - Empty queues and empty roadmap -> suggest `pb:add` or `pb:plan` to populate the queue.
 4. Ask the developer what they want to do.
 

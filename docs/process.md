@@ -40,14 +40,14 @@ Launch Claude Code from the root of the playbook repo.
 
 Once per project, on host or VM. Already bootstrapped? Don't run it again; start the loop with `pb:status` or `pb:next`.
 
-- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/`, seeds docs (spec, testing manual, `docs/rules/`), leaves empty queues ready to run.
-- `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, finds gaps (`CLAUDE.md`, docs, test setup), queues a ticket per gap (these become dependencies for future work).
+- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/`, seeds docs (spec, testing manual, `project/docs/rules/`), leaves empty queues ready to run.
+- `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, finds gaps (`CLAUDE.md`, `project/docs/spec/`, `project/docs/testing-manual/`, `project/docs/rules/`, `project/docs/roadmap.md`, smoke/e2e setup), queues a ticket per gap (these become dependencies for future work).
 
 ## Repos
 
 Three repos, each a separate concern:
 - **Playbook** (the playbook repo root) describes the AI development process including skills, templates, and scripts that drive every project. The repo this file lives in. Playbook is cloned once for each project; launch Claude Code from its root.
-- **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. Must contain `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
+- **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. Must contain (paths relative to the project repo root): `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
 - **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the queues and `current-state.md`. Lives at `state/` under the playbook repo root (a sibling of `project/`, not inside it) so it stays external to and consistent across worktrees.
 
 ## Queues
@@ -72,6 +72,8 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 - The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically (ticket-scoped, lock-safe). For a hand edit (a `current-state.md` update, a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
 
 ## Spec and docs
+
+In the project repo (`project/`):
 
 - `docs/spec/` is the source of truth for app behaviour. The testing manual (`docs/testing-manual/`) mirrors its layout and IDs exactly; derived docs (how-it-works, user guide) follow from it.
 - Edits can start from any surface (spec, derived doc, testing manual, code). Whichever changes first, the AI fans the change out to the rest. Conflicts resolve in the spec's favour.
@@ -150,7 +152,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:review` | Walk the developer through `human-review/` |
 | `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
-| `pb:customize` | Tune the project's enforced rules in `docs/rules/` |
+| `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |
 
 ## Ticket completion criteria
@@ -166,7 +168,7 @@ When a sub-agent cannot meet its completion criteria, the ticket is recorded and
 A **check** is any pass/fail verification of the work. Every check has a boolean result; they differ only in how the verdict is reached:
 
 - **Deterministic**: a command produces the verdict (compile, lint, format, unit, smoke, e2e). No discretion.
-- **Judgement**: an agent analyses the work against a named rule and decides (anything in `docs/rules/`, plus `CLAUDE.md` files): docs current after a code change, rule conformance, a fix being the minimal change. Discretion required.
+- **Judgement**: an agent analyses the work against a named rule and decides (anything in `project/docs/rules/`, plus `CLAUDE.md` files in the project repo): docs current after a code change, rule conformance, a fix being the minimal change. Discretion required.
 
 The two are interchangeable in the pipeline. What differs is the evidence: a deterministic check captures command output; a judgement check captures the agent's written assessment pointing at the rule and the code.
 
@@ -191,7 +193,7 @@ Agent-review is the automated gate before human review. It is **review-only**: t
 For each review pass N it:
 
 1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
-2. **Runs the judgement checks:** reads every rule in `docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and the docs required by `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
+2. **Runs the judgement checks:** reads every rule in `project/docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and the docs required by `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
 3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the ticket, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
 4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note in `detail.md`, runs `bun ../scripts/fail-ticket.ts <id>` (from `state/`), and routes per **Failures** (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
 

@@ -21,6 +21,9 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code.
 
 ## In a project repo (project-specific)
+
+Paths below are under `project/` when working from the playbook root (e.g. `project/docs/spec/`).
+
 - `CLAUDE.md` at the root: project-specific instructions (stack, how to run, comms style). Always present. Knows nothing about the playbook; the rules enforced by agents live in `docs/rules/`, not in `CLAUDE.md`.
 - `docs/spec/`: source of truth. `docs/spec/index.md` is the feature index; each `<feature>/index.md` declares an ID; `<feature>/detail.md` is the full spec.
 - `docs/testing-manual/`: mirrors `docs/spec/`. `detail.md` for full steps.
@@ -29,6 +32,9 @@ A compact orientation map: what lives where across the playbook and a project's 
 - Code, tests, derived docs: project-specific layout. See the project repo's CLAUDE.md.
 
 ## In a state repo (project-specific)
+
+Paths below are under `state/` when working from the playbook root (e.g. `state/tickets/todo/`).
+
 - `tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the queues. Each holds one directory per ticket (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs.
 - `current-state.md`: scannable snapshot of what's in flight, what's blocked, what needs developer attention.
 

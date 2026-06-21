@@ -33,8 +33,8 @@ TODO: WHY THERE TWO STEPS HERE AND ONE STEP IN THE EXISTING SKILL?
 
 TODO: DOES THIS LINE UP WITH WHAT'S REQUESTED IN EXISTING SKILL:  
 
-4. Write the initial spec, testing manual, and the rule set in `docs/rules/` (`coding-style.md`, `testing.md`, `documentation.md`) based on the interview. The rules can be refined at any point with `pb:customize`.
-5. Populate `current-state.md` (empty queues, no work in flight), then commit it: `bun ../scripts/commit-state.ts "initialise current-state" current-state.md` (from `state/`).
+4. Write the initial spec, testing manual, and the rule set in `project/docs/rules/` (`coding-style.md`, `testing.md`, `documentation.md`) based on the interview. The rules can be refined at any point with `pb:customize`.
+5. Populate `state/current-state.md` (empty queues, no work in flight), then commit it: `bun ../scripts/commit-state.ts "initialise current-state" current-state.md` (from `state/`).
 6. Begin the development loop (typically `pb:status` to confirm the empty state, then `pb:plan`).
 
 ## Example
@@ -45,7 +45,7 @@ Run: `bun run notes`.
 
 Created project/ (from templates/project/, placeholders filled)
 Created state/ (from templates/state/, queues empty)
-Wrote docs/spec/index.md, docs/testing-manual/index.md, docs/rules/{coding-style,testing,documentation}.md.
-current-state.md initialised: all queues empty.
+Wrote project/docs/spec/index.md, project/docs/testing-manual/index.md, project/docs/rules/{coding-style,testing,documentation}.md.
+state/current-state.md initialised: all queues empty.
 Next: pb:plan to design the first feature.
 ```

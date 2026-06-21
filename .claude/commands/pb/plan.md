@@ -18,11 +18,11 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 1. Ask the developer what feature they want to plan or update.
 2. **Brainstorm first when the feature is unclear.** Before touching the spec, refine the rough idea with the developer: ask clarifying questions, surface assumptions, explore alternatives, and present the proposed shape for sign-off. This is a conversation, not a document edit. Skip it only when the developer already knows exactly what they want and says so. The point is to settle the design before it is written down, so the spec records a decision rather than a first guess.
-3. Update `docs/spec/` to reflect the agreed feature, adding or revising the relevant section.
-4. Update `docs/testing-manual/` to cover how the developer can manually test it.
-5. Optionally, break the feature into tickets in `todo/`, each with acceptance criteria and a test plan derived from the spec. This step can be deferred to a later `pb:plan` session. Commit each new ticket to the state repo as you write it: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
+3. Update `project/docs/spec/` to reflect the agreed feature, adding or revising the relevant section.
+4. Update `project/docs/testing-manual/` to cover how the developer can manually test it.
+5. Optionally, break the feature into tickets in `state/tickets/todo/`, each with acceptance criteria and a test plan derived from the spec. This step can be deferred to a later `pb:plan` session. Commit each new ticket to the state repo as you write it: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 6. Set dependencies between any new tickets so they implement in the right order. Where possible, number the tickets in execution order too, so a dependent ticket gets a higher number than the tickets it depends on.
-7. If you queued any tickets, update `current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
+7. If you queued any tickets, update `state/current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example
 
@@ -35,8 +35,8 @@ Claude (brainstorm): A few questions before I write this up:
 - Do we invalidate active sessions on reset?
 
 (after agreement)
-Updated docs/spec/auth/detail.md with the Password Reset section.
-Updated docs/testing-manual/auth/detail.md with the reset walkthrough.
+Updated project/docs/spec/auth/detail.md with the Password Reset section.
+Updated project/docs/testing-manual/auth/detail.md with the reset walkthrough.
 Queued todo/auth-7 (reset request endpoint) and auth-8 (reset confirm + session invalidation).
 auth-8 depends on auth-7.
 ```
