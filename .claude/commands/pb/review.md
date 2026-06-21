@@ -121,7 +121,7 @@ Then the developer approves, rejects, skips, or aborts. **Rejection requires a n
 
 The `move.ts` (approve/skip-then-later/abort) and `reset-failures.ts` + `move.ts` (reject) calls above commit their own state change automatically, ticket-scoped, so the History note and `## Issues` edits you wrote into the ticket's `detail.md` before the move ride in that commit. For any **follow-up ticket** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
-Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright), leaving the rest of its existing content intact. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
+Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders) — surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 Whatever the outcome, **check the ticket off the review checklist** and record its outcome against it (approved, rejected, skipped, or aborted). All four outcomes check the box: resolving it or deferring it both count as processed.
 
