@@ -8,7 +8,6 @@
     - I really just need to use my existing plan skills, but need a new skill to convert a plan to tickets.
 - Agent review doesn't need to run compile or automated tests if there are no code or configuraton 
 changes.
-- How do I make it so that permission are not disabled on the host. But are on the VM?
 - Feel like I need multiple Claude's open:
     - Planning
     - Review
