@@ -9,7 +9,7 @@ Create one structured ticket in `todo/`. For a single, well-understood task. If 
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to add:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to add:
 
 - Confirm the ticket in a few lines: ID, Type, one-line description, where it landed.
 

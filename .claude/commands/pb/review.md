@@ -13,7 +13,7 @@ Walking through a ticket is itself a loop, the **inspect loop**: you print a num
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to review:
+Follow the project's [output format](../../../docs/output-format.md) and [ticket selection menu](../../../docs/ticket-selection.md) (load once per session if not already in context). Mode: **`pick-one-loop`** with checklist variant. Specific to review:
 
 - A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
 - Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**.
@@ -43,18 +43,15 @@ Anything else the developer types at the inspect menu is treated as a **note** (
 
 The review loop is driven by a **ticket review checklist**. On the **first** time through, snapshot every ticket then in `human-review/` onto the checklist, each one **unchecked**. A ticket is checked off the moment the developer processes it (approve, reject, skip, or abort), and stays checked for the rest of the review loop. The checklist lives only in your context for this one `pb:review` session; it is never written to disk, so a fresh `pb:review` starts every box unchecked again.
 
-Print the checklist **numbered from 1**, always in the **original snapshot order** the tickets were captured in. **Never reorder it.** Checked-off tickets keep their original position and number; they do not float to the bottom (or top). The number beside a ticket is fixed for the whole session, so the developer can rely on it. Each line shows its box and, once processed, its outcome:
+Maintain checklist state in session context (`checked`, `outcome` per ID). Write it to a temp JSON file and render with:
 
-```
-Review checklist (1 of 3 done):
-[x] 1. search-3 — debounced search input — approved
-[ ] 2. search-4 — result ranking
-[ ] 3. search-5 — fuzzy matching
-```
+`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --checklist <session-json> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
 
-For each one-line summary, **read only each ticket's `index.md`**, which already holds the title and a one-line summary. **Do not read `detail.md` here** (its History and evidence logs run to thousands of lines and must not be slurped).
+The script prints the checklist in **original snapshot order** with **fixed numbers** (never reorder when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout.
 
-Then **immediately ask: "Which ticket do you want to review?"** Do not offer or wait for a yes/no; go straight to the question. Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
+If `human-review/` is empty, say so and stop.
+
+Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
 
 Selection rules:
 - An **unchecked** ticket: walk through it (Step 2).
@@ -132,14 +129,9 @@ Once the ticket is checked off, **return to the review loop**: go back to Step 1
 
 ## Example
 
+See the `pick-one-loop` checklist example in [docs/ticket-selection.md](../../../docs/ticket-selection.md). After the developer selects a ticket, the inspect loop and resolution proceed as below:
+
 ```
-Review checklist (0 of 3 done):
-[ ] 1. search-3 — debounced search input
-[ ] 2. search-4 — result ranking
-[ ] 3. search-5 — fuzzy matching
-
-Which ticket do you want to review?
-
 Developer: 1
 
 search-3 — debounced search input
@@ -171,12 +163,7 @@ Developer: placeholder should say "Search docs".
 - Note -> search/detail.md behaviour; follow-up todo/search-6 (placeholder copy).
 - Approve search-3 -> merge-queue/. current-state.md updated.
 
-Review checklist (1 of 3 done):
-[x] 1. search-3 — debounced search input — approved
-[ ] 2. search-4 — result ranking
-[ ] 3. search-5 — fuzzy matching
-
-Which ticket do you want to review?
+[Reprint checklist via format-ticket-selection.ts — see docs/ticket-selection.md]
 
 Developer: search-5
 
@@ -184,23 +171,13 @@ search-5 — fuzzy matching
 Developer: ab — not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 
-Review checklist (2 of 3 done):
-[x] 1. search-3 — debounced search input — approved
-[ ] 2. search-4 — result ranking
-[x] 3. search-5 — fuzzy matching — aborted
-
-Which ticket do you want to review?
+[Reprint checklist via format-ticket-selection.ts]
 
 Developer: s
 
 search-4 — result ranking
 Developer: s — come back to it later.
 - Skipped. Left in human-review.
-
-Review checklist (3 of 3 done):
-[x] 1. search-3 — debounced search input — approved
-[x] 2. search-4 — result ranking — skipped
-[x] 3. search-5 — fuzzy matching — aborted
 
 All tickets processed this pass; search-4 (skipped) remains in human-review for next time.
 ```

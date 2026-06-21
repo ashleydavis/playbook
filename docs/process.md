@@ -1,6 +1,6 @@
 # Process
 
-Read this at session start. This is all the AI needs. [handbook.md](handbook.md) is the full reference for humans; you don't need to read it. Orientation map is [index.md](index.md).
+Read this at session start. This is all the AI needs. [handbook.md](../handbook.md) is the full reference for humans; you don't need to read it. Orientation map is [index.md](../index.md).
 
 ## Files: index and detail
 
@@ -14,6 +14,10 @@ Default to `index.md`; open `detail.md` on demand.
 ## Output style
 
 How a skill presents output to the developer is defined once in [output-format.md](output-format.md). Each skill links to it and adds its own local tailoring. Load it on demand (skip if it is already in your context).
+
+## Ticket selection
+
+Any skill that asks the developer to choose ticket(s) must follow [ticket-selection.md](ticket-selection.md) and use `format-ticket-selection.ts`. Two modes: **`pick-many`** (one-shot, multiple IDs or `all`) and **`pick-one-loop`** (repeat until stop; checklist variant for `pb:review`). The **inspect loop** in `pb:review` (per-ticket action menu) is separate and stays skill-local.
 
 ## Setup
 
@@ -56,9 +60,9 @@ Three repos, each a separate concern:
 
 `aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. Unlike a blocked ticket, an aborted ticket is a deliberate, terminal decision: it is **removed from `current-state.md`** entirely (the `aborted/` directory is its only record), its `**Failures:**` count is left untouched, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
 
-The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](.claude/commands/pb/next.md) skill.
+The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](../.claude/commands/pb/next.md) skill.
 
-`human-review/` is worked by `pb:review` as a **review loop**: it lists the reviewable tickets numbered from 1 and asks which to review, the developer selects one by number or name, is walked through it and resolves it (approve, reject, skip, abort), then the numbered list and question return for the next selection. The loop repeats until the developer stops or the queue is empty, so they choose the order and can stop any time. Walking through the currently selected ticket is itself an inner loop, the **inspect loop**: a numbered menu of ways to examine the work (show the screenshots, run it by hand, start the app for them, run the automated tests, show or read the doc changes, show or view the code diff), which Claude either shows the developer how to do or does for them (describing what it will do first), repeating until they resolve the ticket. So the review loop (select a ticket) contains the inspect loop (examine that ticket). Full procedure in the [pb:review](.claude/commands/pb/review.md) skill.
+`human-review/` is worked by `pb:review` as a **review loop**: it lists the reviewable tickets numbered from 1 and asks which to review, the developer selects one by number or name, is walked through it and resolves it (approve, reject, skip, abort), then the numbered list and question return for the next selection. The loop repeats until the developer stops or the queue is empty, so they choose the order and can stop any time. Walking through the currently selected ticket is itself an inner loop, the **inspect loop**: a numbered menu of ways to examine the work (show the screenshots, run it by hand, start the app for them, run the automated tests, show or read the doc changes, show or view the code diff), which Claude either shows the developer how to do or does for them (describing what it will do first), repeating until they resolve the ticket. So the review loop (select a ticket) contains the inspect loop (examine that ticket). Full procedure in the [pb:review](../.claude/commands/pb/review.md) skill.
 
 - Each queue holds one directory per ticket, named by its ID (`todo/<id>/`).
 - The ticket directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the ticket and its evidence stay together end to end and land in `done/<id>/`.
@@ -76,7 +80,7 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 
 ## Tickets
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](templates/ticket-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
 - Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a hint at reading order, not the enforcement mechanism. `**Depends on:**` is what actually gates execution.
 - Refuse to implement a ticket with no acceptance criteria.
@@ -122,13 +126,13 @@ The "don't run `pb:next` again until the developer unblocks something" rule is a
 
 ## Templates
 
-All scaffolding is under [templates/](templates/) ([README.md](templates/README.md), [index.md](templates/index.md)):
+All scaffolding is under [templates/](../templates/) ([README.md](../templates/README.md), [index.md](../templates/index.md)):
 
-- [templates/project/](templates/project/): project repo scaffold. Copied by `pb:bootstrap:new`.
-- [templates/state/](templates/state/): state repo scaffold. Copied by `pb:bootstrap:*`.
-- [templates/feature-template/](templates/feature-template/): feature `index.md` + `detail.md`. Copied by `pb:plan`.
-- [templates/ticket-template/](templates/ticket-template/): ticket `index.md` + `detail.md`. Copied by `pb:add`.
-- [templates/commit-template/](templates/commit-template/): commit format. Copied and filled out when making a commit (see [Commits](#commits)).
+- [templates/project/](../templates/project/): project repo scaffold. Copied by `pb:bootstrap:new`.
+- [templates/state/](../templates/state/): state repo scaffold. Copied by `pb:bootstrap:*`.
+- [templates/feature-template/](../templates/feature-template/): feature `index.md` + `detail.md`. Copied by `pb:plan`.
+- [templates/ticket-template/](../templates/ticket-template/): ticket `index.md` + `detail.md`. Copied by `pb:add`.
+- [templates/commit-template/](../templates/commit-template/): commit format. Copied and filled out when making a commit (see [Commits](#commits)).
 
 ## Development loop
 
@@ -153,7 +157,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 
 Each stage carries **ticket completion criteria**: the observable state that marks it done (files in the right queues, checks green, evidence on disk, commits made). The criteria also include an **abort condition** (a turn count or a repeated-failure signal). The criteria are plain text in the agent's prompt, not a separate enforcement mechanism; what actually gates a stage is the end-of-turn reconciliation in `pb:next` (re-run `next-tickets.ts`, and `in-progress/` must be empty), backed by the evidence the criteria demand being on disk.
 
-`pb:next` uses ticket completion criteria in three places: its top-level loop condition (stops when forward progress is exhausted) and a per-ticket sub-agent's criteria for each of merge / implement / agent-review, each run in the ticket's worktree. Exact text lives in the [pb:next](.claude/commands/pb/next.md) skill. To interrupt, stop the run; `pb:status` shows the live state from the queues.
+`pb:next` uses ticket completion criteria in three places: its top-level loop condition (stops when forward progress is exhausted) and a per-ticket sub-agent's criteria for each of merge / implement / agent-review, each run in the ticket's worktree. Exact text lives in the [pb:next](../.claude/commands/pb/next.md) skill. To interrupt, stop the run; `pb:status` shows the live state from the queues.
 
 When a sub-agent cannot meet its completion criteria, the ticket is recorded and routed per **Failures** above, the loop never works around a failure, and an environmental failure stops the whole loop (see [Environmental failure](#environmental-failure)).
 
@@ -228,4 +232,4 @@ An agent allocates its subdir by taking one more than the highest existing numbe
 
 ## Commits
 
-Every commit follows one template: [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). Read it when committing; its comments carry the full field-by-field guidance (subject form, body, `Type:`, `Ticket:` trailer).
+Every commit follows one template: [templates/commit-template/commit-template.txt](../templates/commit-template/commit-template.txt). Read it when committing; its comments carry the full field-by-field guidance (subject form, body, `Type:`, `Ticket:` trailer).

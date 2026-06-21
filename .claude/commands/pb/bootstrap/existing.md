@@ -11,7 +11,7 @@ Both repos are nested under the playbook repo, where Claude Code is launched. Fo
 
 ## Output style
 
-Follow the project's [output format](../../../../output-format.md) (load it once per session if it is not already in your context). Specific to bootstrap:
+Follow the project's [output format](../../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to bootstrap:
 
 - Interview one question at a time.
 - Report results as a short list: repos created, gaps found, tickets queued, next step.
@@ -29,7 +29,7 @@ Follow the project's [output format](../../../../output-format.md) (load it once
    - What is currently in flight or planned
 
    Then ask the developer only about what you could not determine from the repo, one question at a time.
-3. Create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (tickets/ queues, current-state.md, scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `process.md`).
+3. Create the state repo at `state/` by copying [templates/state/](../../../../templates/state/) (tickets/ queues, current-state.md, scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `docs/process.md`).
 4. Analyse the project repo to identify what is missing or incomplete:
    - `CLAUDE.md` at the root (use the shared template as a starting point)
    - `docs/spec/` source of truth

@@ -9,7 +9,7 @@ Read where the project stands and recommend the next move. This is the usual ses
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to status:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to status:
 
 - One ticket per bullet: ID + one-line description + what it needs (if anything).
 - Group under the fixed headings below; drop any heading that is empty.

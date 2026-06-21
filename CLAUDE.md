@@ -8,7 +8,7 @@ Claude Code is launched from the root of this repo and these are your standing i
 
 **Never permanently change the working directory.** Always run from the directory you were launched in. Use absolute paths, or `git -C <dir>`, or wrap a directory change in a subshell so it does not persist: `(cd state && bun ../scripts/move.ts …)`. Never run a bare `cd`. Subagents stay locked to their worktree the same way.
 
-**At session start, read `process.md`.** It is the concise description of how the process works: the repos, the queues, the ticket format, the development loop, goals, and the verification rules. 
+**At session start, read `docs/process.md`.** It is the concise description of how the process works: the repos, the queues, the ticket format, the development loop, goals, and the verification rules. 
 
 **Do not use jargon or made-up words.** Communicate in plain English. This repo has a standard set of terms; when you need to know the correct terminology, read `glossary.md` and use those terms when talking to the developer. Do not invent your own words for things the glossary already names.
 
@@ -20,7 +20,7 @@ Read `index.md` to orient yourself in the project.
 
 TODO: Is this in process.md ?
 
-Three repos (full detail in `process.md`):
+Three repos (full detail in `docs/process.md`):
 
 - **Playbook** (the playbook repo root): this process, the skills, the templates, the scripts. One clone per project, launched from the root. You are reading its instructions now.
 - **Project repo** (per project): the code, its spec (`docs/spec/`), testing manual, and rules. Has its own `CLAUDE.md` that takes precedence when you are working inside it.

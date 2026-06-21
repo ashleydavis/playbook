@@ -9,7 +9,7 @@ Plan or update a feature. The output is an agreed spec and testing manual, optio
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to plan:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to plan:
 
 - Brainstorm one question at a time.
 - When done, report what changed in a few lines: spec/manual sections updated, tickets queued and their dependencies.

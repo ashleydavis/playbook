@@ -13,21 +13,20 @@ Each selected ticket has its `**Failures:**` count reset to 0 (a fresh slate, no
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to unblock:
+Follow the project's [output format](../../../docs/output-format.md) and [ticket selection menu](../../../docs/ticket-selection.md) (load once per session if not already in context). Mode: **`pick-many`**. Specific to unblock:
 
-- Print the numbered list of blocked tickets, ask which to unblock, then report what was re-admitted. Nothing more.
+- Print the script output verbatim, ask which to unblock, then report what was re-admitted. Nothing more.
 
 ## Steps
 
-1. List the blocked tickets. Get the IDs from `blocked/` (`ls state/tickets/blocked/`) and, for each, read the one-line description and `**Failures:**` count from its `index.md`. Do not read `detail.md`.
-2. If `blocked/` is empty, say so and stop: there is nothing to unblock.
-3. Present the blocked tickets as a numbered list (from 1), one per ticket: the number, the ID, and the one-line description. Ask the developer which to unblock. Accept a single number, several numbers, or `all`. If they pick nothing, stop without changing anything.
-4. For each selected ticket, run both scripts from the state repo, in this order (each auto-commits its own ticket-scoped change, so do not commit them by hand):
+1. Run `(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")')`. If the output is `No tickets in Blocked.` (or shows zero tickets), say so and stop.
+2. Print the script output verbatim and wait for the developer's pick. Resolve the selection per [docs/ticket-selection.md](../../../docs/ticket-selection.md) (same rules as `resolveSelection`: numbers, comma/space-separated numbers, ticket ID, or `all`).
+3. For each selected ticket, run both scripts from the state repo, in this order (each auto-commits its own ticket-scoped change, so do not commit them by hand):
    1. `(cd state && bun ../scripts/reset-failures.ts <id>)` — sets `**Failures:**` to 0.
    2. `(cd state && bun ../scripts/move.ts <id> todo)` — moves the directory `blocked/` → `todo/`.
    Never edit the `**Failures:**` field or move queue directories by hand; the scripts are the only supported way.
-5. Update `current-state.md` to reflect the re-admission: remove each unblocked ticket's entry from the `⚠ Needs your action` section and note in `Progress` that it is back in `todo/` with its failure count reset. Amend only the entries this changes, leaving the rest intact. Commit the narrative update as its own commit: `(cd state && bun ../scripts/commit-state.ts "<summary>" current-state.md)`.
-6. Report what was re-admitted: each ticket moved to `todo/` with its failure count reset, and remind the developer they can run `pb:next` to pick them up.
+4. Update `current-state.md` to reflect the re-admission: remove each unblocked ticket's entry from the `⚠ Needs your action` section and note in `Progress` that it is back in `todo/` with its failure count reset. Amend only the entries this changes, leaving the rest intact. Commit the narrative update as its own commit: `(cd state && bun ../scripts/commit-state.ts "<summary>" current-state.md)`.
+5. Report what was re-admitted: each ticket moved to `todo/` with its failure count reset, and remind the developer they can run `pb:next` to pick them up.
 
 ## Notes
 
@@ -37,16 +36,9 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 
 ## Example
 
+See the `pick-many` blocked example in [docs/ticket-selection.md](../../../docs/ticket-selection.md). After the developer picks `1`:
+
 ```
-Developer: /pb:unblock
-
-Blocked tickets:
-  1. treemap-tooltip-1  (3 failures)  custom treemap hover tooltip — reworked as a merge commit, breaks the merge-train cherry-pick
-  2. flaky-smoke-1      (3 failures)  smoke suite intermittently times out on this host
-
-Which to unblock? (number, several numbers, or "all")
-> 1
-
 unblocked: treemap-tooltip-1 — failures reset to 0, moved blocked/ → todo/
 current-state.md updated: treemap-tooltip-1 back in todo/, removed from the blocked section.
 Run pb:next to pick it up. (Note: it blocked on a merge-commit shape — rebase its worktree to a single commit first, or it will block again.)

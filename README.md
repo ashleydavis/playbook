@@ -55,7 +55,10 @@ playbook/
   CLAUDE.md   # Standing instructions, loaded when Claude Code launches from here.
   README.md
   handbook.md # The handbook. The full process written for humans.
-  process.md  # Concise description of the process for the AI.
+  docs/
+    process.md        # Concise process for the AI.
+    output-format.md  # How skills present output.
+    ticket-selection.md  # Shared ticket selection menu.
   index.md    # Orientation. What lives where.
   .claude/             # Claude Code config for the playbook repo.
     settings.json      # Permissions off (bypassPermissions).
@@ -95,6 +98,6 @@ Bootstrap (`pb:bootstrap:new` / `pb:bootstrap:existing`) scaffolds both from [te
 
 ## Further reading
 - [handbook.md](handbook.md): the full process description, written for humans.
-- [process.md](process.md): the concise version Claude reads at session start.
+- [docs/process.md](docs/process.md): the concise version Claude reads at session start.
 - [index.md](index.md): a compact map of what lives where across all three repos.
 - [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt): the commit message format. Customize it to suit your projects.

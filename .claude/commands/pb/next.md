@@ -25,7 +25,7 @@ The repo layout is fixed and known: `state/` and `project/` are siblings under t
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to next:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to next:
 
 - Report the run as terse lines: each ticket and what happened to it.
 - Keep `current-state.md` entries to one or two plain lines each.
@@ -43,7 +43,7 @@ A failure is any setback from any source: a sub-agent times out or exhausts its 
 - **Leave nothing mid-stage (the invariant).** A turn ends only with `in-progress/` empty: every admitted ticket sits in a terminal queue (`agent-review/` on success, `todo/`/`blocked/` on failure). A sub-agent self-routes its own failure when it can, but a timed-out, dead, or bare-verdict sub-agent cannot, so the parent never trusts that. As the last act of every turn the parent re-runs `next-tickets.ts`: any ticket still shown in `in-progress/` is an un-recorded failure (no sub-agent is working it now), so the parent records it with `fail-ticket.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. This reconciliation runs on a clean exit and on an environmental-failure handback alike (see Step 3).
 - **Retry under the cap, block at it.** Three failures of any kind, from any source, park the ticket. If the new count is below 3, the ticket returns to `todo/` and the loop retries it from the start on a later pass. If it reaches 3, it moves to `blocked/`; `pb:next` never retries a blocked ticket, and only a human re-admits it (`bun ../scripts/move.ts <id> todo` from `state/`).
 - **Continue with the rest.** One failed ticket does not stop the run; the loop keeps processing the others.
-- **Stop on an environmental failure.** Two or more tickets failing the same stage or check in one run is an environmental failure (the cause is the environment, not the tickets): reconcile every failed ticket first (per the invariant above and Step 3), record the cause, and hand back. See the **Environmental failure** section in `process.md` for the full handling. Handing back never means leaving tickets mid-stage.
+- **Stop on an environmental failure.** Two or more tickets failing the same stage or check in one run is an environmental failure (the cause is the environment, not the tickets): reconcile every failed ticket first (per the invariant above and Step 3), record the cause, and hand back. See the **Environmental failure** section in `docs/process.md` for the full handling. Handing back never means leaving tickets mid-stage.
 - **Never invent a recovery.** Do not switch from parallel to serial, do not re-drive a failed ticket by hand outside this retry path, do not loop a broken batch through slowly. A failure is recorded and surfaced, not absorbed. Slow-but-grinding for hours is itself a failure to report.
 - **Tell the developer.** Record every block, environmental failure, and broken-main situation in the top `⚠ Needs your action` section of `current-state.md`, naming the ticket and the one-line reason. That section leads the file so it is the first thing the developer sees, directly or via `pb:status`.
 

@@ -25,6 +25,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+import { parseFailures } from "./fail-ticket";
 import { parseDependsOn } from "./next-tickets";
 
 // Every queue and side pen the board shows, in display order: the pipeline
@@ -68,6 +69,7 @@ export interface BoardTicket {
     id: string;
     description: string;
     dependsOn: string[];
+    failures: number;
 }
 
 export interface QueueBoard {
@@ -132,7 +134,7 @@ async function listQueue(
 
 // Read a single ticket's display fields from its index.md. Missing or unreadable
 // index.md yields an empty description and no dependencies.
-async function readTicket(
+export async function readTicket(
     ticketsDir: string,
     queue: string,
     id: string,
@@ -147,6 +149,7 @@ async function readTicket(
         id,
         description: truncateDescription(parseDescription(indexMd)),
         dependsOn: parseDependsOn(indexMd),
+        failures: parseFailures(indexMd),
     };
 }
 

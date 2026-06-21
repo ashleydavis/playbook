@@ -11,7 +11,7 @@ The process is built around forward feature work; `pb:debug` is the path for "so
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to debug:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to debug:
 
 - Confirm the Debug ticket in a few lines: ID, the symptom, where it landed.
 - Report any investigation outcome the same way.

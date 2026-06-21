@@ -7,3 +7,4 @@ The project's standard for how a skill presents output to the developer. Each sk
 - Report state and next steps. Do not editorialise or pad.
 - Plain English only. No jargon or made-up terms; use the project's terms from `glossary.md`.
 - Never write a paragraph where a list works.
+- Interactive ticket menus follow [ticket-selection.md](ticket-selection.md); skills that ask the developer to pick ticket(s) link both this file and that one under **Output style**.

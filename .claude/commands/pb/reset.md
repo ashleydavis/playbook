@@ -11,7 +11,7 @@ Unwind the loop back to a clean slate after a run was interrupted, or when you w
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to reset:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to reset:
 
 - Show what will be reset as a short list, then report what was reset. Nothing more.
 
@@ -25,7 +25,7 @@ Follow the project's [output format](../../../output-format.md) (load it once pe
 ## Notes
 
 - Failure counts are left untouched: tickets return to `todo/` exactly as they were, so the loop can pick them up again. A reset is recovery, not a rejection.
-- This is not part of the normal loop. The autonomous `pb:next` reconciliation (see `process.md` **Failures**) already records and routes failures at the end of every turn, so a healthy run never strands work in `in-progress/`. Reach for `pb:reset` when a run died without reconciling (a crash, a killed session), or when you deliberately want to throw away in-flight work and re-plan.
+- This is not part of the normal loop. The autonomous `pb:next` reconciliation (see `docs/process.md` **Failures**) already records and routes failures at the end of every turn, so a healthy run never strands work in `in-progress/`. Reach for `pb:reset` when a run died without reconciling (a crash, a killed session), or when you deliberately want to throw away in-flight work and re-plan.
 
 ## Example
 

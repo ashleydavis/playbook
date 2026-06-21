@@ -5,13 +5,18 @@ A compact orientation map: what lives where across the playbook and a project's 
 ## In this playbook
 - [README.md](README.md): short orientation for anyone landing in the repo.
 - [handbook.md](handbook.md): full process description (human reference).
-- [process.md](process.md): concise version Claude reads at session start.
+- [docs/process.md](docs/process.md): concise version Claude reads at session start.
+- [docs/output-format.md](docs/output-format.md): how skills present output to the developer.
+- [docs/ticket-selection.md](docs/ticket-selection.md): shared ticket selection menu format.
+- [docs/plans/](docs/plans/): implementation plans.
 - [CLAUDE.md](CLAUDE.md): standing instructions, loaded when Claude Code launches from the playbook repo root.
+- [glossary.md](glossary.md): standard terminology.
 - [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan, docs, add, next, review, debug, customize, reset.
 - [.claude/commands/pb/bootstrap/](.claude/commands/pb/bootstrap/): new, existing. Run once per project (`pb:bootstrap:*`).
 - [.claude/settings.json](.claude/settings.json): Claude Code settings for the playbook repo (permission prompts off).
 - [templates/](templates/): all templates, with its own [README.md](templates/README.md) and [index.md](templates/index.md). `project/` and `state/` are scaffolded into new projects by `pb:bootstrap:*`; `feature-template/` and `ticket-template/` are copied per ticket by `pb:plan`/`pb:add`; `commit-template/` is registered in place via `git config commit.template`.
 - [scripts/move.ts](scripts/move.ts): moves a ticket between queues.
+- [scripts/format-ticket-selection.ts](scripts/format-ticket-selection.ts): formats ticket selection menus for skills.
 - [scripts/reset-loop.ts](scripts/reset-loop.ts): unwinds a run (in-progress -> todo, tears down worktrees). Used by `pb:reset`.
 - [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code.
 

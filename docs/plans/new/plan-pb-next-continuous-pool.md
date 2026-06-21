@@ -40,8 +40,8 @@
 4. **Update the reference docs to match the new mechanism.**
    - [handbook.md:133](handbook.md#L133): the diagram edge `"up to 10 in parallel"` → describe a refilling pool of 10 (e.g. `"pool of 10, refilled on completion"`).
    - [handbook.md:306](handbook.md#L306): the `/pb:next` description ("each turn processes ... picks up to 10 unblocked todo tickets ... runs a per-ticket sub-agent through each stage") → describe the workflow-driven continuous pool that keeps 10 in flight and refills as tickets finish.
-   - [process.md:111](process.md#L111): the table row "Pick up to 10 unblocked tickets, implement in parallel" → "Keep up to 10 tickets in flight, refilling as each completes".
-   - [process.md:120](process.md#L120): the `/goal` description still says `pb:next` uses a top-level loop goal and per-ticket sub-agent goals — update to reflect that orchestration is now a Workflow script and the per-ticket goals are the workflow's `agent()` stage goals; the deterministic loop replaces the model-driven `/goal` loop.
+   - [docs/process.md:111](docs/process.md#L111): the table row "Pick up to 10 unblocked tickets, implement in parallel" → "Keep up to 10 tickets in flight, refilling as each completes".
+   - [docs/process.md:120](docs/process.md#L120): the `/goal` description still says `pb:next` uses a top-level loop goal and per-ticket sub-agent goals — update to reflect that orchestration is now a Workflow script and the per-ticket goals are the workflow's `agent()` stage goals; the deterministic loop replaces the model-driven `/goal` loop.
    - Leave the failure-handling and evidence sections in both docs unchanged (the rules are unchanged).
 
 5. **Update [scripts/CLAUDE.md](scripts/CLAUDE.md)** `next-tickets.ts` bullet to state it now reports every actionable ticket (no concurrency cap applied), since the pool is enforced by the workflow.
@@ -66,7 +66,7 @@ Extend the scripts smoke suite (`bun run smoke` in [scripts/](scripts/)):
 - From [scripts/](scripts/): `bun run smoke` — all smoke tests pass, including the new uncapped-report check.
 - `bun ../scripts/next-tickets.ts` runs clean from a `state/` fixture and emits valid JSON with the four expected keys.
 - Confirm [.claude/workflows/pb-next.js](.claude/workflows/pb-next.js) parses: it begins with a pure-literal `export const meta`, uses only `agent()`/`parallel()`/`phase()`/`log()` and plain JS (no `Date.now()`/`Math.random()`, no filesystem APIs), and the `meta.phases` titles match the `phase()` calls.
-- Grep `next.md`, `handbook.md`, `process.md`, and `scripts/CLAUDE.md` for the old phrasings ("up to 10 in parallel", "picks up to 10", "implement in parallel", the `LIMIT` cap wording) and confirm none remain.
+- Grep `next.md`, `handbook.md`, `docs/process.md`, and `scripts/CLAUDE.md` for the old phrasings ("up to 10 in parallel", "picks up to 10", "implement in parallel", the `LIMIT` cap wording) and confirm none remain.
 
 ## Human Verification
 

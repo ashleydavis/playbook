@@ -1,6 +1,6 @@
 # Handbook
 
-The full, human-facing reference for the semi-autonomous AI development process: how it works and how to use it. The concise version Claude reads at session start is [process.md](process.md); the orientation map of what lives where is [index.md](index.md).
+The full, human-facing reference for the semi-autonomous AI development process: how it works and how to use it. The concise version Claude reads at session start is [docs/process.md](docs/process.md); the orientation map of what lives where is [index.md](index.md).
 
 It uses a work queue as the central source of truth, a set of Claude skills to drive each stage, and three repos: a playbook that holds the process and skills, and nested repos for the project (the project repo) and tracking the state of the process (the state repo).
 
@@ -200,7 +200,10 @@ playbook/
   CLAUDE.md           # Standing instructions, loaded when Claude Code launches from here.
   README.md
   handbook.md         # This handbook. The full process described for humans.
-  process.md          # The concise process to read by the AI.
+  docs/
+    process.md        # The concise process to read by the AI.
+    output-format.md  # How skills present output.
+    ticket-selection.md  # Shared ticket selection menu.
   index.md            # Orientation map: what lives where across the three repos.
   .claude/            # Claude Code config: commands/pb/ (the skills) and settings.json (permissions off).
   templates/          # Various templates for creating repos and files.
@@ -311,6 +314,10 @@ Creates one structured ticket in `todo/` for a single, well-understood task. See
 ### pb:next
 
 Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+
+### Ticket selection menu
+
+When a skill asks the developer to pick ticket(s) from a numbered list, it follows the shared format in [docs/ticket-selection.md](docs/ticket-selection.md), rendered by `format-ticket-selection.ts`. Two modes: **`pick-many`** (one shot — unblock several tickets or `all`) and **`pick-one-loop`** (repeat until stop — used by `/pb:review`). In review, ticket numbers are fixed for the whole session even as tickets are checked off, so the developer can rely on them. The per-ticket **inspect loop** in `/pb:review` is separate: it is an action menu, not ticket selection.
 
 ### pb:review
 
@@ -519,9 +526,9 @@ The directory ships with three rule files plus a `README.md`, all in [templates/
 - `testing.md`: which kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows), coverage expectations, and how to run each suite. Filled in during bootstrap and revised with `/pb:customize`.
 - `documentation.md`: which documents the project requires beyond the always-required set (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`), and the rules for keeping them current. The agent-review stage checks this file, so a required doc that is missing or stale fails review.
 
-### process.md (playbook)
+### docs/process.md (playbook)
 
-A concise machine-readable description of this process. Claude reads it at session start so it knows how to behave. Lives in the playbook ([process.md](process.md)) so every project gets the same canonical version. Keep it short and direct; the full description is in this handbook.
+A concise machine-readable description of this process. Claude reads it at session start so it knows how to behave. Lives in the playbook ([docs/process.md](docs/process.md)) so every project gets the same canonical version. Keep it short and direct; the full description is in this handbook.
 
 ### index.md files
 

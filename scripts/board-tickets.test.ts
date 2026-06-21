@@ -113,7 +113,7 @@ describe("board()", () => {
         expect(result.todo.count).toBe(1);
         expect(result.todo.truncated).toBe(false);
         expect(result.todo.tickets).toEqual([
-            { id: "feat-2", description: "paginate results", dependsOn: ["feat-1"] },
+            { id: "feat-2", description: "paginate results", dependsOn: ["feat-1"], failures: 0 },
         ]);
     });
 
@@ -179,7 +179,18 @@ describe("board()", () => {
         await mkdir(join(ticketsDir, "todo", "broken-1"), { recursive: true });
         const result = await board(ticketsDir);
         expect(result.todo.tickets).toEqual([
-            { id: "broken-1", description: "", dependsOn: [] },
+            { id: "broken-1", description: "", dependsOn: [], failures: 0 },
         ]);
+    });
+
+    test("parses failures from index.md", async () => {
+        const dir = join(ticketsDir, "blocked", "infra-1");
+        await mkdir(dir, { recursive: true });
+        await writeFile(
+            join(dir, "index.md"),
+            `# infra-1: a title\n\n**ID:** infra-1\n**Type:** Tweak\n**Failures:** 3\n\nflaky smoke test\n`,
+        );
+        const result = await board(ticketsDir);
+        expect(result.blocked.tickets[0].failures).toBe(3);
     });
 });

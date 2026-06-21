@@ -5,13 +5,13 @@ description: "Invoke when the developer wants to understand this process: what i
 
 # pb:help
 
-Orient the developer in this process. Answer their actual question directly, then point them at the next step. Do not just dump the whole reference: lead with what they asked, keep it scannable, and link the deeper docs ([process.md](../../../process.md), [handbook.md](../../../handbook.md), [index.md](../../../index.md)) for detail.
+Orient the developer in this process. Answer their actual question directly, then point them at the next step. Do not just dump the whole reference: lead with what they asked, keep it scannable, and link the deeper docs ([process.md](../../../docs/process.md), [handbook.md](../../../handbook.md), [index.md](../../../index.md)) for detail.
 
 If their question is narrow (e.g. "what does `pb:next` do?", "where do rejected tickets go?"), answer that and stop. If it is open ("how does this work?", "where do I start?"), give the short tour below.
 
 ## Output style
 
-Follow the project's [output format](../../../output-format.md) (load it once per session if it is not already in your context). Specific to help:
+Follow the project's [output format](../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to help:
 
 - Answer the question asked, then stop.
 - Keep it scannable; link the deeper docs rather than pasting them.
@@ -65,7 +65,7 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 
 ## Where to read more
 
-- [process.md](../../../process.md): the concise machine-readable process (what Claude reads at session start).
+- [process.md](../../../docs/process.md): the concise machine-readable process (what Claude reads at session start).
 - [handbook.md](../../../handbook.md): the full human reference, section by section.
 - [index.md](../../../index.md): the orientation map of what lives where.
 
