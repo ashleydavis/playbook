@@ -27,6 +27,7 @@ You never hand-edit the review snapshot: `start-review.ts` creates it and `forma
 Follow the project's [output format](../../../docs/output-format.md) and [ticket selection menu](../../../docs/ticket-selection.md) (load once per session if not already in context). Mode: **`pick-one-loop`** with checklist variant. Specific to review:
 
 - A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
+- **Show only — nothing trailing.** When the developer picks an inspect option (screenshots, diff, docs, tests) or asks to be shown anything, output the artifact and then go straight to the inspect menu. Add nothing in between or after: no description of what it contains, no recap, no analysis, no verdict ("All correct", "Looks good", "Passes"). The developer asked to see it, not to be told about it, and the extra prose is also what makes them wait while you compose it. The verdict is theirs alone at this gate. Only exception: a one-line flag if evidence the gate genuinely requires is missing (e.g. a both-mode screenshot of an affected view).
 - Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**.
 - A ticket summary is at most 3 bullets: what changed, the evidence (test result + screenshot paths), the diff (files touched). Build it from the card; do not retell the History.
 
