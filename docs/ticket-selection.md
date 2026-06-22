@@ -57,7 +57,16 @@ Each ticket line is prefixed with `[ ]` or `[x]`; processed lines keep their num
 
 Unchecked tickets stay selectable; checked tickets that left the queue cannot be reselected (tell the developer and reprint).
 
-The formatter is stateless; `pb:review` passes checklist JSON via `--checklist` and owns the state between turns.
+### Review snapshot (source of truth)
+
+`pb:review` does **not** drive the checklist off the live `human-review/` directory (a resolved ticket would vanish from the list and the numbers would shift). Instead the **review snapshot** is the source of truth:
+
+- `start-review.ts` snapshots `human-review/` into the review snapshot: a temporary, git-ignored JSON file (`state/.pb-review-snapshot.json`). The snapshot order fixes the numbering for the session, and each row carries a precomputed **card** (summary, evidence inventory, screenshot paths, tailored inspect menu) so the loop renders without re-reading `detail.md`/`evidence/` each turn.
+- `format-ticket-selection.ts --snapshot <path>` renders the checklist from the review snapshot. A row stays in it — checked, with its outcome — after the ticket leaves the queue, so nothing disappears or renumbers. The live queue is read only to refresh the description of a ticket still present.
+- `--mark <id> --outcome <approved|rejected|skipped|aborted>` ticks a row, rewrites the snapshot, and reprints. This is the only way `pb:review` mutates the snapshot; it is never hand-edited.
+- Every write stamps `updatedAt`. On render, a snapshot older than `--max-age` seconds (default 6h) is rebuilt from the live queue, with a "stale … rebuilt" notice on stderr.
+
+(The legacy `--checklist <json>` flag, which annotates the live queue rather than driving it, is superseded by `--snapshot` for `pb:review`.)
 
 ## After selection
 

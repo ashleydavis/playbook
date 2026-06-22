@@ -5,16 +5,33 @@
 //   bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked \
 //     --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")'
 //
-//   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
-//     --checklist checklist.json --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)'
-//
 //   bun ../scripts/format-ticket-selection.ts --resolve "1, 3" --mode pick-many --state state.json
+//
+// pick-one-loop (pb:review) is driven by the review snapshot written by
+// start-review.ts. That snapshot is the source of truth for the rows, their
+// order, and their numbers, so resolved tickets stay visible (checked, with an
+// outcome) even after they leave human-review/. Render it, and mark a ticket
+// actioned, with:
+//   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
+//     --snapshot .pb-review-snapshot.json --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)'
+//   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
+//     --snapshot .pb-review-snapshot.json --mark search-3 --outcome approved --prompt '...'
+// A snapshot older than --max-age seconds is rebuilt from the live queue first.
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { readTicket, type BoardTicket } from "./board-tickets";
 import { compareTickets } from "./ticket-meta";
+import {
+    DEFAULT_MAX_AGE_SECONDS,
+    buildSnapshot,
+    isStale,
+    markSnapshot,
+    readSnapshot,
+    writeSnapshot,
+    type SnapshotEntry,
+} from "./review-snapshot";
 
 export type SelectionMode = "pick-many" | "pick-one-loop";
 
@@ -297,12 +314,32 @@ function applyChecklist(
     });
 }
 
+// Build the checklist rows from the review snapshot's entries. The snapshot
+// order and the stored description are authoritative; the live queue is used
+// only to refresh the description of a ticket that is still present (so an
+// in-queue edit shows), never to add or drop a row.
+export function snapshotToSelectionTickets(
+    entries: SnapshotEntry[],
+    liveById: Map<string, SelectionTicket>,
+): SelectionTicket[] {
+    return entries.map((entry) => ({
+        id: entry.id,
+        description: liveById.get(entry.id)?.description ?? entry.description,
+        checked: entry.checked ?? false,
+        outcome: entry.outcome ?? undefined,
+    }));
+}
+
 function parseArgs(argv: string[]): {
     mode?: SelectionMode;
     queues: string[];
     fields: Set<string>;
     prompt: string;
     checklistPath?: string;
+    snapshotPath?: string;
+    markId?: string;
+    outcome?: string;
+    maxAgeSeconds: number;
     resolveInput?: string;
     statePath?: string;
 } {
@@ -313,6 +350,10 @@ function parseArgs(argv: string[]): {
     };
     let mode: SelectionMode | undefined;
     let checklistPath: string | undefined;
+    let snapshotPath: string | undefined;
+    let markId: string | undefined;
+    let outcome: string | undefined;
+    let maxAgeSeconds = DEFAULT_MAX_AGE_SECONDS;
     let resolveInput: string | undefined;
     let statePath: string | undefined;
 
@@ -333,6 +374,17 @@ function parseArgs(argv: string[]): {
             result.prompt = argv[++i];
         } else if (arg === "--checklist" && argv[i + 1]) {
             checklistPath = argv[++i];
+        } else if (arg === "--snapshot" && argv[i + 1]) {
+            snapshotPath = argv[++i];
+        } else if (arg === "--mark" && argv[i + 1]) {
+            markId = argv[++i];
+        } else if (arg === "--outcome" && argv[i + 1]) {
+            outcome = argv[++i];
+        } else if (arg === "--max-age" && argv[i + 1]) {
+            const parsed = Number(argv[++i]);
+            if (!Number.isNaN(parsed)) {
+                maxAgeSeconds = parsed;
+            }
         } else if (arg === "--resolve" && argv[i + 1]) {
             resolveInput = argv[++i];
         } else if (arg === "--state" && argv[i + 1]) {
@@ -344,9 +396,71 @@ function parseArgs(argv: string[]): {
         mode,
         ...result,
         checklistPath,
+        snapshotPath,
+        markId,
+        outcome,
+        maxAgeSeconds,
         resolveInput,
         statePath,
     };
+}
+
+// Render (and optionally first mutate) the review snapshot. The snapshot is the
+// source of truth: a stale snapshot is rebuilt from the live queue first, then
+// --mark <id> --outcome <text> ticks a row, and the full checklist is reprinted.
+// Every change rewrites the snapshot with a fresh `updatedAt` stamp.
+async function renderSnapshot(args: ReturnType<typeof parseArgs>): Promise<void> {
+    const snapshotPath = args.snapshotPath!;
+    const queue = args.queues[0] ?? "human-review";
+    const ticketsDir = join(process.cwd(), "tickets");
+
+    let snapshot = await readSnapshot(snapshotPath);
+    if (!snapshot) {
+        console.error(
+            `cannot read review snapshot ${snapshotPath}: run start-review.ts first`,
+        );
+        process.exit(1);
+    }
+
+    if (isStale(snapshot, args.maxAgeSeconds)) {
+        console.error(
+            `review snapshot ${snapshotPath} was stale (last updated ${snapshot.updatedAt}); rebuilt from ${queueLabel(queue)}.`,
+        );
+        snapshot = await buildSnapshot(ticketsDir, queue);
+        await writeSnapshot(snapshotPath, snapshot);
+    }
+
+    if (args.markId !== undefined) {
+        if (!args.outcome) {
+            console.error("--mark requires --outcome <approved|rejected|skipped|aborted>");
+            process.exit(1);
+        }
+        if (!markSnapshot(snapshot, args.markId, args.outcome)) {
+            console.error(`unknown ticket ID in review snapshot: ${args.markId}`);
+            process.exit(1);
+        }
+        await writeSnapshot(snapshotPath, snapshot);
+    }
+
+    let live: SelectionTicket[] = [];
+    try {
+        live = await loadQueueTickets(ticketsDir, queue, new Set());
+    } catch {
+        live = [];
+    }
+    const liveById = new Map(live.map((t) => [t.id, t]));
+
+    const tickets = snapshotToSelectionTickets(snapshot.tickets, liveById);
+    const done = tickets.filter((t) => t.checked).length;
+
+    console.log(
+        formatTicketSelection({
+            mode: "pick-one-loop",
+            sections: [{ label: queueLabel(queue), tickets }],
+            prompt: args.prompt,
+            progress: { done, total: tickets.length },
+        }),
+    );
 }
 
 async function main(): Promise<void> {
@@ -373,11 +487,21 @@ async function main(): Promise<void> {
         return;
     }
 
+    if (args.snapshotPath) {
+        if (!args.prompt) {
+            console.error("--snapshot requires --prompt <text>");
+            process.exit(1);
+        }
+        await renderSnapshot(args);
+        return;
+    }
+
     if (!args.mode || args.queues.length === 0 || !args.prompt) {
         console.error(
             "usage: format-ticket-selection.ts --mode <pick-many|pick-one-loop> " +
                 "--queue <name> [--queue ...] [--fields dependsOn,priority,failures] " +
-                "--prompt <text> [--checklist <json>]",
+                "--prompt <text> [--checklist <json>] " +
+                "[--snapshot <json> [--mark <id> --outcome <text>] [--max-age <seconds>]]",
         );
         process.exit(1);
     }
