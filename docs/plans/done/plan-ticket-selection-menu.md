@@ -41,7 +41,7 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
 
    **Scope.** Applies to any skill that presents a numbered list of tickets and waits for the developer to pick. Does not apply to `pb:board`/`pb:status` (display-only) or to per-ticket action menus (e.g. the inspect loop in `pb:review`).
 
-   **Data source.** Build the menu from `index.md` only (ID, one-line description, `**Depends on:**`, `**Failures:**`, `**Priority:**` when present). Never read `detail.md` before a ticket is selected. Prefer `(cd state && bun ../scripts/format-ticket-selection.ts …)` so every skill prints the same shape; hand-formatting is allowed only when the script cannot represent the case (document the exception in the skill).
+   **Data source.** Build the menu from `index.md` only (ID, one-line description, `**Depends on:**`, `**Failures:**`, `**Priority:**` when present). Never read `detail.md` before a ticket is selected. Always render the menu with `(cd state && bun ../scripts/format-ticket-selection.ts …)` and show its verbatim output; hand-typing or hand-formatting the menu is never legal when a script does the job. There is no fallback: if the script cannot represent a case, fix the script.
 
    **Two interaction modes** (skill declares which):
 
