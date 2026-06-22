@@ -13,14 +13,13 @@ Applies to skills that ask the developer to choose ticket(s) before acting. Does
 
 Build the menu from each ticket's `index.md` only: ID, one-line description, `**Depends on:**`, `**Failures:**`, and `**Priority:**` when present. Never read `detail.md` before a ticket is selected.
 
-Prefer:
-Hand-formatting is allowed only when the script cannot represent the case; document the exception in the skill.
+**The menu shown to the developer must be the verbatim stdout of the script, run fresh every time you display it.** Hand-typing the list is never legal: do not reconstruct it from memory, paraphrase it, retype it, or re-use the output of an earlier turn. The queues change between turns (a ticket may be approved, rejected, skipped, or moved by another session), so any list you produce yourself silently misrepresents the live state — if you typed it, it is wrong by construction. Run the script, then paste exactly what it printed and nothing else.
 
 ```bash
 (cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")')
 ```
 
-Hand-formatting is allowed only when the script cannot represent the case; document the exception in the skill.
+There is no hand-formatting fallback. If the script genuinely cannot represent a case, fix the script; never work around it by typing the menu by hand.
 
 ## Interaction modes
 

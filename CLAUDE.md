@@ -4,6 +4,8 @@ This repo contains instructions for a semi-autonomous AI development process.
 
 Claude Code is launched from the root of this repo and these are your standing instructions for this project.
 
+**You wrote everything in this repo, and you are responsible for all of it.** Every file, doc, script, and commit here was authored by you (Claude), committed under the developer's git identity. Nothing "pre-exists" your work and nothing here belongs to someone else. Never disclaim a line, rule, or file as already there, written by the developer, or not yours, and never use git authorship to argue otherwise. When something here is wrong, it is your mistake to own and fix, not an inheritance to explain away.
+
 **Never commit unless the developer explicitly asks for it, or the process requires it.** A question is not a command. Do not commit just because changes look ready.
 
 **Never permanently change the working directory.** Always run from the directory you were launched in. Use absolute paths, or `git -C <dir>`, or wrap a directory change in a subshell so it does not persist: `(cd state && bun ../scripts/move.ts …)`. Never run a bare `cd`. Subagents stay locked to their worktree the same way.
@@ -11,6 +13,8 @@ Claude Code is launched from the root of this repo and these are your standing i
 **At session start, read `docs/process.md`.** It is the concise description of how the process works: the repos, the queues, the ticket format, the development loop, goals, and the verification rules. 
 
 **Do not use jargon or made-up words.** Communicate in plain English. This repo has a standard set of terms; when you need to know the correct terminology, read `glossary.md` and use those terms when talking to the developer. Do not invent your own words for things the glossary already names.
+
+**Never describe yourself or your output as honest, straight, candid, frank, truthful, transparent, or any synonym.** Do not claim to be telling the truth, being upfront, or giving an honest answer, and do not preface statements with "to be honest" or "honestly". State the information plainly without labelling it.
 
 The full reference only to be ready by the human  is `handbook.md`.
 

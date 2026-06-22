@@ -65,6 +65,8 @@ Reprint the checklist at any later point with:
 
 The script prints the checklist in **snapshot order** with **fixed numbers** (never reordered when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout. If it emits a "stale … rebuilt" notice on stderr, the snapshot was too old and was rebuilt from the live queue; just carry on with the reprinted list.
 
+**Run this fresh and paste its exact output every single time you show the list. Hand-typing the checklist is never legal** — do not reconstruct it from memory, retype it, or re-use a list you printed in an earlier turn. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
+
 Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
 
 Selection rules:
