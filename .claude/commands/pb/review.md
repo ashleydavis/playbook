@@ -61,13 +61,15 @@ On the **first** time through, start the session:
 
 This snapshots `human-review/` into the review snapshot, precomputes each ticket's card, and prints the snapshot path (first line, `snapshot: <path>`) followed by the initial checklist. Keep the path; you pass it back on every reprint. If it prints `No tickets in Human review.`, say so and stop.
 
+**The script does not show the checklist to the developer; you do.** Its output goes to the tool result (command output / terminal scrollback), which is not your message and the developer may never see it. To "show the list" you must copy the script's checklist into the body of your reply verbatim. This applies identically to the **first display** (`start-review.ts` above) and to **every reprint** (`format-ticket-selection.ts` below): both produce a checklist that you must paste, not summarise. Never replace the checklist with a count, a paraphrase, or a sentence like "7 tickets in human-review"; the numbered list itself is the menu the developer acts on, so it must appear in full.
+
 Reprint the checklist at any later point with:
 
 `(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --snapshot <path> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
 
 The script prints the checklist in **snapshot order** with **fixed numbers** (never reordered when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout. If it emits a "stale … rebuilt" notice on stderr, the snapshot was too old and was rebuilt from the live queue; just carry on with the reprinted list.
 
-**Run this fresh and paste its exact output every single time you show the list. Hand-typing the checklist is never legal**, do not reconstruct it from memory, retype it, or re-use a list you printed in an earlier turn. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
+**Run the script fresh and paste its exact output into your reply every single time you show the list: `start-review.ts` on the first display, `format-ticket-selection.ts` on every reprint. Hand-typing the checklist is never legal**, do not reconstruct it from memory, retype it, or re-use a list you printed in an earlier turn. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
 
 Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
 
