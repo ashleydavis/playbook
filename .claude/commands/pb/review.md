@@ -1,6 +1,6 @@
 ---
 name: pb:review
-description: "Invoke when there are tickets in human-review/ waiting for the developer to approve, reject, skip, or abort. Walks the developer through each ticket (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, and moves the ticket to merge-queue/ on approval, back to todo/ on rejection, to aborted/ on abort, or leaves it in human-review/ when skipped. Keywords: review, human review, approve, reject, abort, kill, abandon, drop, come back later, skip, walk me through, sign off, check the work, review queue, code review, accept changes."
+description: "Invoke when there are tickets in human-review/ waiting for the developer to approve, reject, skip, abort, or defer. Walks the developer through each ticket (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, and moves the ticket to merge-queue/ on approval, back to todo/ on rejection, to aborted/ on abort, to blocked/ or backlog/ when deferred, or leaves it in human-review/ when skipped. Keywords: review, human review, approve, reject, abort, kill, abandon, drop, come back later, skip, block, blocked, backlog, defer, park, not ready, depends on, wait for, walk me through, sign off, check the work, review queue, code review, accept changes."
 ---
 
 # pb:review
@@ -42,10 +42,12 @@ The developer drives with these commands. Each has a single-letter (or short) al
 | Approve | `a`, `approve` | In a ticket | Approves the ticket; moves it to `merge-queue/`. |
 | Reject | `r`, `reject` | In a ticket | Rejects with notes (a note is required); moves it back to `todo/`. |
 | Skip | `s`, `skip` | In a ticket | Leaves it in `human-review/` for later; no note needed. |
+| Block | `bl`, `block` | In a ticket | Defers a sound ticket that cannot proceed yet because it depends on other work that has not landed; moves it to `blocked/` (optional reason). Re-admitted by `pb:unblock`. |
+| Backlog | `bk`, `backlog` | In a ticket | Defers a sound ticket that is wanted but deprioritized for later; moves it to `backlog/` (optional reason). Re-admitted by `pb:promote`. |
 | Abort | `ab`, `abort` | In a ticket | Kills the ticket; moves it to `aborted/` (optional reason). |
 | Stop | `q`, `quit`, `stop` | At the ticket list | Ends the review loop. |
 
-A **ticket command** (`a`/`r`/`s`/`ab`) **exits the inspect loop for the current ticket** at any point (the developer does not have to try every menu option first) and returns to the numbered ticket list. See [Resolve](#3-resolve).
+A **ticket command** (`a`/`r`/`s`/`bl`/`bk`/`ab`) **exits the inspect loop for the current ticket** at any point (the developer does not have to try every menu option first) and returns to the numbered ticket list. See [Resolve](#3-resolve).
 
 Anything else the developer types at the inspect menu is treated as a **note** (transcribe it, see below) or a question (answer it); then reprint the menu and wait. Never run an option or resolve a ticket on your own: present the menu, then wait for the developer's pick.
 
@@ -72,7 +74,7 @@ Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`sto
 Selection rules:
 - An **unchecked** ticket: walk through it (Step 2).
 - A **skipped** ticket (checked, still in `human-review/`): the developer may reselect it to look again or resolve it now.
-- An **approved/rejected/aborted** ticket (checked, gone from `human-review/`): tell the developer it is already resolved and reprint the checklist; do not reopen it.
+- An **approved/rejected/blocked/backlogged/aborted** ticket (checked, gone from `human-review/`): tell the developer it is already resolved and reprint the checklist; do not reopen it.
 
 The deep read stays delayed: the card gives you the summary and the inspect menu. Only open `detail.md` (full History, Issues, acceptance criteria) and the `evidence/` tree for a ticket when the developer drills into something the card does not carry, and only for the selected ticket, never all up front.
 
@@ -80,7 +82,7 @@ End the review loop when the developer stops (`q`/`quit`/`stop`), or when **ever
 
 ### 2. Walk through the chosen ticket
 
-When the developer selects a ticket (by number or name), walk them through that **one** ticket. Do not move on until it is resolved (approved, rejected, skipped, or aborted).
+When the developer selects a ticket (by number or name), walk them through that **one** ticket. Do not move on until it is resolved (approved, rejected, skipped, blocked, backlogged, or aborted).
 
 For the chosen ticket:
 
@@ -120,7 +122,7 @@ For the chosen ticket:
    7. **Show the code diff.** Run the diff for the ticket's commit (the card's `commit`), then **paste the diff content inline into your reply as a fenced ```diff block**, naming the files changed. Do not merely run `git show`/`git diff` and rely on terminal scrollback: the developer must see the actual diff in your message without asking again. For a large diff, show every changed file but you may elide unchanged context; never elide changed lines.
    8. **View the code diff yourself.** Do not show the diff: give the developer the exact command(s) to find and view it themselves (e.g. `git -C project show <commit>` from the card), naming the files changed so they know what to look at.
 
-   The developer leaves the inspect loop by resolving the ticket (`a`/`r`/`s`/`ab`), which takes you to [Resolve](#3-resolve).
+   The developer leaves the inspect loop by resolving the ticket (`a`/`r`/`s`/`bl`/`bk`/`ab`), which takes you to [Resolve](#3-resolve).
 
 3. As they inspect, capture any **notes**. Notes can target whatever the developer is thinking about, not just the current ticket. Transcribe each note to the right place (confirming when it is not obvious):
    - the current ticket's Notes section (or its History on rejection),
@@ -131,23 +133,25 @@ For the chosen ticket:
 
 ### 3. Resolve
 
-Then the developer approves, rejects, skips, or aborts. **Rejection requires a note.** Write the outcome into the ticket's `detail.md` (rejection and abort notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
+Then the developer approves, rejects, skips, blocks, backlogs, or aborts. **Rejection requires a note.** Write the outcome into the ticket's `detail.md` (rejection, block, backlog, and abort notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
 - **Approve:** to `merge-queue/`.
 - **Reject with notes:** back to `todo/`, notes appended to History. **Record every issue the developer raises as a new unticked checkbox in the ticket's `## Issues` section** (create the section if absent), in addition to the History note, so `pb:next`'s implement agent must fix each one and tick it, and its review agent fails the ticket until every box is genuinely resolved. A human rejection is not a failure, it is their explicit decision to rework the ticket: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Skip:** leave it in `human-review/` to return to later. No move, no note required. Return to the list; the skipped ticket stays and reappears there.
+- **Block:** to `blocked/`. The ticket is **sound but cannot be worked on now because it depends on other tickets or work that has not landed yet** (e.g. its evidence cannot be produced, or it would conflict, until those merge). This is neither a rejection (no fault in the work) nor an abort (the work is still wanted); it is a deferral that says "not until its blockers clear". A reason note is **optional**; if they give one, append it to the ticket's History section (name the blocker, and what to do once it clears) before the move. Then move the directory to `blocked/`. `pb:next` never picks from `blocked/`, so the ticket waits there until `pb:unblock` resets its `**Failures:**` count to 0 and moves it back to `todo/`; do not reset the count yourself (leave it untouched — `pb:unblock` handles it on re-admission). If the developer also wants the current in-flight work **discarded** (so it is re-implemented from scratch when unblocked), remove its worktree and delete its branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (force-prune first with `git -C project worktree prune` if the worktree is already gone). **Keep the ticket in `current-state.md`** but reword its entry to show it is blocked (parked on its dependencies), not in flight.
+- **Backlog:** to `backlog/`. The developer is **deprioritizing a sound ticket for later** — it is still wanted but is not a contender for the current round (unlike a block, it is not waiting on a specific dependency, just set aside). A reason note is **optional**; if they give one, append it to the ticket's History section before the move. Then move the directory to `backlog/`. `pb:next` never picks from `backlog/`, so the ticket waits there until `pb:promote` pulls it back to `todo/`. Leave its `**Failures:**` count untouched. The same optional work-**discard** step as Block applies (remove the worktree and delete the branch if the developer wants it re-implemented from scratch on promotion). **Keep the ticket in `current-state.md`** but reword its entry to show it is backlogged (parked), not in flight.
 - **Abort:** to `aborted/`. The developer is killing the ticket: the work is abandoned and will not be done. A reason note is **optional**; if they give one, append it to the ticket's History section as the abort reason before the move. Then move the directory to `aborted/`, which sets the ticket's state to aborted (the queue it sits in is its status). Unlike a rejection, an aborted ticket does not rejoin the loop and its `**Failures:**` count is left untouched; `pb:next` never touches `aborted/`. Then **remove the ticket entirely from `current-state.md`** (see below): an aborted ticket is not tracked in the narrative, the `aborted/` directory is its only record.
 
-The `move.ts` (approve/skip-then-later/abort) and `reset-failures.ts` + `move.ts` (reject) calls above commit their own state change automatically, ticket-scoped, so the History note and `## Issues` edits you wrote into the ticket's `detail.md` before the move ride in that commit. For any **follow-up ticket** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
+The `move.ts` (approve/skip-then-later/block/backlog/abort) and `reset-failures.ts` + `move.ts` (reject) calls above commit their own state change automatically, ticket-scoped, so the History note and `## Issues` edits you wrote into the ticket's `detail.md` before the move ride in that commit. For any **follow-up ticket** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
-Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders) — surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
+Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright; a blocked or backlogged ticket is kept but reworded to show it is parked, not in flight), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders) — surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 Whatever the outcome, **check the ticket off in the review snapshot** and record its outcome by marking it (this updates the snapshot and reprints the checklist):
 
-`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --snapshot <path> --mark <id> --outcome <approved|rejected|skipped|aborted> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
+`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --snapshot <path> --mark <id> --outcome <approved|rejected|skipped|blocked|backlog|aborted> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
 
-All four outcomes check the box: resolving it or deferring it both count as processed. The marked row stays visible with its outcome for the rest of the session, even once the ticket has left `human-review/`.
+Every outcome checks the box: resolving it (approve/reject/abort) or deferring it (skip/block/backlog) all count as processed. The marked row stays visible with its outcome for the rest of the session, even once the ticket has left `human-review/`.
 
-Once the ticket is marked, **return to the review loop**: the `--mark` call already reprinted the checklist (every processed ticket shown checked with its outcome, the rest unchecked); ask "Which ticket do you want to review?" again. A skipped ticket stays in `human-review/` and remains selectable; an approved, rejected, or aborted ticket has left the queue and cannot be reopened. Keep looping until the developer stops or every box is checked.
+Once the ticket is marked, **return to the review loop**: the `--mark` call already reprinted the checklist (every processed ticket shown checked with its outcome, the rest unchecked); ask "Which ticket do you want to review?" again. A skipped ticket stays in `human-review/` and remains selectable; an approved, rejected, blocked, backlogged, or aborted ticket has left the queue and cannot be reopened. Keep looping until the developer stops or every box is checked.
 
 ## Example
 
@@ -192,6 +196,14 @@ search-5 — fuzzy matching
 Developer: ab — not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 - Mark: --mark search-5 --outcome aborted (reprints the checklist).
+
+Developer: search-7
+
+search-7 — saved searches
+Developer: bl — can't capture this until search-3 merges.
+- Block reason (blocked by search-3) -> search-7 History. Moved -> blocked/.
+- current-state.md entry reworded to "blocked on search-3", not in flight. pb:unblock re-admits it.
+- Mark: --mark search-7 --outcome blocked (reprints the checklist).
 
 Developer: s
 
