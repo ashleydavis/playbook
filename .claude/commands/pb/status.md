@@ -42,15 +42,15 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ```
 ⚠ Needs you
-- auth-1 — login endpoint — awaiting review
-- auth-2 — session store — awaiting review
-- search-4 — blocked, waits on search-3
+- auth-1, login endpoint, awaiting review
+- auth-2, session store, awaiting review
+- search-4, blocked, waits on search-3
 
 In flight
-- search-3 — agent-review (checks running)
+- search-3, agent-review (checks running)
 
 Done since last session
-- infra-2 — CI pipeline
+- infra-2, CI pipeline
 
 Recommendation: pb:review to clear auth-1, auth-2, then pb:next.
 What would you like to do?

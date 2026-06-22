@@ -36,7 +36,7 @@ make_ticket() {
     } > "$FIXTURE/tickets/$queue/$id/index.md"
 }
 
-# Non-alphabetic IDs at priorities 30, 10, 20 — expect 10, 20, 30 order.
+# Non-alphabetic IDs at priorities 30, 10, 20, expect 10, 20, 30 order.
 make_ticket todo zebra-1 30
 make_ticket todo alpha-1 10
 make_ticket todo mike-1 20

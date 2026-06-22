@@ -27,7 +27,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 See the `pick-many` backlog promote example in [docs/ticket-selection.md](../../../docs/ticket-selection.md).
 
 ```
-promoted: infra-2 — moved backlog/ → todo/ (priority 100 unchanged)
+promoted: infra-2, moved backlog/ → todo/ (priority 100 unchanged)
 current-state.md updated.
 Run pb:next to pick it up, or pb:rank to reorder todo/.
 ```

@@ -27,7 +27,7 @@ You never hand-edit the review snapshot: `start-review.ts` creates it and `forma
 Follow the project's [output format](../../../docs/output-format.md) and [ticket selection menu](../../../docs/ticket-selection.md) (load once per session if not already in context). Mode: **`pick-one-loop`** with checklist variant. Specific to review:
 
 - A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
-- **Show only — nothing trailing.** When the developer picks an inspect option (screenshots, diff, docs, tests) or asks to be shown anything, output the artifact and then go straight to the inspect menu. Add nothing in between or after: no description of what it contains, no recap, no analysis, no verdict ("All correct", "Looks good", "Passes"). The developer asked to see it, not to be told about it, and the extra prose is also what makes them wait while you compose it. The verdict is theirs alone at this gate.
+- **Show only, nothing trailing.** When the developer picks an inspect option (screenshots, diff, docs, tests) or asks to be shown anything, output the artifact and then go straight to the inspect menu. Add nothing in between or after: no description of what it contains, no recap, no analysis, no verdict ("All correct", "Looks good", "Passes"). The developer asked to see it, not to be told about it, and the extra prose is also what makes them wait while you compose it. The verdict is theirs alone at this gate.
 - Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**.
 - A ticket summary is at most 3 bullets: what changed, the evidence (test result + screenshot paths), the diff (files touched). Build it from the card; do not retell the History.
 
@@ -67,7 +67,7 @@ Reprint the checklist at any later point with:
 
 The script prints the checklist in **snapshot order** with **fixed numbers** (never reordered when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout. If it emits a "stale … rebuilt" notice on stderr, the snapshot was too old and was rebuilt from the live queue; just carry on with the reprinted list.
 
-**Run this fresh and paste its exact output every single time you show the list. Hand-typing the checklist is never legal** — do not reconstruct it from memory, retype it, or re-use a list you printed in an earlier turn. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
+**Run this fresh and paste its exact output every single time you show the list. Hand-typing the checklist is never legal**, do not reconstruct it from memory, retype it, or re-use a list you printed in an earlier turn. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
 
 Wait for the developer to reply with a number, a ticket name, or `q`/`quit`/`stop`.
 
@@ -105,7 +105,7 @@ For the chosen ticket:
 
    For each pick you either **show the developer how** to do it themselves, or **do it for them**. When you do it for them, **first print a one-line description of what you are about to do, then do it.** After the option finishes, reprint the menu and wait. The options:
 
-   **Showing means pasting into your reply (mandatory, applies to every "show" pick and to any ad-hoc "show me ..." the developer types).** When the task is to *show* content (a file, a diff, a doc, command output), the content must appear **in the body of your reply as a fenced code block** (images rendered inline). Running `git show`/`git diff`/`cat`/`Read`/a test command does **not** count as showing it: command output and terminal scrollback are not your message and the developer may never see them. If you ran a command to fetch the content, copy the relevant content into your reply. For brand-new files, paste the file content itself, not a `+`-prefixed diff with repeated commit headers. Output the content and stop: add no description, recap, analysis, verdict, or summary after it (see **Show only — nothing trailing** in the Output style above). If the developer says they did not see what they asked for, assume it went to command output and re-send it inline.
+   **Showing means pasting into your reply (mandatory, applies to every "show" pick and to any ad-hoc "show me ..." the developer types).** When the task is to *show* content (a file, a diff, a doc, command output), the content must appear **in the body of your reply as a fenced code block** (images rendered inline). Running `git show`/`git diff`/`cat`/`Read`/a test command does **not** count as showing it: command output and terminal scrollback are not your message and the developer may never see them. If you ran a command to fetch the content, copy the relevant content into your reply. For brand-new files, paste the file content itself, not a `+`-prefixed diff with repeated commit headers. Output the content and stop: add no description, recap, analysis, verdict, or summary after it (see **Show only, nothing trailing** in the Output style above). If the developer says they did not see what they asked for, assume it went to command output and re-send it inline.
 
    1. **Show the screenshots.** Use the card's screenshot paths. State each screenshot's **full file path on disk** (e.g. `state/tickets/human-review/<id>/evidence/implementation-N/screenshots/<name>.png`), then **open them for the developer** in their image viewer (`xdg-open <path>` on Linux, `open <path>` on macOS), one command per screenshot, and also render each inline. List every path. Showing the paths is mandatory, not optional.
    2. **Run it by hand.** Work out which part of the app this ticket changed (from its card's changed-files and `detail.md`), then give the developer everything they need to run and explore it themselves. Pull the exact commands from the **testing manual** (`project/docs/testing-manual/`); do not invent them. Cover all six, in order:
@@ -137,13 +137,13 @@ Then the developer approves, rejects, skips, blocks, backlogs, or aborts. **Reje
 - **Approve:** to `merge-queue/`.
 - **Reject with notes:** back to `todo/`, notes appended to History. **Record every issue the developer raises as a new unticked checkbox in the ticket's `## Issues` section** (create the section if absent), in addition to the History note, so `pb:next`'s implement agent must fix each one and tick it, and its review agent fails the ticket until every box is genuinely resolved. A human rejection is not a failure, it is their explicit decision to rework the ticket: run `bun ../scripts/reset-failures.ts <id>` (from `state/`) to clear its `**Failures:**` count to 0, then move it to `todo/`. It rejoins the loop with a clean slate and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Skip:** leave it in `human-review/` to return to later. No move, no note required. Return to the list; the skipped ticket stays and reappears there.
-- **Block:** to `blocked/`. The ticket is **sound but cannot be worked on now because it depends on other tickets or work that has not landed yet** (e.g. its evidence cannot be produced, or it would conflict, until those merge). This is neither a rejection (no fault in the work) nor an abort (the work is still wanted); it is a deferral that says "not until its blockers clear". A reason note is **optional**; if they give one, append it to the ticket's History section (name the blocker, and what to do once it clears) before the move. Then move the directory to `blocked/`. `pb:next` never picks from `blocked/`, so the ticket waits there until `pb:unblock` resets its `**Failures:**` count to 0 and moves it back to `todo/`; do not reset the count yourself (leave it untouched — `pb:unblock` handles it on re-admission). If the developer also wants the current in-flight work **discarded** (so it is re-implemented from scratch when unblocked), remove its worktree and delete its branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (force-prune first with `git -C project worktree prune` if the worktree is already gone). **Keep the ticket in `current-state.md`** but reword its entry to show it is blocked (parked on its dependencies), not in flight.
-- **Backlog:** to `backlog/`. The developer is **deprioritizing a sound ticket for later** — it is still wanted but is not a contender for the current round (unlike a block, it is not waiting on a specific dependency, just set aside). A reason note is **optional**; if they give one, append it to the ticket's History section before the move. Then move the directory to `backlog/`. `pb:next` never picks from `backlog/`, so the ticket waits there until `pb:promote` pulls it back to `todo/`. Leave its `**Failures:**` count untouched. The same optional work-**discard** step as Block applies (remove the worktree and delete the branch if the developer wants it re-implemented from scratch on promotion). **Keep the ticket in `current-state.md`** but reword its entry to show it is backlogged (parked), not in flight.
+- **Block:** to `blocked/`. The ticket is **sound but cannot be worked on now because it depends on other tickets or work that has not landed yet** (e.g. its evidence cannot be produced, or it would conflict, until those merge). This is neither a rejection (no fault in the work) nor an abort (the work is still wanted); it is a deferral that says "not until its blockers clear". A reason note is **optional**; if they give one, append it to the ticket's History section (name the blocker, and what to do once it clears) before the move. Then move the directory to `blocked/`. `pb:next` never picks from `blocked/`, so the ticket waits there until `pb:unblock` resets its `**Failures:**` count to 0 and moves it back to `todo/`; do not reset the count yourself (leave it untouched, `pb:unblock` handles it on re-admission). If the developer also wants the current in-flight work **discarded** (so it is re-implemented from scratch when unblocked), remove its worktree and delete its branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (force-prune first with `git -C project worktree prune` if the worktree is already gone). **Keep the ticket in `current-state.md`** but reword its entry to show it is blocked (parked on its dependencies), not in flight.
+- **Backlog:** to `backlog/`. The developer is **deprioritizing a sound ticket for later**, it is still wanted but is not a contender for the current round (unlike a block, it is not waiting on a specific dependency, just set aside). A reason note is **optional**; if they give one, append it to the ticket's History section before the move. Then move the directory to `backlog/`. `pb:next` never picks from `backlog/`, so the ticket waits there until `pb:promote` pulls it back to `todo/`. Leave its `**Failures:**` count untouched. The same optional work-**discard** step as Block applies (remove the worktree and delete the branch if the developer wants it re-implemented from scratch on promotion). **Keep the ticket in `current-state.md`** but reword its entry to show it is backlogged (parked), not in flight.
 - **Abort:** to `aborted/`. The developer is killing the ticket: the work is abandoned and will not be done. A reason note is **optional**; if they give one, append it to the ticket's History section as the abort reason before the move. Then move the directory to `aborted/`, which sets the ticket's state to aborted (the queue it sits in is its status). Unlike a rejection, an aborted ticket does not rejoin the loop and its `**Failures:**` count is left untouched; `pb:next` never touches `aborted/`. Then **remove the ticket entirely from `current-state.md`** (see below): an aborted ticket is not tracked in the narrative, the `aborted/` directory is its only record.
 
 The `move.ts` (approve/skip-then-later/block/backlog/abort) and `reset-failures.ts` + `move.ts` (reject) calls above commit their own state change automatically, ticket-scoped, so the History note and `## Issues` edits you wrote into the ticket's `detail.md` before the move ride in that commit. For any **follow-up ticket** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
-Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright; a blocked or backlogged ticket is kept but reworded to show it is parked, not in flight), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders) — surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
+Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright; a blocked or backlogged ticket is kept but reworded to show it is parked, not in flight), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders), surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 Whatever the outcome, **check the ticket off in the review snapshot** and record its outcome by marking it (this updates the snapshot and reprints the checklist):
 
@@ -160,7 +160,7 @@ See the `pick-one-loop` checklist example in [docs/ticket-selection.md](../../..
 ```
 Developer: 1
 
-search-3 — debounced search input
+search-3, debounced search input
 - Changed: src/search/input.tsx (+44 -3)
 - Evidence (review-1/): unit 12 passed, smoke exit 0
 
@@ -192,23 +192,23 @@ Developer: placeholder should say "Search docs".
 
 Developer: search-5
 
-search-5 — fuzzy matching
-Developer: ab — not shipping it.
+search-5, fuzzy matching
+Developer: ab, not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/. Removed from current-state.md.
 - Mark: --mark search-5 --outcome aborted (reprints the checklist).
 
 Developer: search-7
 
-search-7 — saved searches
-Developer: bl — can't capture this until search-3 merges.
+search-7, saved searches
+Developer: bl, can't capture this until search-3 merges.
 - Block reason (blocked by search-3) -> search-7 History. Moved -> blocked/.
 - current-state.md entry reworded to "blocked on search-3", not in flight. pb:unblock re-admits it.
 - Mark: --mark search-7 --outcome blocked (reprints the checklist).
 
 Developer: s
 
-search-4 — result ranking
-Developer: s — come back to it later.
+search-4, result ranking
+Developer: s, come back to it later.
 - Skipped. Left in human-review. Mark: --mark search-4 --outcome skipped (reprints the checklist).
 
 All tickets processed this pass; search-4 (skipped) remains in human-review for next time.

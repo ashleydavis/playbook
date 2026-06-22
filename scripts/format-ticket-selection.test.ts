@@ -29,7 +29,7 @@ describe("formatTicketSelection() pick-many", () => {
             fields: new Set(["failures"]),
         });
         expect(out).toContain("Blocked (2)");
-        expect(out).toContain("1. treemap-tooltip-1 — custom treemap hover tooltip");
+        expect(out).toContain("1. treemap-tooltip-1, custom treemap hover tooltip");
         expect(out).toContain("   failures: 3");
         expect(out).toContain(
             'Which to unblock? (number, several numbers, ticket ID, or "all")',
@@ -65,9 +65,9 @@ describe("formatTicketSelection() pick-many", () => {
             fields: new Set(["priority"]),
         });
         expect(out).toContain("Todo (1)");
-        expect(out).toContain("1. auth-9 — session refresh");
+        expect(out).toContain("1. auth-9, session refresh");
         expect(out).toContain("Backlog (1)");
-        expect(out).toContain("2. infra-2 — upgrade test runner");
+        expect(out).toContain("2. infra-2, upgrade test runner");
     });
 
     test("empty single queue omits prompt", () => {
@@ -102,9 +102,9 @@ describe("formatTicketSelection() pick-one-loop", () => {
         });
         expect(out).toContain("Review (1 of 3 done)");
         expect(out).toContain(
-            "[x] 1. search-3 — debounced search input — approved",
+            "[x] 1. search-3, debounced search input (approved)",
         );
-        expect(out).toContain("[ ] 2. search-4 — result ranking");
+        expect(out).toContain("[ ] 2. search-4, result ranking");
         expect(out).toContain(
             "Which ticket do you want to review? (number, ticket ID, or stop)",
         );
@@ -122,9 +122,9 @@ describe("formatTicketSelection() pick-one-loop", () => {
             prompt: "Pick one",
             progress: { done: 1, total: 3 },
         });
-        expect(out).toContain("[x] 1. a-1 — first — skipped");
-        expect(out).toContain("[ ] 2. b-1 — second");
-        expect(out).toContain("[ ] 3. c-1 — third");
+        expect(out).toContain("[x] 1. a-1, first (skipped)");
+        expect(out).toContain("[ ] 2. b-1, second");
+        expect(out).toContain("[ ] 3. c-1, third");
     });
 });
 

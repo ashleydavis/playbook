@@ -23,8 +23,8 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 5. Optionally, break the feature into tickets. Before creating any ticket directories in this step, ask once per batch where they should land (no default):
    ```
    Where should this ticket go?
-   1. todo — ready for pb:next to pick up
-   2. backlog — captured for later; pull to todo when ready
+   1. todo, ready for pb:next to pick up
+   2. backlog, captured for later; pull to todo when ready
    ```
    Accept `1`/`2`, or `todo`/`backlog`. All tickets in the batch share the chosen queue. Create each in `state/tickets/<queue>/<id>/` with acceptance criteria and a test plan derived from the spec. When landing in `backlog/`, still set `**Depends on:**` and assign ascending priorities (e.g. first ticket `**Priority:** 10`, next `20`). Commit each new ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`). This step can be deferred to a later `pb:plan` session.
 6. Set dependencies between any new tickets so they implement in the right order. Where possible, number the tickets in execution order too, so a dependent ticket gets a higher number than the tickets it depends on.

@@ -328,7 +328,7 @@ Drains the queues as far as possible until human input is required. It keeps run
 
 ### Ticket selection menu
 
-When a skill asks the developer to pick ticket(s) from a numbered list, it follows the shared format in [docs/ticket-selection.md](docs/ticket-selection.md), rendered by `format-ticket-selection.ts`. Two modes: **`pick-many`** (one shot — unblock several tickets or `all`) and **`pick-one-loop`** (repeat until stop — used by `/pb:review`). In review, ticket numbers are fixed for the whole session even as tickets are checked off, so the developer can rely on them. The per-ticket **inspect loop** in `/pb:review` is separate: it is an action menu, not ticket selection.
+When a skill asks the developer to pick ticket(s) from a numbered list, it follows the shared format in [docs/ticket-selection.md](docs/ticket-selection.md), rendered by `format-ticket-selection.ts`. Two modes: **`pick-many`** (one shot, unblock several tickets or `all`) and **`pick-one-loop`** (repeat until stop, used by `/pb:review`). In review, ticket numbers are fixed for the whole session even as tickets are checked off, so the developer can rely on them. The per-ticket **inspect loop** in `/pb:review` is separate: it is an action menu, not ticket selection.
 
 ### pb:review
 

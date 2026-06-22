@@ -4,13 +4,13 @@
 
 Skills that ask the developer to pick ticket(s) each invent their own menu shape today. `pb:review` uses a checklist with fixed numbers and `pb:unblock` uses a simpler numbered list with multi-select and `all`; planned `pb:rank` and `pb:promote` (in `plan-ticket-backlog-and-priority.md`) specify only “list tickets, pick by number or ID” with no wireframe. There is no shared definition in `output-format.md`, `process.md`, or the glossary.
 
-This plan adds a single reference — `docs/ticket-selection.md` — plus a deterministic formatter/parser in `scripts/format-ticket-selection.ts`, then points every ticket-picking skill at them. The **inspect loop** in `pb:review` (numbered ways to examine one ticket) stays skill-local; this plan covers only **ticket selection** (choosing which ticket(s) to act on).
+This plan adds a single reference, `docs/ticket-selection.md`, plus a deterministic formatter/parser in `scripts/format-ticket-selection.ts`, then points every ticket-picking skill at them. The **inspect loop** in `pb:review` (numbered ways to examine one ticket) stays skill-local; this plan covers only **ticket selection** (choosing which ticket(s) to act on).
 
 Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/` first so the repo root stays uncluttered; see step 0. `glossary.md` stays at the repo root (mainly human-facing; agents still use it for terminology when needed).
 
 ## Issues
 
-<Leave empty — populated later by plan:check>
+<Leave empty, populated later by plan:check>
 
 ## Steps
 
@@ -33,7 +33,7 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
    - `docs/process.md`: fix relative links to `handbook.md`, `index.md`, `docs/output-format.md`, skill paths.
    - Every `.claude/commands/pb/**/*.md` **Output style** link: `../../../docs/output-format.md` (bootstrap: `../../../../docs/output-format.md`).
    - `templates/state/CLAUDE.md` and any other templates mentioning playbook doc paths.
-   - In-flight plans under `docs/plans/` that cite `process.md` at repo root (update line refs or leave as historical in `done/` — update `new/` only).
+   - In-flight plans under `docs/plans/` that cite `process.md` at repo root (update line refs or leave as historical in `done/`, update `new/` only).
 
 ### Shared specification
 
@@ -47,16 +47,16 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
 
    | Mode | Use when | Developer picks | Loop |
    |---|---|---|---|
-   | `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No — act once, then report |
-   | `pick-one-loop` | Repeated single-ticket work until done or stop (`pb:review`) | One number or ticket ID per turn; `q` / `quit` / `stop` ends the loop | Yes — reprint menu after each ticket is processed |
+   | `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No, act once, then report |
+   | `pick-one-loop` | Repeated single-ticket work until done or stop (`pb:review`) | One number or ticket ID per turn; `q` / `quit` / `stop` ends the loop | Yes, reprint menu after each ticket is processed |
 
    **Numbering rules (both modes).**
    - Numbers start at **1**, contiguous, and are **fixed for the session** in `pick-one-loop` (never renumber when items are checked off).
    - In menus spanning multiple queues, numbering is **global** across sections (section headers do not reset the count).
-   - Each line: `N. <id> — <description>` (em dash between ID and description).
+   - Each line: `N. <id>, <description>` (comma between ID and description).
    - Optional fields appear **indented on the line below** the ticket line, never inline prose:
      - `depends on: <ids>` when non-empty
-     - `priority: <n>` when the skill cares about priority (or `[Pn]` prefix on the ticket line — pick one style in the doc and use it consistently; recommend `[Pn]` prefix only when every ticket has a priority, else indented `priority:` line)
+     - `priority: <n>` when the skill cares about priority (or `[Pn]` prefix on the ticket line, pick one style in the doc and use it consistently; recommend `[Pn]` prefix only when every ticket has a priority, else indented `priority:` line)
      - `failures: <n>` when showing blocked tickets
    - Section header when one queue: `<Queue label> (<count>)` e.g. `Blocked (2)`.
    - Section header when several queues: repeat per queue with its own count.
@@ -66,13 +66,13 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
    - `pick-many`: `Which to unblock? (number, several numbers, ticket ID, or "all")`
    - `pick-one-loop`: `Which ticket do you want to review? (number, ticket ID, or stop)`
 
-   **`pick-one-loop` checklist variant** (required for `pb:review` only). Above the numbered lines, a progress header: `Review (<k> of <n> done)`. Each ticket line is prefixed with `[ ]` or `[x]`; processed lines keep their number and gain an outcome suffix: `— approved`, `— rejected`, `— skipped`, `— aborted`. Unchecked tickets stay selectable; checked tickets that left the queue cannot be reselected (tell the developer and reprint).
+   **`pick-one-loop` checklist variant** (required for `pb:review` only). Above the numbered lines, a progress header: `Review (<k> of <n> done)`. Each ticket line is prefixed with `[ ]` or `[x]`; processed lines keep their number and gain an outcome suffix: `(approved)`, `(rejected)`, `(skipped)`, `(aborted)`. Unchecked tickets stay selectable; checked tickets that left the queue cannot be reselected (tell the developer and reprint).
 
    **After selection.** `pick-many`: validate with `resolveSelection()` (see step 2), then act on every resolved ID. `pick-one-loop`: act on one ticket, update checklist state, reprint full menu + prompt. Invalid input: say what was wrong in one line and reprint the menu; do not guess.
 
    **Worked examples.** Include three copy-paste examples in the doc: `pick-many` blocked (matches current `pb:unblock` example), `pick-many` multi-queue with priority (for future `pb:rank`), `pick-one-loop` checklist (matches current `pb:review` example).
 
-2. **Add `scripts/format-ticket-selection.ts`** — single formatter and selection resolver.
+2. **Add `scripts/format-ticket-selection.ts`**, single formatter and selection resolver.
 
    Export types:
    ```typescript
@@ -160,9 +160,9 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
 
 ## Unit Tests
 
-- `format-ticket-selection.ts` — `formatTicketSelection()` for `pick-many` and `pick-one-loop` (cases listed in step 13).
-- `format-ticket-selection.ts` — `resolveSelection()` for both modes (cases listed in step 13).
-- `board-tickets.ts` — if `failures` (or exported `readTicket`) is added, one test that `failures` is parsed from `index.md`.
+- `format-ticket-selection.ts`, `formatTicketSelection()` for `pick-many` and `pick-one-loop` (cases listed in step 13).
+- `format-ticket-selection.ts`, `resolveSelection()` for both modes (cases listed in step 13).
+- `board-tickets.ts`, if `failures` (or exported `readTicket`) is added, one test that `failures` is parsed from `index.md`.
 
 ## Smoke Tests
 
@@ -183,5 +183,5 @@ Agent-facing auxiliary docs (`process.md`, `output-format.md`) move under `docs/
 - **Checklist state.** The formatter is stateless; `pick-one-loop` passes checklist JSON in so rendering stays deterministic and testable. The skill owns the JSON between turns.
 - **Dependency on backlog plan.** `format-ticket-selection.ts` should import `parsePriority` from `ticket-meta.ts` when it exists; until then import from `next-tickets.ts` / inline. Implementing this plan does not require implementing `plan-ticket-backlog-and-priority.md`, but that plan should be updated (step 12) so promote/rank do not invent a second menu shape.
 - **`pb:board` display vs selection.** Board listing for humans (`pb:board`) may keep its own indent style; only **selection** menus must use the formatter. Optionally align field order later; not required for this plan.
-- **Agent docs under `docs/`.** `process.md` and `output-format.md` move out of the repo root; `glossary.md`, `handbook.md`, and `index.md` stay at root. `CLAUDE.md` must be updated — it is what tells the agent to read `docs/process.md` at session start.
+- **Agent docs under `docs/`.** `process.md` and `output-format.md` move out of the repo root; `glossary.md`, `handbook.md`, and `index.md` stay at root. `CLAUDE.md` must be updated, it is what tells the agent to read `docs/process.md` at session start.
 - **No new slash command.** This is a shared doc + script; skills opt in by linking the doc and calling the script.

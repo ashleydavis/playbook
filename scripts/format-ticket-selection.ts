@@ -170,13 +170,13 @@ export function formatTicketSelection(opts: FormatOptions): string {
                 const box = ticket.checked ? "[x]" : "[ ]";
                 const outcome =
                     ticket.checked && ticket.outcome
-                        ? ` — ${ticket.outcome}`
+                        ? ` (${ticket.outcome})`
                         : "";
                 lines.push(
-                    `${box} ${number}. ${ticket.id} — ${ticket.description}${outcome}`,
+                    `${box} ${number}. ${ticket.id}, ${ticket.description}${outcome}`,
                 );
             } else {
-                lines.push(`${number}. ${ticket.id} — ${ticket.description}`);
+                lines.push(`${number}. ${ticket.id}, ${ticket.description}`);
                 lines.push(...formatOptionalFields(ticket, fields));
             }
             number++;

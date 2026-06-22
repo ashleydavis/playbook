@@ -29,7 +29,7 @@ Rules:
 - This format applies to the **state repo only**. Project-repo commits keep using `templates/commit-template/` unchanged.
 
 ## Issues
-<Leave empty — populated later by plan:check>
+<Leave empty, populated later by plan:check>
 
 ## Steps
 
@@ -38,7 +38,7 @@ Rules:
    - Export `interface CommitResult { committed: boolean; reason?: "nothing-staged" | "not-a-repo" }`.
    - Export `class CommitError extends Error {}` for unexpected git failures (non-lock, non-"nothing to commit").
    - Export `async function commitState(stateDir: string, message: string, pathspecs?: string[], runGit: GitRunner = realGit): Promise<CommitResult>`:
-     - First run `git rev-parse --is-inside-work-tree`. If it fails, return `{ committed: false, reason: "not-a-repo" }` (do **not** throw — an un-migrated state repo must not break the `pb:next` loop).
+     - First run `git rev-parse --is-inside-work-tree`. If it fails, return `{ committed: false, reason: "not-a-repo" }` (do **not** throw, an un-migrated state repo must not break the `pb:next` loop).
      - Run `git add -A -- <pathspecs>` (default pathspec `.` when none given).
      - Run `git commit -m <message>`. If the commit output indicates nothing to commit (stdout/stderr matches `/nothing to commit|no changes added/`), return `{ committed: false, reason: "nothing-staged" }`.
      - On success return `{ committed: true }`.
@@ -66,9 +66,9 @@ Rules:
     - Line ~26: the sub-agent state-change sentence currently ends "...add a History note to its `detail.md`, commit". Clarify it: the sub-agent's `move.ts` call is what commits its ticket's state transition (auto, ticket-scoped), and it writes evidence/History *before* the move so they ride in that commit; it must never run `commit-state.ts` against `current-state.md` (parent-only).
     - Step 3.2 (record state): after the parent updates `current-state.md`, add an explicit final action: `bun ../scripts/commit-state.ts "<turn summary>" current-state.md` so each turn's narrative update is its own commit. Make clear the parent is the sole committer of `current-state.md`.
 
-11. **Add the commit step to the ticket-creating skills.** For each skill that writes a new ticket into `todo/` from a template, add a step: after writing the ticket directory, commit it with `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>`. Skills to update: `.claude/commands/pb/add.md`, `.claude/commands/pb/plan.md` (when it breaks a feature into tickets), `.claude/commands/pb/docs.md` (when it queues tickets), and `.claude/commands/pb/debug.md` (the Fix ticket spawned from a proven Debug — note this spawn happens inside a `pb:next` agent-review sub-agent, so the commit step belongs wherever the Fix ticket is created).
+11. **Add the commit step to the ticket-creating skills.** For each skill that writes a new ticket into `todo/` from a template, add a step: after writing the ticket directory, commit it with `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>`. Skills to update: `.claude/commands/pb/add.md`, `.claude/commands/pb/plan.md` (when it breaks a feature into tickets), `.claude/commands/pb/docs.md` (when it queues tickets), and `.claude/commands/pb/debug.md` (the Fix ticket spawned from a proven Debug, note this spawn happens inside a `pb:next` agent-review sub-agent, so the commit step belongs wherever the Fix ticket is created).
 
-12. **Add the `current-state.md` commit step to skills that edit it by hand.** In `.claude/commands/pb/review.md` (approve/reject/defer transcribes notes and moves tickets — the `move.ts`/`reset-failures.ts` calls auto-commit, but any direct `current-state.md` edit needs `commit-state.ts current-state.md`) and any other skill that edits `current-state.md` directly, add the `commit-state.ts ... current-state.md` step after the edit. `pb:status` is read-only — confirm it makes no edits and add no commit there.
+12. **Add the `current-state.md` commit step to skills that edit it by hand.** In `.claude/commands/pb/review.md` (approve/reject/defer transcribes notes and moves tickets, the `move.ts`/`reset-failures.ts` calls auto-commit, but any direct `current-state.md` edit needs `commit-state.ts current-state.md`) and any other skill that edits `current-state.md` directly, add the `commit-state.ts ... current-state.md` step after the edit. `pb:status` is read-only, confirm it makes no edits and add no commit there.
 
 13. **`git init` the state repo in bootstrap.** In `.claude/commands/pb/bootstrap/new.md` (step 3, after copying `templates/state/`) and `.claude/commands/pb/bootstrap/existing.md` (the equivalent state-repo creation step), add: initialise the state repo as a git repo (`git init` in `state/`) and make an initial commit of the scaffolded contents (e.g. `scaffold state repo`). Note that all subsequent state changes are committed automatically (cross-reference the **Queues** audit-log paragraph in `process.md`).
 
@@ -76,14 +76,14 @@ Rules:
 
 ## Unit Tests
 
-- **`scripts/commit-state.test.ts`** (new), calling the exported `commitState()` with an injected scripted `GitRunner` (the established pattern — no real git):
+- **`scripts/commit-state.test.ts`** (new), calling the exported `commitState()` with an injected scripted `GitRunner` (the established pattern, no real git):
   - Commits with a default pathspec (`.`) when none supplied: asserts the `add -A -- .` then `commit -m <message>` calls in order.
   - Commits with explicit pathspecs: asserts `add -A -- <p1> <p2>`.
   - Returns `{ committed: false, reason: "not-a-repo" }` when the `rev-parse --is-inside-work-tree` runner result is non-zero, and makes no `add`/`commit` calls.
   - Returns `{ committed: false, reason: "nothing-staged" }` when the `commit` runner reports nothing to commit, without throwing.
   - Throws `CommitError` on an unexpected non-zero git exit (not a lock, not nothing-to-commit).
   - Lock retry: a runner that returns an `index.lock` failure on the first N attempts then succeeds results in a successful commit (assert the retry count); a runner that always returns the lock error eventually gives up and surfaces a failure.
-- No new unit tests are needed for `move`/`setup-ticket`/`fail-ticket`/`reset-failures` core functions — their commit happens in the CLI `main()` wrapper, which the existing unit tests deliberately do not exercise. Add a brief comment in each modified `main()` pointing to the smoke test that covers the commit.
+- No new unit tests are needed for `move`/`setup-ticket`/`fail-ticket`/`reset-failures` core functions, their commit happens in the CLI `main()` wrapper, which the existing unit tests deliberately do not exercise. Add a brief comment in each modified `main()` pointing to the smoke test that covers the commit.
 
 ## Smoke Tests
 
@@ -112,5 +112,5 @@ Rules:
 - **Why commits live in the CLI `main()`, not the exported core functions:** the existing unit tests call the core functions (`move()`, `recordFailure()`, etc.) directly against temp fixtures and must stay side-effect-free. Putting the commit in `main()` keeps unit tests clean and lets the smoke tests (which run the real CLI against throwaway git repos) cover the commit path.
 - **Concurrency:** `pb:next` runs up to 10 sub-agents in parallel against the single shared state-repo index. Ticket-scoped pathspecs keep each commit's contents clean; the lock-retry loop in `commit-state.ts` is what makes concurrent `git add`/`commit` safe against `index.lock` contention. This preserves the existing rule that only the parent writes/commits `current-state.md`.
 - **`not-a-repo` is a soft skip, not an error:** existing state repos created before this change are not git repos. The helper must skip-with-warning rather than crash so the loop keeps working; the developer migrates by running `git init` in `state/` once (call this out in the report and consider a one-line note in `process.md`).
-- **Open question:** whether to also commit large evidence artefacts (screenshots, transcripts) — current plan commits them as part of the ticket-scoped move commit, which is the simplest and keeps the audit log complete. Revisit only if state-repo size becomes a problem.
+- **Open question:** whether to also commit large evidence artefacts (screenshots, transcripts), current plan commits them as part of the ticket-scoped move commit, which is the simplest and keeps the audit log complete. Revisit only if state-repo size becomes a problem.
 - This is strictly about the **state** repo. Project-repo commits remain unchanged: they happen in worktrees per `templates/commit-template/`.

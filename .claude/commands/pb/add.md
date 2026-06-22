@@ -16,11 +16,11 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 ## Steps
 
 1. Ask the developer for the ticket's details: description, acceptance criteria, test plan, **implementation notes** (how to build it: approach, constraints, files likely involved, gotchas), **testing notes** (how to test it: what to verify, edge cases, manual steps, data or fixtures needed), dependencies, type, and optional priority (default `100`). Implementation notes and testing notes are captured when the developer has something to add; leave them empty if they do not.
-2. Ask where the ticket should go (no default — do not create until the developer picks):
+2. Ask where the ticket should go (no default, do not create until the developer picks):
    ```
    Where should this ticket go?
-   1. todo — ready for pb:next to pick up
-   2. backlog — captured for later; pull to todo when ready
+   1. todo, ready for pb:next to pick up
+   2. backlog, captured for later; pull to todo when ready
    ```
    Accept `1`/`2`, or the words `todo`/`backlog`. If ambiguous, ask again.
 3. Create the ticket directory `state/tickets/<queue>/<id>/` with two files, following the Ticket Format (see the handbook): a brief `index.md` (ID, Type, Depends on, **Priority:** when not default, one-line description) and a full `detail.md` (Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History). The directory name must equal the `**ID:**` declared in `index.md` (the source of truth). Acceptance criteria are always required; a Test Plan is required but may be `N/A: <reason>` paired with a Manual Verification section for tickets with no testable behaviour (these live in `detail.md`). Then commit the new ticket to the state repo: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`).

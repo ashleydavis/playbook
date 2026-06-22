@@ -12,7 +12,7 @@ Switch the playbook from "install once per machine (symlinks + global config)" t
 1. `mv config/PLAYBOOK-CLAUDE.md CLAUDE.md`. Fix only the wrong lines: per-machine/global wording → one clone per project launched from the root; `~/playbook/scripts/move.ts` → `bun ../scripts/move.ts` run from `state/`. Keep the rest.
 2. `mv skills/pb .claude/commands/pb` (creating `.claude/commands/` first). Remove the now-empty `skills/`.
 3. `mv config/settings.json .claude/settings.json`. Ensure it ships with permissions bypassed and file edits auto-accepted (`permissions.defaultMode: "bypassPermissions"`). Remove the now-empty `config/`.
-4. `rm scripts/install.sh`. Keep `scripts/install-prereqs.sh` but remove all `sudo` from it — no script runs sudo. Prerequisites are the developer's own responsibility.
+4. `rm scripts/install.sh`. Keep `scripts/install-prereqs.sh` but remove all `sudo` from it, no script runs sudo. Prerequisites are the developer's own responsibility.
 5. `.gitignore`: add `project/` and `state/`.
 6. In `.claude/commands/pb/bootstrap/new.md` and `existing.md`: scaffold into `project/` and `state/` (paths relative to the clone root); drop any global-install assumption. `existing.md` clones the project into `project/`.
 7. In `.claude/commands/pb/help.md`, `review.md`, `next.md`: fix `~/playbook/...` paths and the `skills/pb` reference; doc links to root files become `../../../<file>` (skills moved one level deeper).
@@ -30,7 +30,7 @@ Switch the playbook from "install once per machine (symlinks + global config)" t
 - `scripts/smoke-move.sh` still passes (move.ts untouched).
 
 ## Verify
-- Run `bun test scripts/move.test.ts` and `bash scripts/smoke-move.sh` — both pass.
+- Run `bun test scripts/move.test.ts` and `bash scripts/smoke-move.sh`, both pass.
 - `grep -rn "~/playbook/scripts\|install.sh\|config/PLAYBOOK\|config/settings\|skills/pb\|one clone per machine" --include="*.md" .` returns nothing (outside this plan file).
 - `.claude/commands/pb/` holds all 11 skills; `CLAUDE.md` and `.claude/settings.json` exist at the root.
 

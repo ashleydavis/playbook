@@ -56,7 +56,7 @@ fi
 # --- mark alpha-1 approved, then make it leave the live queue -----------------
 mark_out="$( cd "$FIXTURE" && bun "$FMT" --mode pick-one-loop --queue human-review \
     --snapshot "$SNAPSHOT" --mark alpha-1 --outcome approved --prompt "$PROMPT" 2>/dev/null )"
-if ! grep -q '\[x\] 1\. alpha-1 .* — approved' <<<"$mark_out"; then
+if ! grep -q '\[x\] 1\. alpha-1.*(approved)' <<<"$mark_out"; then
     fail "marked ticket not shown checked with outcome: $mark_out"
 fi
 if ! grep -q 'Review (1 of 2 done)' <<<"$mark_out"; then
@@ -67,7 +67,7 @@ fi
 rm -rf "$FIXTURE/tickets/human-review/alpha-1"
 gone_out="$( cd "$FIXTURE" && bun "$FMT" --mode pick-one-loop --queue human-review \
     --snapshot "$SNAPSHOT" --prompt "$PROMPT" 2>/dev/null )"
-if ! grep -q '\[x\] 1\. alpha-1 .* — approved' <<<"$gone_out"; then
+if ! grep -q '\[x\] 1\. alpha-1.*(approved)' <<<"$gone_out"; then
     fail "resolved ticket vanished after leaving the queue (the original bug): $gone_out"
 fi
 if ! grep -q '\[ \] 2\. beta-1' <<<"$gone_out"; then

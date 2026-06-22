@@ -27,7 +27,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 See the `pick-many` multi-queue rank example in [docs/ticket-selection.md](../../../docs/ticket-selection.md).
 
 ```
-ranked: auth-9 — priority 10 (was 50)
-ranked: search-1 — priority 50 (was 100)
+ranked: auth-9, priority 10 (was 50)
+ranked: search-1, priority 50 (was 100)
 Run pb:next to pick up actionable todo/ tickets in the new order.
 ```
