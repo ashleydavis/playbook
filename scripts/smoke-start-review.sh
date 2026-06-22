@@ -43,14 +43,21 @@ fi
 if ! grep -q "snapshot: $SNAPSHOT" <<<"$start_out"; then
     fail "start-review did not print the snapshot path: $start_out"
 fi
-if ! grep -q '\[ \] 1\. alpha-1' <<<"$start_out"; then
-    fail "start menu missing alpha-1 as item 1 (priority order): $start_out"
+if grep -q '\[ \]' <<<"$start_out"; then
+    fail "start-review printed a checklist (it should only print the snapshot path): $start_out"
 fi
 if ! grep -q '"updatedAt"' "$SNAPSHOT"; then
     fail "review snapshot has no updatedAt timestamp"
 fi
 if ! grep -q '"card"' "$SNAPSHOT"; then
     fail "review snapshot has no precomputed card"
+fi
+
+# --- render the initial checklist (the single render path) --------------------
+first_out="$( cd "$FIXTURE" && bun "$FMT" --mode pick-one-loop --queue human-review \
+    --snapshot "$SNAPSHOT" --prompt "$PROMPT" 2>/dev/null )"
+if ! grep -q '\[ \] 1\. alpha-1' <<<"$first_out"; then
+    fail "initial render missing alpha-1 as item 1 (priority order): $first_out"
 fi
 
 # --- mark alpha-1 approved, then make it leave the live queue -----------------

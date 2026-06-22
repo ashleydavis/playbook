@@ -6,15 +6,17 @@
 // for the review checklist: its order fixes the numbering, each row stays in it
 // after the ticket leaves the queue, and each row carries a precomputed render
 // card so the review loop prints summaries and inspect menus straight from JSON.
-// The menu script renders and updates it:
+//
+// This script does not render the checklist; format-ticket-selection.ts is the
+// single render path for the menu, on the first display and every reprint alike:
 //   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
 //     --snapshot <path> --prompt '...'                       # render
 //   bun ../scripts/format-ticket-selection.ts ... --snapshot <path> --mark <id> --outcome approved
 //
 // The review snapshot is git-ignored and timestamped on every write, so a fresh
 // start-review.ts always begins with every box unchecked and a stale snapshot is
-// rebuilt automatically. Prints the snapshot path (first line, "snapshot: <path>")
-// then the initial checklist.
+// rebuilt automatically. Prints only the snapshot path (first line,
+// "snapshot: <path>"); render the initial menu with format-ticket-selection.ts.
 //
 // Usage (run from the state repo root):
 //   bun ../scripts/start-review.ts [--queue human-review] [--out <path>]
@@ -22,13 +24,10 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { formatTicketSelection, queueLabel } from "./format-ticket-selection";
+import { queueLabel } from "./format-ticket-selection";
 import { buildSnapshot, writeSnapshot } from "./review-snapshot";
 
 const DEFAULT_SNAPSHOT_FILE = ".pb-review-snapshot.json";
-
-const REVIEW_PROMPT =
-    "Which ticket do you want to review? (number, ticket ID, or stop)";
 
 function parseArgs(argv: string[]): { queue: string; out: string } {
     let queue = "human-review";
@@ -64,26 +63,7 @@ async function main(): Promise<void> {
 
     if (snapshot.tickets.length === 0) {
         console.log(`No tickets in ${queueLabel(queue)}.`);
-        return;
     }
-
-    console.log(
-        formatTicketSelection({
-            mode: "pick-one-loop",
-            sections: [
-                {
-                    label: queueLabel(queue),
-                    tickets: snapshot.tickets.map((e) => ({
-                        id: e.id,
-                        description: e.description,
-                        checked: false,
-                    })),
-                },
-            ],
-            prompt: REVIEW_PROMPT,
-            progress: { done: 0, total: snapshot.tickets.length },
-        }),
-    );
 }
 
 if (process.argv[1] === __filename) {
