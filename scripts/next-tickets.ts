@@ -32,10 +32,7 @@ import {
     compareTickets,
     parseDependsOn,
     parsePriority,
-} from "./ticket-meta";
-
-// Re-export for backward compatibility (tests and board-tickets import from here).
-export { parseDependsOn } from "./ticket-meta";
+} from "./lib/ticket-meta";
 
 // The queues pb:next drives, in the order it processes them each turn
 // (finish work nearest to done before starting anything new). Reported in this

@@ -1,10 +1,9 @@
-// Unit tests for ticket-meta.ts helpers.
+// Unit tests for the shared ticket-meta parsers and sort order.
 
 import {
     compareTickets,
     DEFAULT_PRIORITY,
     parseDependsOn,
-    parseDescription,
     parsePriority,
 } from "./ticket-meta";
 
@@ -51,18 +50,34 @@ describe("compareTickets()", () => {
 });
 
 describe("parseDependsOn()", () => {
-    test("parses dependencies", () => {
-        expect(parseDependsOn("**Depends on:** feat-1, feat-2\n")).toEqual([
+    test("returns [] when the line is absent", () => {
+        expect(parseDependsOn("# ticket-1\n\n**ID:** ticket-1\n")).toEqual([]);
+    });
+
+    test("parses a single dependency", () => {
+        expect(parseDependsOn("**Depends on:** feat-1\n")).toEqual(["feat-1"]);
+    });
+
+    test("parses and trims a comma-separated list", () => {
+        expect(parseDependsOn("**Depends on:** feat-1, feat-2 , feat-3\n")).toEqual([
             "feat-1",
             "feat-2",
+            "feat-3",
         ]);
     });
-});
 
-describe("parseDescription()", () => {
-    test("returns the first body line", () => {
-        const md =
-            "# id\n\n**ID:** id\n**Failures:** 0\n\nDo the thing.\n";
-        expect(parseDescription(md)).toBe("Do the thing.");
+    test("returns [] for an empty Depends on line", () => {
+        expect(parseDependsOn("**Depends on:**\n")).toEqual([]);
+    });
+
+    test("treats the literal 'none' sentinel as no dependencies", () => {
+        expect(parseDependsOn("**Depends on:** none\n")).toEqual([]);
+        expect(parseDependsOn("**Depends on:** None\n")).toEqual([]);
+    });
+
+    test("drops a 'none' sentinel mixed into a list", () => {
+        expect(parseDependsOn("**Depends on:** none, feat-1\n")).toEqual([
+            "feat-1",
+        ]);
     });
 });

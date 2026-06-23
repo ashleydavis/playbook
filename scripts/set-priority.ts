@@ -10,8 +10,8 @@
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
-import { commitState } from "./commit-state";
-import { QUEUES } from "./move";
+import { commitState } from "./lib/commit-state";
+import { QUEUES } from "./lib/move";
 
 const PRIORITY_FIELD = /^\*\*Priority:\*\*[ \t]*-?\d+[ \t]*$/m;
 

@@ -1,23 +1,18 @@
-// Unit tests for the core board() logic and parseDescription() in board-tickets.ts.
+// Unit tests for the core board() logic in board-tickets.ts.
 //
 // Run with: npm test (Jest via ts-jest, ESM).
 //
 // Each test builds a throwaway tickets/ fixture under the OS temp dir and
 // removes it again in afterEach. The CLI wrapper in board-tickets.ts is
 // intentionally not exercised here; we call the exported board() function
-// directly.
+// directly. The shared ticket-reading helpers (readTicket, parseDescription,
+// truncateDescription) are tested in lib/board-tickets.test.ts.
 
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-    board,
-    DESCRIPTION_LIMIT,
-    DISPLAY_LIMIT,
-    parseDescription,
-    truncateDescription,
-} from "./board-tickets";
+import { board, DISPLAY_LIMIT } from "./board-tickets";
 
 let ticketsDir: string;
 let root: string;
@@ -51,54 +46,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
     await rm(root, { recursive: true, force: true });
-});
-
-describe("parseDescription()", () => {
-    test("returns the first body line, skipping heading and metadata", () => {
-        const md =
-            "# id: a title\n\n**ID:** id\n**Type:** Tweak\n**Failures:** 0\n\nDo the thing.\n";
-        expect(parseDescription(md)).toBe("Do the thing.");
-    });
-
-    test("returns '' when there is no body line", () => {
-        const md = "# id: a title\n\n**ID:** id\n**Failures:** 0\n";
-        expect(parseDescription(md)).toBe("");
-    });
-
-    test("returns '' for empty input", () => {
-        expect(parseDescription("")).toBe("");
-    });
-
-    test("skips an HTML comment block opener", () => {
-        const md = "# id\n\n**ID:** id\n\n<!--\na comment\n-->\n";
-        // The first non-skipped line is the comment body, which is acceptable;
-        // real tickets put the description before the comment. Guard only the
-        // markers we explicitly skip.
-        expect(parseDescription("# id\n**ID:** id\n<!--")).toBe("");
-    });
-});
-
-describe("truncateDescription()", () => {
-    test("leaves a short description unchanged", () => {
-        expect(truncateDescription("add result ranking")).toBe("add result ranking");
-    });
-
-    test("collapses internal whitespace and newlines", () => {
-        expect(truncateDescription("add   result\nranking")).toBe("add result ranking");
-    });
-
-    test("cuts a long description and appends an ellipsis", () => {
-        const long = "x".repeat(DESCRIPTION_LIMIT + 20);
-        const out = truncateDescription(long);
-        expect(out.length).toBeLessThanOrEqual(DESCRIPTION_LIMIT);
-        expect(out.endsWith("…")).toBe(true);
-    });
-
-    test("does not cut a trailing partial word mid-token", () => {
-        const out = truncateDescription("alpha beta gamma delta epsilon zeta", 18);
-        // No partial word before the ellipsis; ends on a word boundary.
-        expect(out).toBe("alpha beta gamma…");
-    });
 });
 
 describe("board()", () => {

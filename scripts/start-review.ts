@@ -27,11 +27,8 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { queueLabel } from "./format-ticket-selection";
-import {
-    DEFAULT_SNAPSHOT_FILE,
-    buildSnapshot,
-    writeSnapshot,
-} from "./review-snapshot";
+import { buildSnapshot, writeSnapshot } from "./lib/review-snapshot";
+import { DEFAULT_SNAPSHOT_FILE } from "./review-snapshot";
 
 function parseArgs(argv: string[]): { queue: string } {
     let queue = "human-review";

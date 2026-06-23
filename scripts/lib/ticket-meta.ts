@@ -1,10 +1,6 @@
-// Shared helpers for reading ticket surface fields from index.md.
-//
-// Used by next-tickets.ts, board-tickets.ts, format-ticket-selection.ts, and
-// set-priority.ts. Keeps parsing and sort order in one place.
-
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+// Shared parsers for ticket surface fields read from index.md, plus the ticket
+// sort order. Imported by board-tickets, next-tickets, review-snapshot, and
+// format-ticket-selection, so it keeps parsing and sort order in one place.
 
 const PRIORITY_FIELD = /^\*\*Priority:\*\*[ \t]*(-?\d+)[ \t]*$/m;
 
@@ -23,22 +19,6 @@ export function parseDependsOn(indexMd: string): string[] {
         .map((id) => id.trim())
         .filter((id) => id.length > 0)
         .filter((id) => id.toLowerCase() !== "none");
-}
-
-// Pull the one-line description out of an index.md: the first non-empty body
-// line that is not a heading, a metadata field, or an HTML comment.
-export function parseDescription(indexMd: string): string {
-    for (const raw of indexMd.split("\n")) {
-        const line = raw.trim();
-        if (line.length === 0) {
-            continue;
-        }
-        if (line.startsWith("#") || line.startsWith("**") || line.startsWith("<!--")) {
-            continue;
-        }
-        return line;
-    }
-    return "";
 }
 
 // Read `**Priority:** <n>` from index.md. Returns DEFAULT_PRIORITY when the
@@ -64,29 +44,4 @@ export function compareTickets(
         return a.priority - b.priority;
     }
     return a.id.localeCompare(b.id);
-}
-
-// Read display fields from a ticket's index.md.
-export async function readTicketMeta(
-    ticketsDir: string,
-    queue: string,
-    id: string,
-): Promise<{
-    id: string;
-    priority: number;
-    dependsOn: string[];
-    description: string;
-}> {
-    let indexMd: string;
-    try {
-        indexMd = await readFile(join(ticketsDir, queue, id, "index.md"), "utf8");
-    } catch {
-        indexMd = "";
-    }
-    return {
-        id,
-        priority: parsePriority(indexMd),
-        dependsOn: parseDependsOn(indexMd),
-        description: parseDescription(indexMd),
-    };
 }

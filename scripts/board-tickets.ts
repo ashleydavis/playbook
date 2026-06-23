@@ -22,20 +22,15 @@
 // does not show them.
 // done/ is ordered most-recent-first (by directory mtime); todo/ and backlog/
 // are ordered by priority then ID; every other queue is ordered by ticket ID.
+//
+// The shared ticket-reading helpers (readTicket, BoardTicket) live in
+// ./lib/board-tickets.ts; this file holds the board() report and CLI.
 
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import { parseFailures } from "./fail-ticket";
-import {
-    compareTickets,
-    parseDependsOn,
-    parseDescription,
-    parsePriority,
-} from "./ticket-meta";
-
-// Re-export for backward compatibility.
-export { parseDescription } from "./ticket-meta";
+import { type BoardTicket, readTicket } from "./lib/board-tickets";
+import { compareTickets } from "./lib/ticket-meta";
 
 // Every queue and side pen the board shows, in display order: the pipeline
 // queues first (with backlog after todo), then the side pen, then recently
@@ -56,32 +51,6 @@ export type BoardQueue = (typeof QUEUES)[number];
 
 // Most tickets shown per queue. The count field still reports the true total.
 export const DISPLAY_LIMIT = 5;
-
-// Longest description kept, so each fits on one line of its own under the ticket
-// ID. Longer descriptions are cut to this many characters and end with an
-// ellipsis.
-export const DESCRIPTION_LIMIT = 100;
-
-// Collapse whitespace and cut a description to DESCRIPTION_LIMIT characters,
-// ending with a single-character ellipsis when it was longer.
-export function truncateDescription(
-    description: string,
-    limit: number = DESCRIPTION_LIMIT,
-): string {
-    const oneLine = description.replace(/\s+/g, " ").trim();
-    if (oneLine.length <= limit) {
-        return oneLine;
-    }
-    return oneLine.slice(0, limit - 1).replace(/\s+\S*$/, "") + "…";
-}
-
-export interface BoardTicket {
-    id: string;
-    description: string;
-    dependsOn: string[];
-    failures: number;
-    priority: number;
-}
 
 export interface QueueBoard {
     count: number;
@@ -119,27 +88,6 @@ async function listQueue(
     return withTimes
         .sort((a, b) => b.mtimeMs - a.mtimeMs)
         .map((e) => e.name);
-}
-
-// Read a single ticket's display fields from its index.md.
-export async function readTicket(
-    ticketsDir: string,
-    queue: string,
-    id: string,
-): Promise<BoardTicket> {
-    let indexMd: string;
-    try {
-        indexMd = await readFile(join(ticketsDir, queue, id, "index.md"), "utf8");
-    } catch {
-        indexMd = "";
-    }
-    return {
-        id,
-        description: truncateDescription(parseDescription(indexMd)),
-        dependsOn: parseDependsOn(indexMd),
-        failures: parseFailures(indexMd),
-        priority: parsePriority(indexMd),
-    };
 }
 
 async function orderedIds(

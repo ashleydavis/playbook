@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { QUEUES } from "./move";
+import { QUEUES } from "./lib/move";
 import { PriorityError, setPriority, updatePriority } from "./set-priority";
 
 let ticketsDir: string;

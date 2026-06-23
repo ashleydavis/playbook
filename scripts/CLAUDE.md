@@ -7,11 +7,10 @@ The helpers:
 - `move.ts <id> <queue>`: move a ticket directory between queues (`backlog/` is a valid side pen).
 - `next-tickets.ts`: report the tickets each queue the loop drives should act on (`todo/` sorted by priority then ID).
 - `board-tickets.ts`: report the board for `pb:board`: every queue and side pen with its true ticket count plus up to 5 tickets to display (id, description, dependencies, failures, priority), and a `truncated` flag when the queue holds more than 5.
-- `ticket-meta.ts`: shared parsers for `**Priority:**`, `**Depends on:**`, description, and ticket sort order.
 - `set-priority.ts <id> <priority>`: insert or replace `**Priority:**` on a ticket (any queue except `done/` and `aborted/`).
 - `format-ticket-selection.ts`: format numbered ticket selection menus and resolve developer input. Skills that ask the developer to pick ticket(s) (`pb:unblock`, `pb:promote`, `pb:rank`, `pb:review`) must call this script; see `docs/ticket-selection.md`. For `pb:review` it renders from the review snapshot and marks a row actioned (`--mark <id> --outcome <text>`), rebuilding the snapshot when it is stale (`--max-age`); it reads the snapshot from the fixed default location `start-review.ts` writes, so the skill never passes a path.
 - `start-review.ts`: start a `pb:review` session by building the **review snapshot**. Snapshots `human-review/` into a temporary, git-ignored JSON file (a fixed default location `format-ticket-selection.ts` reads back on its own) that is the source of truth for the review checklist (rows, fixed numbers). It confirms the snapshot was built without printing its path, and does not render the menu; `format-ticket-selection.ts` is the single render path for both the first display and every reprint. See `docs/ticket-selection.md`.
-- `review-snapshot.ts`: shared logic for the review snapshot (snapshot, build, read/write with an `updatedAt` stamp, staleness check, mark). Used by `start-review.ts` and `format-ticket-selection.ts`.
+- `review-snapshot.ts`: the review-snapshot helpers used by a single caller each: resolve the default path, read the snapshot back, test staleness, and mark a row actioned. The shared builders (snapshot, build, write) live in `lib/review-snapshot.ts`.
 - `ticket-card.ts <id> [--queue human-review]`: CLI that gathers and prints one ticket's render card (title, changed files, docs changed, latest evidence pass, test results, screenshot paths, tailored inspect menu) on demand, when `pb:review` selects the ticket. Best-effort: every part degrades rather than throwing.
 - `setup-ticket.ts <id>`: admit a ticket: move `todo/<id>` to `in-progress/` and create its worktree against `project/` at `project/worktrees/<id>` (on a new branch `worktrees/<id>` at the project's current commit). This is the only supported way to create a ticket worktree; never run `git worktree` by hand.
 - `merge-ticket.ts <build|land|discard> ...`: merge approved tickets as one **train** so the post-merge checks run once on the combined result, not once per ticket. `build <id> [<id> ...]` creates a throwaway `merge-<random>` train worktree and cherry-picks each ticket's commits onto it (printing JSON with the `trainId`, `included`, and `noops`); on a conflict it aborts that pick, leaves the clean ones, and exits 2 naming the offending ticket. `land <trainId> <id> ...` fast-forwards the project branch to the train, moves each ticket from `merge-queue/` to `done/` (committing that transition), and tears down the train and ticket worktrees. `discard <trainId>` tears down a failed train (leaving the ticket worktrees) so the agent can rebuild a smaller one while bisecting. Never run `git worktree` or the merge by hand.
@@ -23,6 +22,16 @@ The helpers:
 `move`, `setup-ticket`, `fail-ticket`, `reset-failures`, `set-priority`, and `merge-ticket land` now commit their own state change automatically (ticket-scoped, lock-safe) via `commit-state.ts`, so concurrent `pb:next` sub-agents never produce a muddled cross-ticket commit. `merge-ticket land` commits the `merge-queue/` → `done/` moves of the tickets it lands; its `build` and `discard` touch only the project repo and commit nothing.
 
 It is deliberately kept separate from the scaffolded `project/` so the Playbook's own tooling and its Jest run never sweep up an app's tests.
+
+## Shared library (`lib/`)
+
+`lib/` holds the code imported by two or more scripts, extracted so each CLI stays a thin wrapper around its own `main()`. A symbol lives in `lib/` only when at least two distinct non-test files import it; code used by one place stays with that place. Each lib module has its own `lib/<name>.test.ts`.
+
+- `lib/commit-state.ts`: `commitState()` plus the lock-safe git runner it uses. The `commit-state.ts` CLI wraps it; `move`, `fail-ticket`, `reset-failures`, `set-priority`, `setup-ticket`, and `merge-ticket` import it.
+- `lib/move.ts`: `move()`, `QUEUES`, and the `MoveResult`/`MoveError` contract. The `move.ts` CLI wraps it; `fail-ticket`, `set-priority`, `setup-ticket`, `reset-loop`, and `merge-ticket` import it.
+- `lib/ticket-meta.ts`: shared parsers for `**Priority:**` and `**Depends on:**`, plus the ticket sort order (`compareTickets`). Imported by `board-tickets`, `next-tickets`, `review-snapshot`, and `format-ticket-selection`.
+- `lib/board-tickets.ts`: `readTicket()` and the description helpers it uses. Imported by `board-tickets`, `review-snapshot`, and `format-ticket-selection`.
+- `lib/review-snapshot.ts`: the review-snapshot builders (`snapshotQueue`, `buildSnapshot`, `writeSnapshot`). Imported by `start-review` and `format-ticket-selection`.
 
 ## Working here
 

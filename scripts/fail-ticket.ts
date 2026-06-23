@@ -18,8 +18,8 @@
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { commitState } from "./commit-state";
-import { QUEUES } from "./move";
+import { commitState } from "./lib/commit-state";
+import { QUEUES } from "./lib/move";
 
 // Raised for any expected, user-facing failure (missing id, unknown id, no
 // index.md). The CLI maps this to a non-zero exit with a clean message; tests

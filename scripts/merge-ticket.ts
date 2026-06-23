@@ -51,8 +51,8 @@
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { commitState } from "./commit-state";
-import { move } from "./move";
+import { commitState } from "./lib/commit-state";
+import { move } from "./lib/move";
 
 // Raised for any expected, user-facing failure (missing args, missing repo, a git
 // failure that is not a cherry-pick conflict). The CLI maps it to a non-zero exit

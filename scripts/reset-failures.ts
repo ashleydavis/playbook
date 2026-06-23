@@ -13,7 +13,7 @@
 import { join } from "node:path";
 import { readdir, writeFile } from "node:fs/promises";
 
-import { commitState } from "./commit-state";
+import { commitState } from "./lib/commit-state";
 import { FailError, locateTicket, setFailures } from "./fail-ticket";
 
 // Core logic: find the ticket and set its failure count to 0.

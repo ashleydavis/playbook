@@ -26,8 +26,8 @@
 import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { commitState } from "./commit-state";
-import { move, type MoveResult } from "./move";
+import { commitState } from "./lib/commit-state";
+import { move, type MoveResult } from "./lib/move";
 
 // Raised for any expected, user-facing failure (missing id, no project repo,
 // git failure). The CLI maps this to a non-zero exit with a clean message;

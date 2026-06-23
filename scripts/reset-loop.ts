@@ -17,7 +17,7 @@
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { move } from "./move";
+import { move } from "./lib/move";
 
 // Raised for any expected, user-facing failure (no state repo, git failure).
 // The CLI maps this to a non-zero exit with a clean message; tests assert on it.

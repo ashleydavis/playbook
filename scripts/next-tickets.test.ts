@@ -11,7 +11,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { nextTickets, parseDependsOn } from "./next-tickets";
+import { nextTickets } from "./next-tickets";
 
 let ticketsDir: string;
 let root: string;
@@ -44,39 +44,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
     await rm(root, { recursive: true, force: true });
-});
-
-describe("parseDependsOn()", () => {
-    test("returns [] when the line is absent", () => {
-        expect(parseDependsOn("# ticket-1\n\n**ID:** ticket-1\n")).toEqual([]);
-    });
-
-    test("parses a single dependency", () => {
-        expect(parseDependsOn("**Depends on:** feat-1\n")).toEqual(["feat-1"]);
-    });
-
-    test("parses and trims a comma-separated list", () => {
-        expect(parseDependsOn("**Depends on:** feat-1, feat-2 , feat-3\n")).toEqual([
-            "feat-1",
-            "feat-2",
-            "feat-3",
-        ]);
-    });
-
-    test("returns [] for an empty Depends on line", () => {
-        expect(parseDependsOn("**Depends on:**\n")).toEqual([]);
-    });
-
-    test("treats the literal 'none' sentinel as no dependencies", () => {
-        expect(parseDependsOn("**Depends on:** none\n")).toEqual([]);
-        expect(parseDependsOn("**Depends on:** None\n")).toEqual([]);
-    });
-
-    test("drops a 'none' sentinel mixed into a list", () => {
-        expect(parseDependsOn("**Depends on:** none, feat-1\n")).toEqual([
-            "feat-1",
-        ]);
-    });
 });
 
 describe("nextTickets()", () => {

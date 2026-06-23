@@ -3,6 +3,7 @@
 import {
     formatTicketSelection,
     resolveSelection,
+    snapshotToSelectionTickets,
     type SelectionTicket,
 } from "./format-ticket-selection";
 
@@ -216,5 +217,25 @@ describe("resolveSelection() pick-one-loop", () => {
         expect(resolveSelection("1 2", tickets, "pick-one-loop")).toEqual({
             error: expect.stringContaining("one ticket at a time"),
         });
+    });
+});
+
+describe("snapshotToSelectionTickets", () => {
+    test("keeps a resolved row visible even after it leaves the live queue", () => {
+        const entries = [
+            { id: "a-1", description: "stored desc", checked: true, outcome: "approved" },
+            { id: "b-1", description: "second", checked: false },
+        ];
+        // a-1 has left the queue (absent from live); b-1 still present with a
+        // refreshed description.
+        const live = new Map([["b-1", { id: "b-1", description: "live desc" }]]);
+        const out = snapshotToSelectionTickets(entries, live);
+        expect(out[0]).toMatchObject({
+            id: "a-1",
+            description: "stored desc",
+            checked: true,
+            outcome: "approved",
+        });
+        expect(out[1].description).toBe("live desc");
     });
 });

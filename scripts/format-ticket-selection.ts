@@ -21,17 +21,19 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { readTicket, type BoardTicket } from "./board-tickets";
-import { compareTickets } from "./ticket-meta";
+import { readTicket, type BoardTicket } from "./lib/board-tickets";
+import { compareTickets } from "./lib/ticket-meta";
+import {
+    buildSnapshot,
+    writeSnapshot,
+    type SnapshotEntry,
+} from "./lib/review-snapshot";
 import {
     DEFAULT_MAX_AGE_SECONDS,
-    buildSnapshot,
     defaultSnapshotPath,
     isStale,
     markSnapshot,
     readSnapshot,
-    writeSnapshot,
-    type SnapshotEntry,
 } from "./review-snapshot";
 
 export type SelectionMode = "pick-many" | "pick-one-loop";

@@ -11,7 +11,7 @@ import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { QUEUES } from "./move";
+import { QUEUES } from "./lib/move";
 import { SetupError, setupTicket, type GitRunner } from "./setup-ticket";
 
 let root: string;
