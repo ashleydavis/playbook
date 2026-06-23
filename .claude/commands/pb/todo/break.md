@@ -78,3 +78,9 @@ Where should these go? 1. todo  2. backlog
 Queued 9 tickets in todo/. All independent (no dependencies). Cleared the 9 ticketed
 items from project/todo.md (left uncommitted); the rename question stays in the list.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: if the tickets went to `todo/`.
+- `pb:promote`: if they went to `backlog/`, when ready to work them.

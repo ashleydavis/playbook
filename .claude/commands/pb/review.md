@@ -214,3 +214,8 @@ Developer: s, come back to it later.
 
 All tickets processed this pass; search-4 (skipped) remains in human-review for next time.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to land approved tickets and continue the loop.

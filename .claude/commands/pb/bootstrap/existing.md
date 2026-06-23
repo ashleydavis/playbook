@@ -58,3 +58,9 @@ Project repo analysis found gaps:
 state/current-state.md: rate-limiter noted as in flight; bootstrap tickets queued.
 Next: pb:next to start clearing the bootstrap tickets.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:status`: confirm the empty state.
+- `plan:create` then `pb:plan:break` (or `pb:add` / `pb:docs`): to put the first work into `todo/`.

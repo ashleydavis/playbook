@@ -35,3 +35,10 @@ Updated project/docs/how-it-works.md to describe the worker-pool architecture.
 The doc now references a `MAX_WORKERS` setting that the code does not read yet,
 so I queued todo/infra-5 to wire that config through.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: if tickets were queued to `todo/`.
+- `pb:promote`: if tickets went to `backlog/`.
+- None: if only documentation changed.

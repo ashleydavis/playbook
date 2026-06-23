@@ -162,3 +162,10 @@ Next turn: agent-review/ drained first -> search-3, infra-5 reviewed -> human-re
 search-4 failed agent-review (committed a change unrelated to the ticket); reviewer recorded a History note and returned it to todo/; current-state.md updated by the parent, loop continued.
 Forward progress exhausted. Loop stopped. search-3 and infra-5 await pb:review.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:review`: walk through tickets now in `human-review/`.
+- `pb:unblock`: if any tickets were parked in `blocked/`.
+- `pb:next`: to resume, only if the run was interrupted (session or rate limit).

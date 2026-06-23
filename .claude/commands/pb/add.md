@@ -44,3 +44,9 @@ Created todo/auth-9/detail.md (full body):
   **Implementation Notes:** The button lives in LoginForm; gate it on the existing `pending` flag.
   **Testing Notes:** Cover the error path too (button must re-enable when the request fails).
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: if the ticket went to `todo/`.
+- `pb:promote`: if it went to `backlog/`, when ready to work it.

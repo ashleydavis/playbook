@@ -56,3 +56,9 @@ Where should these go? 1. todo  2. backlog
 Queued 9 tickets in todo/. -2 and -3 depend on -1; the UI tickets depend on -3;
 e2e depends on the UI tickets.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: if the tickets went to `todo/`.
+- `pb:promote`: if they went to `backlog/`, when ready to work them.

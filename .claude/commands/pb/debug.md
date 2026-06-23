@@ -84,3 +84,9 @@ response overwrites the newer one. evidence/trace.txt shows the out-of-order res
 (agent-review) Root cause proven -> search-d1 moved to done/.
 Created todo/search-d2 (Type: Fix): ignore responses for superseded queries; links search-d1.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to drive the Debug ticket (and later the Fix ticket it spawns).
+- `pb:review`: once the Fix ticket reaches `human-review/`.

@@ -43,3 +43,8 @@ unblocked: treemap-tooltip-1, failures reset to 0, moved blocked/ → todo/
 current-state.md updated: treemap-tooltip-1 back in todo/, removed from the blocked section.
 Run pb:next to pick it up. (Note: it blocked on a merge-commit shape, rebase its worktree to a single commit first, or it will block again.)
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to pick up the re-admitted tickets.

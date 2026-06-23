@@ -42,3 +42,8 @@ Proceed? This discards any unmerged work in those worktrees.
 reset: requeued 2 ticket(s) to todo/ (search-3, search-4); removed 2 worktree(s), deleted 2 branch(es)
 current-state.md updated: nothing in flight, 2 tickets back in todo/.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to resume cleanly after the reset.

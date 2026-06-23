@@ -49,3 +49,9 @@ Wrote project/docs/spec/index.md, project/docs/testing-manual/index.md, project/
 state/current-state.md initialised: all queues empty.
 Next: plan the first feature with plan:create, then pb:plan:break to queue tickets.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:status`: confirm the empty state.
+- `plan:create` then `pb:plan:break` (or `pb:add` / `pb:docs`): to put the first work into `todo/`.

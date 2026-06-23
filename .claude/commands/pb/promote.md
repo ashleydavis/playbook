@@ -31,3 +31,9 @@ promoted: infra-2, moved backlog/ → todo/ (priority 100 unchanged)
 current-state.md updated.
 Run pb:next to pick it up, or pb:rank to reorder todo/.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to pick up the promoted tickets.
+- `pb:rank`: first, if you want to reorder `todo/`.

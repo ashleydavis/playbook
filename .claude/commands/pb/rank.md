@@ -31,3 +31,8 @@ ranked: auth-9, priority 10 (was 50)
 ranked: search-1, priority 50 (was 100)
 Run pb:next to pick up actionable todo/ tickets in the new order.
 ```
+
+## Next
+
+Recommend the developer run:
+- `pb:next`: to pick up actionable `todo/` tickets in the new order.
