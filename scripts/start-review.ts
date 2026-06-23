@@ -10,40 +10,42 @@
 // This script does not render the checklist; format-ticket-selection.ts is the
 // single render path for the menu, on the first display and every reprint alike:
 //   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
-//     --snapshot <path> --prompt '...'                       # render
-//   bun ../scripts/format-ticket-selection.ts ... --snapshot <path> --mark <id> --outcome approved
+//     --prompt '...'                                         # render
+//   bun ../scripts/format-ticket-selection.ts ... --mark <id> --outcome approved
 //
 // The review snapshot is git-ignored and timestamped on every write, so a fresh
 // start-review.ts always begins with every box unchecked and a stale snapshot is
-// rebuilt automatically. Prints only the snapshot path (first line,
-// "snapshot: <path>"); render the initial menu with format-ticket-selection.ts.
+// rebuilt automatically. It writes to a fixed default location that
+// format-ticket-selection.ts reads back on its own, so this script confirms the
+// snapshot was built (or reports an empty queue) without printing its path;
+// render the initial menu with format-ticket-selection.ts.
 //
 // Usage (run from the state repo root):
-//   bun ../scripts/start-review.ts [--queue human-review] [--out <path>]
+//   bun ../scripts/start-review.ts [--queue human-review]
 
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { queueLabel } from "./format-ticket-selection";
-import { buildSnapshot, writeSnapshot } from "./review-snapshot";
+import {
+    DEFAULT_SNAPSHOT_FILE,
+    buildSnapshot,
+    writeSnapshot,
+} from "./review-snapshot";
 
-const DEFAULT_SNAPSHOT_FILE = ".pb-review-snapshot.json";
-
-function parseArgs(argv: string[]): { queue: string; out: string } {
+function parseArgs(argv: string[]): { queue: string } {
     let queue = "human-review";
-    let out = join(process.cwd(), DEFAULT_SNAPSHOT_FILE);
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === "--queue" && argv[i + 1]) {
             queue = argv[++i];
-        } else if (argv[i] === "--out" && argv[i + 1]) {
-            out = argv[++i];
         }
     }
-    return { queue, out };
+    return { queue };
 }
 
 async function main(): Promise<void> {
-    const { queue, out } = parseArgs(process.argv.slice(2));
+    const { queue } = parseArgs(process.argv.slice(2));
+    const out = join(process.cwd(), DEFAULT_SNAPSHOT_FILE);
 
     const ticketsDir = join(process.cwd(), "tickets");
     try {
@@ -58,12 +60,16 @@ async function main(): Promise<void> {
     const snapshot = await buildSnapshot(ticketsDir, queue);
     await writeSnapshot(out, snapshot);
 
-    console.log(`snapshot: ${out}`);
-    console.log("");
-
     if (snapshot.tickets.length === 0) {
         console.log(`No tickets in ${queueLabel(queue)}.`);
+        return;
     }
+
+    console.log(
+        `Review snapshot built for ${queueLabel(queue)} ` +
+            `(${snapshot.tickets.length} ticket(s)). ` +
+            `Render the checklist with format-ticket-selection.ts.`,
+    );
 }
 
 if (process.argv[1] === __filename) {

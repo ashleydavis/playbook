@@ -24,6 +24,15 @@ import { gatherCard, type TicketCard } from "./ticket-card";
 // write. Past it, callers rebuild from the live queue instead of using it.
 export const DEFAULT_MAX_AGE_SECONDS = 6 * 60 * 60; // 6 hours
 
+// The review snapshot's default filename, resolved against the state repo's
+// working directory. start-review.ts writes here and format-ticket-selection.ts
+// reads here, so the pb:review skill never has to name or thread the path.
+export const DEFAULT_SNAPSHOT_FILE = ".pb-review-snapshot.json";
+
+export function defaultSnapshotPath(cwd: string = process.cwd()): string {
+    return join(cwd, DEFAULT_SNAPSHOT_FILE);
+}
+
 // One row of the checklist. `checked`/`outcome` are set when the developer
 // actions the ticket; the row (and its card) stay in the snapshot afterwards.
 export interface SnapshotEntry {

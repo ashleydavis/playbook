@@ -13,9 +13,9 @@
 // outcome) even after they leave human-review/. Render it, and mark a ticket
 // actioned, with:
 //   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
-//     --snapshot .pb-review-snapshot.json --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)'
+//     --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)'
 //   bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review \
-//     --snapshot .pb-review-snapshot.json --mark search-3 --outcome approved --prompt '...'
+//     --mark search-3 --outcome approved --prompt '...'
 // A snapshot older than --max-age seconds is rebuilt from the live queue first.
 
 import { readFile, readdir } from "node:fs/promises";
@@ -26,6 +26,7 @@ import { compareTickets } from "./ticket-meta";
 import {
     DEFAULT_MAX_AGE_SECONDS,
     buildSnapshot,
+    defaultSnapshotPath,
     isStale,
     markSnapshot,
     readSnapshot,
@@ -99,18 +100,6 @@ function boardToSelection(
         sel.failures = ticket.failures;
     }
     return sel;
-}
-
-function flattenSections(
-    sections: { label: string; tickets: SelectionTicket[] }[],
-): SelectionTicket[] {
-    const flat: SelectionTicket[] = [];
-    for (const section of sections) {
-        for (const ticket of section.tickets) {
-            flat.push(ticket);
-        }
-    }
-    return flat;
 }
 
 function totalTickets(
@@ -336,7 +325,6 @@ function parseArgs(argv: string[]): {
     fields: Set<string>;
     prompt: string;
     checklistPath?: string;
-    snapshotPath?: string;
     markId?: string;
     outcome?: string;
     maxAgeSeconds: number;
@@ -350,7 +338,6 @@ function parseArgs(argv: string[]): {
     };
     let mode: SelectionMode | undefined;
     let checklistPath: string | undefined;
-    let snapshotPath: string | undefined;
     let markId: string | undefined;
     let outcome: string | undefined;
     let maxAgeSeconds = DEFAULT_MAX_AGE_SECONDS;
@@ -374,8 +361,6 @@ function parseArgs(argv: string[]): {
             result.prompt = argv[++i];
         } else if (arg === "--checklist" && argv[i + 1]) {
             checklistPath = argv[++i];
-        } else if (arg === "--snapshot" && argv[i + 1]) {
-            snapshotPath = argv[++i];
         } else if (arg === "--mark" && argv[i + 1]) {
             markId = argv[++i];
         } else if (arg === "--outcome" && argv[i + 1]) {
@@ -396,7 +381,6 @@ function parseArgs(argv: string[]): {
         mode,
         ...result,
         checklistPath,
-        snapshotPath,
         markId,
         outcome,
         maxAgeSeconds,
@@ -410,21 +394,21 @@ function parseArgs(argv: string[]): {
 // --mark <id> --outcome <text> ticks a row, and the full checklist is reprinted.
 // Every change rewrites the snapshot with a fresh `updatedAt` stamp.
 async function renderSnapshot(args: ReturnType<typeof parseArgs>): Promise<void> {
-    const snapshotPath = args.snapshotPath!;
+    const snapshotPath = defaultSnapshotPath();
     const queue = args.queues[0] ?? "human-review";
     const ticketsDir = join(process.cwd(), "tickets");
 
     let snapshot = await readSnapshot(snapshotPath);
     if (!snapshot) {
         console.error(
-            `cannot read review snapshot ${snapshotPath}: run start-review.ts first`,
+            "cannot read the review session: run start-review.ts first",
         );
         process.exit(1);
     }
 
     if (isStale(snapshot, args.maxAgeSeconds)) {
         console.error(
-            `review snapshot ${snapshotPath} was stale (last updated ${snapshot.updatedAt}); rebuilt from ${queueLabel(queue)}.`,
+            `the review list was stale (last updated ${snapshot.updatedAt}); rebuilt from ${queueLabel(queue)}.`,
         );
         snapshot = await buildSnapshot(ticketsDir, queue);
         await writeSnapshot(snapshotPath, snapshot);
@@ -487,9 +471,11 @@ async function main(): Promise<void> {
         return;
     }
 
-    if (args.snapshotPath) {
+    // pb:review (pick-one-loop) renders from the review snapshot at its fixed
+    // default location; no path is ever passed in.
+    if (args.mode === "pick-one-loop") {
         if (!args.prompt) {
-            console.error("--snapshot requires --prompt <text>");
+            console.error("rendering the review list requires --prompt <text>");
             process.exit(1);
         }
         await renderSnapshot(args);
@@ -500,8 +486,7 @@ async function main(): Promise<void> {
         console.error(
             "usage: format-ticket-selection.ts --mode <pick-many|pick-one-loop> " +
                 "--queue <name> [--queue ...] [--fields dependsOn,priority,failures] " +
-                "--prompt <text> [--checklist <json>] " +
-                "[--snapshot <json> [--mark <id> --outcome <text>] [--max-age <seconds>]]",
+                "--prompt <text> [--checklist <json>]",
         );
         process.exit(1);
     }
@@ -528,19 +513,13 @@ async function main(): Promise<void> {
         sections.push({ label: queueLabel(queue), tickets });
     }
 
-    let progress: { done: number; total: number } | undefined;
-    if (args.mode === "pick-one-loop") {
-        const flat = flattenSections(sections);
-        const done = flat.filter((t) => t.checked).length;
-        progress = { done, total: flat.length };
-    }
-
+    // This path only handles pick-many (pick-one-loop returned above), so there
+    // is no checklist progress header to compute.
     console.log(
         formatTicketSelection({
             mode: args.mode,
             sections,
             prompt: args.prompt,
-            progress,
             fields: args.fields,
         }),
     );

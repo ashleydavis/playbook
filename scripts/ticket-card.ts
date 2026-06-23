@@ -268,3 +268,99 @@ export async function gatherCard(
         inspect,
     };
 }
+
+// Render a card as plain text: the summary facts the review step needs and the
+// tailored inspect menu, numbered. This is what the pb:review skill prints for
+// the selected ticket.
+export function formatCard(id: string, card: TicketCard): string {
+    const lines: string[] = [];
+    lines.push(card.title || id);
+    lines.push("");
+
+    if (card.changedFiles.length > 0) {
+        lines.push("Changed files:");
+        for (const f of card.changedFiles) {
+            lines.push(`  ${f}`);
+        }
+    } else {
+        lines.push(
+            `Changed files: ${card.changedFilesKnown ? "(none)" : "(unknown)"}`,
+        );
+    }
+
+    if (card.docsChanged.length > 0) {
+        lines.push("Docs changed:");
+        for (const f of card.docsChanged) {
+            lines.push(`  ${f}`);
+        }
+    }
+
+    const pass = [card.latestImplementation, card.latestReview]
+        .filter(Boolean)
+        .join(" / ");
+    if (pass) {
+        lines.push(`Latest evidence pass: ${pass}`);
+    }
+
+    const results = Object.entries(card.testResults ?? {});
+    if (results.length > 0) {
+        lines.push("Test results:");
+        for (const [name, value] of results) {
+            lines.push(`  ${name}: ${value}`);
+        }
+    }
+
+    if (card.testPlan) {
+        lines.push("Test plan:");
+        lines.push(card.testPlan);
+    }
+
+    if (card.screenshots.length > 0) {
+        lines.push("Screenshots:");
+        for (const s of card.screenshots) {
+            lines.push(`  ${s}`);
+        }
+    }
+
+    if (card.commit) {
+        lines.push(`Commit: ${card.commit}`);
+    }
+    lines.push(`Detail: ${card.paths.detail}`);
+    lines.push(`Evidence dir: ${card.paths.evidenceDir}`);
+
+    lines.push("");
+    lines.push("Inspect menu:");
+    card.inspect.forEach((opt, i) => {
+        lines.push(`${i + 1}. ${opt.label}`);
+    });
+
+    return lines.join("\n");
+}
+
+async function main(): Promise<void> {
+    const argv = process.argv.slice(2);
+    let id: string | undefined;
+    let queue = "human-review";
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === "--queue" && argv[i + 1]) {
+            queue = argv[++i];
+        } else if (!id && !argv[i].startsWith("--")) {
+            id = argv[i];
+        }
+    }
+    if (!id) {
+        console.error("usage: ticket-card.ts <id> [--queue <name>]");
+        process.exit(1);
+    }
+
+    const ticketsDir = join(process.cwd(), "tickets");
+    const card = await gatherCard(ticketsDir, queue, id);
+    console.log(formatCard(id, card));
+}
+
+if (process.argv[1] === __filename) {
+    main().catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
+}

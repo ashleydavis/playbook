@@ -11,16 +11,13 @@ The developer drives this with a **review loop**: you show a numbered list of th
 
 Walking through a ticket is itself a loop, the **inspect loop**: you print a numbered menu of ways to examine the work and the developer picks them in any order until they resolve the ticket. So the review loop (select a ticket) contains the inspect loop (examine that ticket).
 
-## The review snapshot
+You drive the whole thing with three scripts, and never anything else:
 
-The whole review loop runs off one **review snapshot**: a temporary, git-ignored JSON snapshot of `human-review/` (`state/.pb-review-snapshot.json`), written by `start-review.ts`. It is the **source of truth** for the loop, not the live `human-review/` directory:
+- `start-review.ts` once, to start the session.
+- `format-ticket-selection.ts --mode pick-one-loop --queue human-review …` to render (and reprint) the numbered list, and the same script with `--mark <id> --outcome <x>` to record a ticket's outcome and reprint.
+- `format-ticket-selection.ts --card <id>` to get the selected ticket's summary and inspect menu.
 
-- It fixes the rows, their **order**, and their **numbers** for the session.
-- Each row carries a precomputed **card**: the ticket's title, changed-files summary, latest evidence pass, test results, screenshot paths, and a **tailored inspect menu**. So you render both menus from JSON without re-reading `detail.md` and walking `evidence/` every turn.
-- A resolved ticket stays in the snapshot (checked, with its outcome) **even after it leaves the queue**, so the checklist never loses a row or renumbers.
-- Every write stamps `updatedAt`. When the review snapshot is read back older than the staleness threshold it is **rebuilt automatically** from the live queue (you will see a "stale … rebuilt" notice on stderr). A fresh `start-review.ts` always starts every box unchecked.
-
-You never hand-edit the review snapshot: `start-review.ts` creates it and `format-ticket-selection.ts --snapshot … --mark` updates it.
+The numbered list persists for the session: once started, its rows, their order, and their numbers are fixed and never renumber, and a resolved ticket stays on the list (checked, with its outcome) even after it leaves `human-review/`. The scripts handle all of that; you just run them and paste what they print.
 
 ## Output style
 
@@ -55,17 +52,17 @@ Anything else the developer types at the inspect menu is treated as a **note** (
 
 ### 1. Start the session, list as a checklist, and ask
 
-On the **first** time through, build the review snapshot:
+On the **first** time through, start the review session:
 
 `(cd state && bun ../scripts/start-review.ts)`
 
-This snapshots `human-review/` into the review snapshot and precomputes each ticket's card. It prints only the snapshot path (first line, `snapshot: <path>`); it does **not** print the checklist. Keep the path; you pass it back on every render. If it prints `No tickets in Human review.`, say so and stop.
+This prepares the review and precomputes each ticket's card. It confirms the session is ready; it does **not** print the checklist. If it prints `No tickets in Human review.`, say so and stop.
 
 Render the checklist with `format-ticket-selection.ts`. This is the **single render path** for the menu: you call it the same way for the first display and for every later reprint.
 
-`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --snapshot <path> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
+`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
 
-The script prints the checklist in **snapshot order** with **fixed numbers** (never reordered when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout. If it emits a "stale … rebuilt" notice on stderr, the snapshot was too old and was rebuilt from the live queue; just carry on with the reprinted list.
+The script prints the checklist in a fixed order with fixed numbers (never reordered when items are checked off). See [docs/ticket-selection.md](../../../docs/ticket-selection.md) for the layout. If it prints a notice on stderr, ignore it and carry on with the reprinted list.
 
 **Run `format-ticket-selection.ts` fresh and paste its exact output into your reply every single time you show the list, the first display and every reprint alike. The script does not show the checklist to the developer; you do.** Its output goes to the tool result (command output / terminal scrollback), which is not your message and the developer may never see it. To "show the list" you must copy the script's checklist into the body of your reply verbatim. **Hand-typing the checklist is never legal**: do not reconstruct it from memory, retype it, re-use a list you printed in an earlier turn, or replace it with a count or paraphrase like "7 tickets in human-review". The numbered list itself is the menu the developer acts on, so it must appear in full. Tickets move between turns (e.g. a rejection in another session), so a remembered list silently misrepresents the queue; the only trustworthy list is the one the script just printed.
 
@@ -86,9 +83,13 @@ When the developer selects a ticket (by number or name), walk them through that 
 
 For the chosen ticket:
 
-1. **Summarise from the card.** Read the selected ticket's card in the review snapshot and give a short, simple summary (≤3 bullets) of the work and the evidence: what changed (the card's changed-files), the test results, and the screenshot paths. The card's `latestImplementation`/`latestReview` name the current evidence pass; earlier passes show prior rejected rounds. Only open `detail.md`/`evidence/` when the developer asks for something the card does not cover (the full History/Issues, a specific transcript).
+1. **Get and summarise the card.** Print the selected ticket's card:
 
-2. **Run the inspect loop.** Print the card's **tailored inspect menu** (its `inspect` array, already filtered to this ticket and in canonical order) and let the developer pick options **in any order, one at a time**. Do not dump everything at once: run the picked option, then reprint the menu and wait. The full menu, before tailoring, is:
+   `(cd state && bun ../scripts/ticket-card.ts <id>)`
+
+   It prints the ticket's summary facts (changed files, the evidence pass, test results, screenshot paths, commit, the paths to its `detail.md` and `evidence/`) and its tailored inspect menu. Give a short, simple summary (≤3 bullets) of the work and the evidence: what changed (the card's changed files), the test results, and the screenshot paths. Only open `detail.md`/`evidence/` when the developer asks for something the card does not cover (the full History/Issues, a specific transcript).
+
+2. **Run the inspect loop.** Print the inspect menu the card lists (already tailored to this ticket) and let the developer pick options **in any order, one at a time**. Do not dump everything at once: run the picked option, then reprint the menu and wait. The full menu, before tailoring, is:
 
    ```
    1. Show the screenshots
@@ -145,9 +146,9 @@ The `move.ts` (approve/skip-then-later/block/backlog/abort) and `reset-failures.
 
 Then update `current-state.md` to reflect the move (and any follow-up tickets queued from the notes above): add, amend, or remove only the entries these changes affect (an aborted ticket is removed outright; a blocked or backlogged ticket is kept but reworded to show it is parked, not in flight), leaving the rest of its existing content intact. Only ever write entries that reflect a queue change to this project's tickets; never use `current-state.md` to track anything outside the queues (playbook edits, other repos, reminders), surface those in chat or their own commit. Commit that edit as its own commit: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
-Whatever the outcome, **check the ticket off in the review snapshot** and record its outcome by marking it (this updates the snapshot and reprints the checklist):
+Whatever the outcome, **record its outcome by marking it** (this reprints the checklist with the ticket checked off):
 
-`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --snapshot <path> --mark <id> --outcome <approved|rejected|skipped|blocked|backlog|aborted> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
+`(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-one-loop --queue human-review --mark <id> --outcome <approved|rejected|skipped|blocked|backlog|aborted> --prompt 'Which ticket do you want to review? (number, ticket ID, or stop)')`
 
 Every outcome checks the box: resolving it (approve/reject/abort) or deferring it (skip/block/backlog) all count as processed. The marked row stays visible with its outcome for the rest of the session, even once the ticket has left `human-review/`.
 
@@ -188,7 +189,7 @@ Developer: 4
 Developer: placeholder should say "Search docs".
 - Note -> search/detail.md behaviour; follow-up todo/search-6 (placeholder copy).
 - Approve search-3 -> merge-queue/. current-state.md updated.
-- Mark: format-ticket-selection.ts --snapshot <path> --mark search-3 --outcome approved (reprints the checklist).
+- Mark: format-ticket-selection.ts --mark search-3 --outcome approved (reprints the checklist).
 
 Developer: search-5
 
