@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { gatherCard } from "./ticket-card";
+import { formatCard, gatherCard, type TicketCard } from "./ticket-card";
 
 let dir: string;
 let ticketsDir: string;
@@ -78,5 +78,43 @@ describe("gatherCard", () => {
         const card = await gatherCard(ticketsDir, "human-review", "b-1");
         expect(card.screenshots).toHaveLength(0);
         expect(card.inspect.map((o) => o.key)).not.toContain("screenshots");
+    });
+});
+
+describe("formatCard", () => {
+    const baseCard: TicketCard = {
+        title: "a-1: a real title",
+        changedFiles: [],
+        changedFilesKnown: false,
+        docsChanged: [],
+        latestImplementation: "implementation-1",
+        latestReview: "review-1",
+        testResults: { unit: "EXIT=0" },
+        screenshots: ["light.png", "dark.png"],
+        testPlan: "Unit and e2e.",
+        commit: null,
+        paths: { detail: "d/detail.md", evidenceDir: "d/evidence" },
+        inspect: [
+            { key: "screenshots", label: "Show screenshots" },
+            { key: "code-diff", label: "Show code diff" },
+        ],
+    };
+
+    test("renders title, evidence pass, results, screenshots, and a numbered menu", () => {
+        const out = formatCard("a-1", baseCard);
+        expect(out).toContain("a-1: a real title");
+        expect(out).toContain("Changed files: (unknown)");
+        expect(out).toContain("Latest evidence pass: implementation-1 / review-1");
+        expect(out).toContain("unit: EXIT=0");
+        expect(out).toContain("Test plan:");
+        expect(out).toContain("light.png");
+        expect(out).toContain("Inspect menu:");
+        expect(out).toContain("1. Show screenshots");
+        expect(out).toContain("2. Show code diff");
+    });
+
+    test("falls back to the id when the card has no title", () => {
+        const out = formatCard("a-1", { ...baseCard, title: "" });
+        expect(out.split("\n")[0]).toBe("a-1");
     });
 });

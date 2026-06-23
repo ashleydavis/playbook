@@ -2,7 +2,14 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { FailError, bumpFailures, recordFailure } from "./fail-ticket";
+import {
+    FailError,
+    bumpFailures,
+    locateTicket,
+    parseFailures,
+    recordFailure,
+    setFailures,
+} from "./fail-ticket";
 
 let root: string;
 let ticketsDir: string;
@@ -115,6 +122,73 @@ describe("recordFailure()", () => {
     test("throws when the ticket has no index.md", async () => {
         await mkdir(join(ticketsDir, "todo", "bare"), { recursive: true });
         await expect(recordFailure("bare", ticketsDir)).rejects.toThrow(
+            /no index.md/,
+        );
+    });
+});
+
+describe("parseFailures()", () => {
+    test("returns 0 when the field is absent", () => {
+        expect(parseFailures("# x\n\n**ID:** x\n")).toBe(0);
+    });
+
+    test("parses the current count", () => {
+        expect(parseFailures("**ID:** x\n**Failures:** 4\n")).toBe(4);
+    });
+
+    test("ignores a mention in prose", () => {
+        expect(parseFailures("notes about **Failures:** here\n")).toBe(0);
+    });
+});
+
+describe("setFailures()", () => {
+    test("replaces an existing field in place", () => {
+        expect(setFailures("**ID:** x\n**Failures:** 2\n", 5)).toBe(
+            "**ID:** x\n**Failures:** 5\n",
+        );
+    });
+
+    test("inserts after Depends on when absent", () => {
+        expect(setFailures("**ID:** x\n**Depends on:** a\n", 1)).toBe(
+            "**ID:** x\n**Depends on:** a\n**Failures:** 1\n",
+        );
+    });
+
+    test("inserts at the top when no anchor field exists", () => {
+        expect(setFailures("plain\n", 1)).toBe("**Failures:** 1\nplain\n");
+    });
+});
+
+describe("locateTicket()", () => {
+    test("returns the queue, path, and body for a located ticket", async () => {
+        await makeTicket("agent-review", "fix-1", "**ID:** fix-1\n**Failures:** 1\n");
+        const r = await locateTicket("fix-1", ticketsDir);
+        expect(r.queue).toBe("agent-review");
+        expect(r.indexPath).toBe(
+            join(ticketsDir, "agent-review", "fix-1", "index.md"),
+        );
+        expect(r.indexMd).toContain("**Failures:** 1");
+    });
+
+    test("throws on a missing id", async () => {
+        await expect(locateTicket("", ticketsDir)).rejects.toThrow(FailError);
+    });
+
+    test("throws on an unknown id", async () => {
+        await expect(locateTicket("ghost", ticketsDir)).rejects.toThrow(
+            /unknown id/,
+        );
+    });
+
+    test("throws when the id is in two queues", async () => {
+        await makeTicket("todo", "dup", "**ID:** dup\n");
+        await makeTicket("blocked", "dup", "**ID:** dup\n");
+        await expect(locateTicket("dup", ticketsDir)).rejects.toThrow(/ambiguous/);
+    });
+
+    test("throws when the ticket has no index.md", async () => {
+        await mkdir(join(ticketsDir, "todo", "bare"), { recursive: true });
+        await expect(locateTicket("bare", ticketsDir)).rejects.toThrow(
             /no index.md/,
         );
     });

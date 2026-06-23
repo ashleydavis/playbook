@@ -1,7 +1,13 @@
 // Unit tests for format-ticket-selection.ts
 
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import {
     formatTicketSelection,
+    loadQueueTickets,
+    queueLabel,
     resolveSelection,
     snapshotToSelectionTickets,
     type SelectionTicket,
@@ -237,5 +243,58 @@ describe("snapshotToSelectionTickets", () => {
             outcome: "approved",
         });
         expect(out[1].description).toBe("live desc");
+    });
+});
+
+describe("queueLabel()", () => {
+    test("maps a known queue to its label", () => {
+        expect(queueLabel("human-review")).toBe("Human review");
+        expect(queueLabel("merge-queue")).toBe("Merge queue");
+    });
+
+    test("title-cases an unknown queue", () => {
+        expect(queueLabel("some-other-pen")).toBe("Some Other Pen");
+    });
+});
+
+describe("loadQueueTickets()", () => {
+    let root: string;
+    let ticketsDir: string;
+
+    async function makeTicket(
+        queue: string,
+        id: string,
+        priority: number,
+    ): Promise<void> {
+        const dir = join(ticketsDir, queue, id);
+        await mkdir(dir, { recursive: true });
+        await writeFile(
+            join(dir, "index.md"),
+            `# ${id}\n\n**ID:** ${id}\n**Failures:** 0\n**Priority:** ${priority}\n\n${id} desc\n`,
+        );
+    }
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), "load-queue-test-"));
+        ticketsDir = join(root, "tickets");
+        await mkdir(ticketsDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true });
+    });
+
+    test("returns [] for a missing queue directory", async () => {
+        expect(await loadQueueTickets(ticketsDir, "todo", new Set())).toEqual([]);
+    });
+
+    test("orders by priority then id and keeps only requested fields", async () => {
+        await makeTicket("todo", "b-1", 50);
+        await makeTicket("todo", "a-1", 10);
+        const out = await loadQueueTickets(ticketsDir, "todo", new Set(["priority"]));
+        expect(out.map((t) => t.id)).toEqual(["a-1", "b-1"]);
+        expect(out[0].priority).toBe(10);
+        expect(out[0].failures).toBeUndefined();
+        expect(out[0].dependsOn).toBeUndefined();
     });
 });
