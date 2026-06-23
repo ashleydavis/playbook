@@ -93,7 +93,7 @@ In the project repo (`project/`):
   1. todo, ready for pb:next to pick up
   2. backlog, captured for later; pull to todo when ready
   ```
-  Accept `1`/`2`, or the words `todo`/`backlog`. `pb:plan` and `pb:docs` ask once per batch. `pb:debug` is the exception (Debug tickets always land in `todo/`).
+  Accept `1`/`2`, or the words `todo`/`backlog`. `pb:plan:break` and `pb:docs` ask once per batch. `pb:debug` is the exception (Debug tickets always land in `todo/`).
 - Refuse to implement a ticket with no acceptance criteria.
 - A Test Plan is required. For tickets with no testable behaviour, use `N/A: <reason>` with a Manual Verification section. Nothing reaches `merge-queue/` without a check.
 - Dependent tickets cannot start until their dependencies are merged.
@@ -143,7 +143,7 @@ All scaffolding is under [templates/](../templates/) ([README.md](../templates/R
 
 - [templates/project/](../templates/project/): project repo scaffold. Copied by `pb:bootstrap:new`.
 - [templates/state/](../templates/state/): state repo scaffold. Copied by `pb:bootstrap:*`.
-- [templates/feature-template/](../templates/feature-template/): feature `index.md` + `detail.md`. Copied by `pb:plan`.
+- [templates/feature-template/](../templates/feature-template/): feature `index.md` + `detail.md`. Copied when a feature spec is authored.
 - [templates/ticket-template/](../templates/ticket-template/): ticket `index.md` + `detail.md`. Copied by `pb:add`.
 - [templates/commit-template/](../templates/commit-template/): commit format. Copied and filled out when making a commit (see [Commits](#commits)).
 
@@ -156,7 +156,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:help` | Explain the process, bootstrap, the loop, skills, and queues |
 | `pb:status` | Summarise queue state, recommend next skill |
 | `pb:board` | Bare listing of every queue and its tickets (no narrative) |
-| `pb:plan` | Update spec, docs, testing manual; queue tickets |
+| `pb:plan:break` | Break a written plan into dependency-linked tickets |
 | `pb:docs` | Write/update docs; queue tickets |
 | `pb:add` | Create a ticket in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |

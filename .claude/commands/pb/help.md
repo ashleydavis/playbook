@@ -26,7 +26,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 **How to drive it forward (the loop).** Check `state/current-state.md`, run a skill, repeat:
 1. `pb:status` (usual session start): summarises the queues, recommends the next skill.
-2. `pb:plan` / `pb:docs` / `pb:add`: get work into `todo/`.
+2. `pb:plan:break` / `pb:docs` / `pb:add`: get work into `todo/`.
 3. `pb:next`: drains the queues without you, implementing up to 10 unblocked tickets in parallel through to human review. Run it once; it keeps going until forward progress is exhausted.
 4. `pb:review`: walk through `human-review/`, approve or reject each ticket.
 5. `pb:debug`: when something is broken and the cause is unknown (proves a root cause, then spawns a Fix ticket).
@@ -54,7 +54,7 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 |---|---|
 | `pb:help` | This. Explain the process, bootstrap, the loop, skills, and queues |
 | `pb:status` | Summarise queue state, recommend the next skill |
-| `pb:plan` | Update spec, docs, testing manual; queue tickets |
+| `pb:plan:break` | Break a written plan into dependency-linked tickets |
 | `pb:docs` | Write/update docs; queue tickets |
 | `pb:add` | Create a single ticket in `todo/` or `backlog/` |
 | `pb:promote` | Pull tickets from `backlog/` to `todo/` |
@@ -82,7 +82,7 @@ This process runs on a work queue plus a set of skills. To start a project:
 - New code:      pb:bootstrap:new
 - Existing code: pb:bootstrap:existing
 
-Then the daily loop is: pb:status (see where things stand) -> pb:plan/add
+Then the daily loop is: pb:status (see where things stand) -> pb:plan:break/add
 (fill todo/) -> pb:next (it builds everything it can) -> pb:review (you
 approve). Tickets flow todo -> in-progress -> agent-review -> human-review ->
 merge-queue -> done; only human-review needs you.

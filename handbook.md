@@ -27,7 +27,7 @@ This process is semi-autonomous, not autonomous. Claude does the labour (plannin
 
 The developer is in the loop at the two ends of the pipeline, and out of it in the middle:
 
-- **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
+- **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan:break`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
 - **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch `current-state.md`, but nothing requires them to.
 - **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or skips. Nothing merges without that explicit yes.
 
@@ -94,7 +94,7 @@ Start Claude Code and check where the project stands, then pick a skill. There a
 A typical session (the host/VM labels apply only in host + VM mode; in host only, everything runs on the host):
 
 1. Check where things stand: read `state/current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
-2. `/pb:plan`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
+2. `/pb:plan:break`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
 3. `/pb:next` (VM) to implement everything unblocked through to human review.
 4. `/pb:review` (host) to approve or reject the tickets waiting for you; approved tickets merge.
 5. Back to `/pb:status`, and repeat.
@@ -294,21 +294,38 @@ todo/
 
 Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **not** create GitHub repositories or push anything. Create a remote for each yourself and push periodically (the state repo too, so your queues and `current-state.md` are backed up). Playbook will not do this for you.
 
+## Planning
+
+Playbook does not ship a plan-authoring skill. Writing a plan, deciding what to build and capturing it in detail, is done with the planning skills from the global Claude configuration at <https://github.com/ashleydavis/claude-config>. Install that configuration (see its README for setup) so the `/plan:*` commands are available wherever you launch Claude Code. Playbook is designed to work alongside it.
+
+Those skills author and refine a plan and save it as a markdown file under `project/docs/plans/new/`:
+
+- `/plan:create` drafts a plan from an idea after researching the codebase.
+- `/plan:check` analyses a plan for problems; `/plan:fix` resolves them.
+- `/plan:simp` checks for overengineering and proposes simplifications.
+- `/plan:save` and `/plan:sum` save and summarise the plan.
+
+A plan is a concrete, AI-executable description of a change (an overview, numbered implementation steps, the tests to write, and the checks to verify it), written for Claude to execute rather than for a human to follow. The plan's own steps include updating `docs/spec/` and `docs/testing-manual/` when the change is built, so planning stays connected to the spec: a plan that changes behaviour says so, and the ticket that implements it brings the spec and manual along.
+
+Once a plan exists, `/pb:plan:break` (a Playbook skill, below) turns it into queued, dependency-ordered tickets. The split is deliberate: authoring a plan is a general capability shared across all your projects, so it lives in the global config; turning a plan into tickets is specific to this process, so it is a `pb:` skill.
+
+> **Two "break" skills.** The global config also has a `/plan:break` that splits a plan into step files under `docs/plans/`. That is **not** the same as Playbook's `/pb:plan:break`, which splits a plan into tickets in the state repo's queues. Under this process, use `/pb:plan:break`.
+
 ## Skills
 
-Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:board`, `/pb:plan`, `/pb:docs`, `/pb:add`, `/pb:promote`, `/pb:rank`, `/pb:next`, `/pb:review`, `/pb:unblock`, `/pb:debug`, `/pb:customize`, `/pb:reset`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
+Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:board`, `/pb:plan:break`, `/pb:docs`, `/pb:add`, `/pb:promote`, `/pb:rank`, `/pb:next`, `/pb:review`, `/pb:unblock`, `/pb:debug`, `/pb:customize`, `/pb:reset`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
 
 ### pb:status
 
 Reads `state/current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
 
-### pb:plan
+### pb:plan:break
 
-Plans or revises a feature: brainstorms the design with the developer when it is unclear, then updates `project/docs/spec/` and the docs derived from it (the testing manual, and any how-it-works / user guide the change touches), optionally breaking the feature into dependency-ordered tickets in `state/tickets/todo/` or `backlog/` (the skill asks once per batch). Design work, not implementation. See [.claude/commands/pb/plan.md](.claude/commands/pb/plan.md).
+Turns a written plan (in `project/docs/plans/new/`) into dependency-ordered tickets in `state/tickets/todo/` or `backlog/` (the skill asks once per batch). Each ticket's acceptance criteria and test plan are derived from the plan, and the plan's own steps drive the spec and testing-manual updates when the ticket is implemented. Decomposition, not design. See [.claude/commands/pb/plan/break.md](.claude/commands/pb/plan/break.md).
 
 ### pb:docs
 
-Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing tickets in `todo/` or `backlog/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is `/pb:plan`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
+Writes or updates documentation (spec, testing manual, how-it-works, roadmap), queuing tickets in `todo/` or `backlog/` when the doc changes imply code or test changes. For documentation that is not the design of a new feature (that is planning: write a plan, then `/pb:plan:break`). See [.claude/commands/pb/docs.md](.claude/commands/pb/docs.md).
 
 ### pb:add
 
@@ -395,7 +412,7 @@ Templates to create repos, files and other content live under [templates/](templ
 templates/
   project/         # Project repo scaffold. Copied by pb:bootstrap:new.
   state/           # State repo scaffold. Copied by pb:bootstrap:*.
-  feature-template/     # A feature's index.md + detail.md shape. Copied by pb:plan.
+  feature-template/     # A feature's index.md + detail.md shape. Copied when a feature spec is authored.
   ticket-template/   # A ticket's index.md + detail.md shape. Copied by pb:add.
   commit-template/      # Commit message format. Copied and filled out when making a commit.
 ```
@@ -422,7 +439,7 @@ docs/spec/
 - Sub-features follow the same pattern recursively. There is no depth limit.
 - The split lets tooling enumerate features and IDs by reading only `index.md` files. The heavier `detail.md` is loaded only when the full spec is actually needed.
 
-The conventions, ID rules, and templates for these files ship as the project template in [templates/project/docs/spec/](templates/project/docs/spec/) (its `README.md` and `CLAUDE.md`); bootstrap copies them into a new project. Per-feature `index.md`/`detail.md` files are created per project by `/pb:plan`, not shipped as static content; their shape is in [templates/feature-template/](templates/feature-template/) (`index.md` and `detail.md`).
+The conventions, ID rules, and templates for these files ship as the project template in [templates/project/docs/spec/](templates/project/docs/spec/) (its `README.md` and `CLAUDE.md`); bootstrap copies them into a new project. Per-feature `index.md`/`detail.md` files are created per project when a feature spec is authored, not shipped as static content; their shape is in [templates/feature-template/](templates/feature-template/) (`index.md` and `detail.md`).
 
 ### Feature Format
 
@@ -482,7 +499,7 @@ This applies on the first iteration as much as on the hundredth:
 - **First iteration, spec-first.** Write the spec (behaviour, acceptance criteria) directly, then expand into docs and the testing manual. Good when the behaviour is already clear and you want to pin down the contract before writing prose.
 - **Ongoing edits, from anywhere.** Touch the spec, a derived doc, the testing manual, or the code. The AI fans the change out: a spec edit propagates to code, tests, manual, and docs; a doc or testing-manual edit reconciles back into the spec and then out to the rest; a code edit updates the spec and manual to reflect the new behaviour.
 
-`/pb:plan` and `/pb:docs` both accept changes from any entry point and walk through the affected artifacts.
+`/pb:docs` accepts changes from any entry point and walks through the affected artifacts.
 
 ## Ticket Format
 

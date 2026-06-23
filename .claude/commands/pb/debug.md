@@ -40,7 +40,7 @@ The agent experiments freely, writing no production code that needs to last:
 
 Because nothing is committed, the in-progress completion criteria drop the "changes committed, code lints clean" requirements. The only success condition is that the root-cause write-up is in `detail.md`, the proving evidence is in `evidence/implementation-N/`, and the ticket has moved to `agent-review/`.
 
-**Escalation rule:** if three or more hypotheses fail to land, stop. That signals the design is wrong, not a single line. Surface it via `current-state.md` and raise it in `pb:plan` rather than continuing to probe.
+**Escalation rule:** if three or more hypotheses fail to land, stop. That signals the design is wrong, not a single line. Surface it via `current-state.md` and raise it when planning rather than continuing to probe.
 
 ### Agent-review: assessing the investigation
 

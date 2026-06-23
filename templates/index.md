@@ -2,7 +2,7 @@
 
 What each template is and when it is used. See [README.md](README.md) for orientation.
 
-Three kinds live here: **repo scaffolds** copied wholesale into a new project by bootstrap, **ticket templates** whose shape is copied per ticket by `pb:plan`/`pb:add` (references, not part of any repo), and the **commit template**, a reference for the commit message format.
+Three kinds live here: **repo scaffolds** copied wholesale into a new project by bootstrap, **ticket templates** whose shape is copied per ticket by `pb:plan:break`/`pb:add` (references, not part of any repo), and the **commit template**, a reference for the commit message format.
 
 ## Project repo scaffold (`project/`)
 
@@ -29,9 +29,9 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 
 ## Ticket templates (references, not copied wholesale)
 
-The shape of a single feature or ticket. `pb:plan` and `pb:add` copy these when creating tickets in a project; the template files themselves stay in the playbook.
+The shape of a single feature or ticket. `pb:plan:break` and `pb:add` copy these when creating tickets in a project; the template files themselves stay in the playbook.
 
-- [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied by `pb:plan` into `project/docs/spec/<id>/`.
+- [feature-template/](feature-template/): the shape of a feature's two files (`index.md`, `detail.md`). Copied when a feature spec is authored, into `project/docs/spec/<id>/`.
 - [ticket-template/](ticket-template/): the shape of a ticket's `index.md` + `detail.md`. Copied by `pb:add` into `state/tickets/<queue>/<id>/`.
 
 ## Commit template

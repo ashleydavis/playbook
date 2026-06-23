@@ -66,7 +66,8 @@ playbook/
       pb/              # The pb:* skills.
         help.md        # Get help!
         status.md
-        plan.md
+        plan/
+          break.md   # Break a written plan into tickets.
         docs.md
         add.md
         next.md

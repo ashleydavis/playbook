@@ -5,7 +5,7 @@ description: "Invoke when documentation needs writing or updating (spec, testing
 
 # pb:docs
 
-Write or update documentation. Use this for documentation work that is not the design of a new feature (that is `pb:plan`).
+Write or update documentation. Use this for documentation work that is not the design of a new feature (that is planning: `plan:create` then `pb:plan:break`).
 
 ## Output style
 
