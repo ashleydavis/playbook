@@ -157,6 +157,7 @@ Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/comma
 | `pb:status` | Summarise queue state, recommend next skill |
 | `pb:board` | Bare listing of every queue and its tickets (no narrative) |
 | `pb:plan:break` | Break a written plan into dependency-linked tickets |
+| `pb:todo:break` | Break the project's todo list into dependency-linked tickets |
 | `pb:docs` | Write/update docs; queue tickets |
 | `pb:add` | Create a ticket in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |

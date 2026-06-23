@@ -34,6 +34,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
    - Reordering `todo/` -> suggest `pb:rank`.
    - Tickets in `human-review/` -> suggest `pb:review`.
    - Tickets in `merge-queue/`, or unblocked tickets in `todo/` -> suggest `pb:next`.
+   - Empty `todo/` with a todo list in the project (`project/todo.md`, `todos.md`, or a Todo section in `readme.md`) -> suggest `pb:todo:break` to turn it into tickets.
    - Empty queues with ideas in `project/docs/roadmap.md` -> suggest writing a plan (`plan:create`), then `pb:plan:break`.
    - Empty queues and empty roadmap -> suggest `pb:add`, or `plan:create` then `pb:plan:break`, to populate the queue.
 4. Ask the developer what they want to do.

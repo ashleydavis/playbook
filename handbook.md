@@ -27,7 +27,7 @@ This process is semi-autonomous, not autonomous. Claude does the labour (plannin
 
 The developer is in the loop at the two ends of the pipeline, and out of it in the middle:
 
-- **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan:break`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
+- **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan:break`, `/pb:todo:break`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
 - **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch `current-state.md`, but nothing requires them to.
 - **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or skips. Nothing merges without that explicit yes.
 
@@ -94,7 +94,7 @@ Start Claude Code and check where the project stands, then pick a skill. There a
 A typical session (the host/VM labels apply only in host + VM mode; in host only, everything runs on the host):
 
 1. Check where things stand: read `state/current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
-2. `/pb:plan:break`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
+2. `/pb:plan:break`, `/pb:todo:break`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
 3. `/pb:next` (VM) to implement everything unblocked through to human review.
 4. `/pb:review` (host) to approve or reject the tickets waiting for you; approved tickets merge.
 5. Back to `/pb:status`, and repeat.
@@ -311,9 +311,11 @@ Once a plan exists, `/pb:plan:break` (a Playbook skill, below) turns it into que
 
 > **Two "break" skills.** The global config also has a `/plan:break` that splits a plan into step files under `docs/plans/`. That is **not** the same as Playbook's `/pb:plan:break`, which splits a plan into tickets in the state repo's queues. Under this process, use `/pb:plan:break`.
 
+A plan is not the only way work enters the queues. When a project keeps a running todo list (a `todo.md`, `todos.md`, or a Todo section in its `readme.md`), `/pb:todo:break` turns that list into tickets without a plan first. It is the lightweight counterpart to `/pb:plan:break`: a plan is a designed, ordered change broken into dependent slices, whereas a todo list is a pile of independent wants, bugs, and tweaks, so each item becomes its own ticket (independent by default), each ticket's detail is derived from the item plus the affected feature's spec rather than from plan steps, and any item that is really a question for the developer is surfaced rather than ticketed. Use a plan when the change needs designing; use the todo list when the items are already understood.
+
 ## Skills
 
-Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:board`, `/pb:plan:break`, `/pb:docs`, `/pb:add`, `/pb:promote`, `/pb:rank`, `/pb:next`, `/pb:review`, `/pb:unblock`, `/pb:debug`, `/pb:customize`, `/pb:reset`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
+Skills are the `pb:*` slash commands that drive each stage of the process. The developer invokes one and Claude follows its instructions. The set: `/pb:help`, `/pb:status`, `/pb:board`, `/pb:plan:break`, `/pb:todo:break`, `/pb:docs`, `/pb:add`, `/pb:promote`, `/pb:rank`, `/pb:next`, `/pb:review`, `/pb:unblock`, `/pb:debug`, `/pb:customize`, `/pb:reset`, and the one-time `/pb:bootstrap:new` / `/pb:bootstrap:existing`. Each is summarised below by what it is for and what it leaves behind; the full procedure for each lives in its skill file under [.claude/commands/pb/](.claude/commands/pb/), which this section does not restate.
 
 ### pb:status
 
@@ -322,6 +324,10 @@ Reads `state/current-state.md` and the queues, summarises what was completed, wh
 ### pb:plan:break
 
 Turns a written plan (in `project/docs/plans/new/`) into dependency-ordered tickets in `state/tickets/todo/` or `backlog/` (the skill asks once per batch). Each ticket's acceptance criteria and test plan are derived from the plan, and the plan's own steps drive the spec and testing-manual updates when the ticket is implemented. Decomposition, not design. See [.claude/commands/pb/plan/break.md](.claude/commands/pb/plan/break.md).
+
+### pb:todo:break
+
+Turns the project's running todo list into tickets in `state/tickets/todo/` or `backlog/` (the skill asks once per batch). Finds the source in the project repo, in order: `todo.md`, then `todos.md`, then a Todo/Todos section in `readme.md`. Each item becomes its own ticket, independent by default, with its acceptance criteria and test plan derived from the item plus the affected feature's spec and testing manual; investigation items become `Debug` tickets and open questions are surfaced for the developer rather than ticketed. The lightweight counterpart to `pb:plan:break`. See [.claude/commands/pb/todo/break.md](.claude/commands/pb/todo/break.md).
 
 ### pb:docs
 
