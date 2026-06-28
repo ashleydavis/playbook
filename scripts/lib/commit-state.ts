@@ -5,8 +5,8 @@
 //
 // Two properties make this safe for the pb:next loop, which runs up to 10
 // sub-agents in parallel against the single shared state-repo git index:
-//   - Ticket-scoped: pass the affected ticket's directory (or current-state.md)
-//     as a pathspec so a commit never mixes two tickets' changes.
+//   - Ticket-scoped: pass the affected ticket's directory as a pathspec so a
+//     commit never mixes two tickets' changes.
 //   - Lock-safe: every git invocation retries on index.lock contention, so
 //     concurrent committers serialise on the shared index instead of failing.
 //

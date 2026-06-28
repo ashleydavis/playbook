@@ -4,13 +4,12 @@ Definitions of the terms used throughout the [handbook](handbook.md) and the res
 
 - **Playbook**: the repo holding the process, skills, templates, and scripts. One clone of this repo per project with Claude Code launched from the playbook repo root.
 - **Project repo**: the application's own code and docs (spec, rules). Self-contained; knows nothing of the playbook or state repo.
-- **State repo**: per-project process state at `state/` under the playbook root: the ticket queues (`state/tickets/`) and `state/current-state.md`. Lives outside the project repo.
+- **State repo**: per-project process state at `state/` under the playbook root: the ticket queues (`state/tickets/`). Lives outside the project repo.
 - **Skill**: a `pb:*` slash command that drives one stage of the process (e.g. `/pb:next`). Skills instruct; they do not enforce.
 - **Ticket**: a unit of work: a directory (`index.md` and `detail.md` plus an `evidence/` subdir) named by its ID, that travels through the queues.
 - **Queue**: one of six pipeline directories under `state/tickets/`: `todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`. Plus side pens: `backlog/` (captured work, not yet contenders), `blocked/` (parked after repeated failure), and `aborted/` (killed during review).
 - **Backlog**: the `backlog/` side pen; tickets here are outside the pipeline until promoted to `todo/`.
 - **Priority**: the numeric `**Priority:**` field on a ticket's `index.md`; lower values are admitted first by `pb:next` among actionable `todo/` tickets (dependencies must still be in `done/`).
-- **`current-state.md`**: the curated, human-readable summary of where things stand, sitting on top of the queues. At `state/current-state.md` when working from the playbook root.
 - **Ticket completion criteria**: the observable state that marks a stage done (files in the right queues, checks green, evidence on disk, commits made), plus an abort condition (a turn count or repeated-failure signal). They are plain text in a sub-agent's prompt; the gate that actually enforces them is `pb:next`'s end-of-turn reconciliation plus the evidence the criteria demand being on disk.
 - **Sub-agent**: an agent `/pb:next` spawns to take one ticket through one stage, running in that ticket's worktree. The pipeline diagram's **Work / Review / Merge Agent** are sub-agents at the implement, agent-review, and merge stages.
 - **Worktree**: a git working tree per ticket, so parallel tickets do not collide and a sub-agent cannot touch the main repo by accident.

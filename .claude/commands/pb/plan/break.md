@@ -34,8 +34,7 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
    - A Test Plan is required. Use `N/A: <reason>` with a Manual Verification section only when the ticket has no testable behaviour. **A ticket that creates or changes a UI component may not use `N/A`, and may not defer its screenshots to a later ticket** (e.g. the e2e ticket that wires it in). If the slice adds or edits anything that renders, its Test Plan must require screenshots of that component (light + dark), rendered **in isolation** with sample props when no page consumes it yet. If a planned component cannot be screenshotted on its own, do not break it into a standalone ticket: bundle it with the first page that consumes it, or have the ticket add an isolated render/story harness, so screenshots are always possible.
    - **The final ticket archives the plan.** The last ticket in execution order (the one every other ticket depends on) gets an extra acceptance criterion: move the plan from `project/docs/plans/new/` to `project/docs/plans/done/` as part of that ticket's own committed, reviewed work, so the plan is archived on disk exactly when the last slice lands on main. This is a real file move in the project repo, not an output-less step; fold it into that ticket rather than creating a separate cleanup ticket.
    Commit each ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`).
-8. Update `state/current-state.md` to reflect the queued tickets (add or amend only the entries this change affects, leaving the rest intact). Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
-9. Report the tickets queued, the queue they landed in, and the dependency graph.
+8. Report the tickets queued, the queue they landed in, and the dependency graph.
 
 ## Example
 

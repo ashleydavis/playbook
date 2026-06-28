@@ -24,7 +24,6 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
    2. backlog, captured for later; pull to todo when ready
    ```
    Accept `1`/`2`, or `todo`/`backlog`. Create tickets in `state/tickets/<queue>/<id>/`. When you create more than one, set each ticket's `**Depends on:**` field to capture the dependencies between them so they implement in the right order, and where possible number them in execution order so a dependent ticket gets a higher number than the tickets it depends on. Commit each new ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`). (The doc files themselves live in the project repo, not the state repo.)
-4. If you queued any tickets, update `state/current-state.md` to reflect them: add or amend only the entries this change affects (leaving the rest of its existing content intact), so the snapshot stays accurate. Commit it: `bun ../scripts/commit-state.ts "<summary>" current-state.md` (from `state/`).
 
 ## Example
 

@@ -19,8 +19,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 2. Print the script output verbatim and wait for the developer's pick. Resolve the selection per [docs/ticket-selection.md](../../../docs/ticket-selection.md) (same rules as `pb:unblock`).
 3. Optionally ask whether to change priority on promotion (default: keep existing). If the developer gives a new priority, run `(cd state && bun ../scripts/set-priority.ts <id> <n>)` before or after the move.
 4. For each selected ID, run `(cd state && bun ../scripts/move.ts <id> todo)`.
-5. Update `current-state.md` to reflect the promotion. Commit the narrative update: `(cd state && bun ../scripts/commit-state.ts "<summary>" current-state.md)`.
-6. Report what was promoted: each ticket's new queue and priority if changed. Suggest `pb:next` or `pb:rank` as appropriate.
+5. Report what was promoted: each ticket's new queue and priority if changed. Suggest `pb:next` or `pb:rank` as appropriate.
 
 ## Example
 
@@ -28,7 +27,6 @@ See the `pick-many` backlog promote example in [docs/ticket-selection.md](../../
 
 ```
 promoted: infra-2, moved backlog/ → todo/ (priority 100 unchanged)
-current-state.md updated.
 Run pb:next to pick it up, or pb:rank to reorder todo/.
 ```
 

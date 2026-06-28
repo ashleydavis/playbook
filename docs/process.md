@@ -48,7 +48,7 @@ Once per project, on host or VM. Already bootstrapped? Don't run it again; start
 Three repos, each a separate concern:
 - **Playbook** (the playbook repo root) describes the AI development process including skills, templates, and scripts that drive every project. The repo this file lives in. Playbook is cloned once for each project; launch Claude Code from its root.
 - **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. Must contain (paths relative to the project repo root): `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
-- **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the queues and `current-state.md`. Lives at `state/` under the playbook repo root (a sibling of `project/`, not inside it) so it stays external to and consistent across worktrees.
+- **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the ticket queues. Lives at `state/` under the playbook repo root (a sibling of `project/`, not inside it) so it stays external to and consistent across worktrees.
 
 ## Queues
 
@@ -60,7 +60,7 @@ Three repos, each a separate concern:
 
 `blocked/` is a side pen. It is **not** a pipeline stage: it is where a ticket lands after its third failure (see **Failures**). A blocked ticket is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
 
-`aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. Unlike a blocked ticket, an aborted ticket is a deliberate, terminal decision: it is **removed from `current-state.md`** entirely (the `aborted/` directory is its only record), its `**Failures:**` count is left untouched, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
+`aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. Unlike a blocked ticket, an aborted ticket is a deliberate, terminal decision: the `aborted/` directory is its only record, its `**Failures:**` count is left untouched, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
 
 The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. Full procedure in the [pb:next](../.claude/commands/pb/next.md) skill.
 
@@ -69,9 +69,9 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 - Each queue holds one directory per ticket, named by its ID (`todo/<id>/`).
 - The ticket directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the ticket and its evidence stay together end to end and land in `done/<id>/`.
 - List a queue with `ls state/tickets/<queue>/` (e.g. `ls state/tickets/todo/`); the directory names are the IDs, so this shows queue contents without opening files.
-- Move tickets with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). The agent decides when; the script only moves the directory and the agent updates `current-state.md`.
-- `current-state.md` is an overview of the current state of the process and is derived from the state of the queues. The AI or developer can check this file to see progress, state, what's blocked. It's lightweight, easy to read and scan. It represents **this project's ticket/queue state only**: every entry must reflect a queue (the tickets and how they moved). It is not a notepad and never records anything outside the queues, e.g. edits to the playbook or other repos, reminders, or meta-process notes. Surface those in chat or their own commit, never here. **The queues are the source of truth, not this file.** `current-state.md` is a derived summary and can drift or fall out of date; when it disagrees with the queues, the queues win, trust them and regenerate the summary from them (`pb:status` reads the live queues for this reason).
-- The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically (ticket-scoped, lock-safe). For a hand edit (a `current-state.md` update, a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
+- Move tickets with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). The agent decides when; the script only moves the directory, and the queue is the record.
+- The queues are the source of truth for process state. There is no separate maintained summary file: `pb:status` summarises the live queues on demand (progress, what's in flight, what's blocked) and `pb:board` lists them.
+- The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically (ticket-scoped, lock-safe). For a hand edit (e.g. a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
 
 ## Spec and docs
 
@@ -106,14 +106,14 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 1. **Record it.** Run `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the ticket's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the ticket carries a complete deterministic record of everything that went wrong.
 2. **Route by count.** Below three, the ticket returns to `todo/` and the loop retries it on a later pass. At three it moves to `blocked/`.
-3. **Surface it.** Every block, environmental failure, and broken main is recorded in the top `⚠ Needs your action` section of `current-state.md`, which the developer reads directly or via `pb:status`. That section leads the file so anything needing the developer is the first thing seen; routine progress sits below it.
+3. **Surface it.** Every block, environmental failure, and broken main is surfaced in chat in the run report, naming the ticket and the one-line reason. `/pb:status` regenerates the same picture from the live queues on demand.
 4. **Reconcile before the turn ends (invariant).** When a `pb:next` turn ends, `in-progress/` is empty: every ticket the parent admitted sits in a terminal queue (`agent-review/` on success, `todo/` or `blocked/` on failure). A sub-agent records and routes its own failure when it is alive to do so, but one that times out, dies, or returns a bare failure verdict cannot, so recording can never depend on it. The parent therefore re-runs `next-tickets.ts` as the final act of every turn: any ticket the report still shows in `in-progress/` (no sub-agent is working it now) is by definition an un-recorded failure, so the parent runs `fail-ticket.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. A ticket is never left mid-stage.
 
 A single failure never aborts the loop; the run continues with the other tickets. Two or more tickets failing the same stage or check in one run is an **environmental failure** and stops the run (see [Environmental failure](#environmental-failure)). Never work around a failure by switching parallel→serial or re-driving a ticket by hand.
 
 **Exception (broken main):** if a merge lands but its post-merge checks then fail, the ticket goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later ticket builds on main.
 
-**Exception (setup failure → straight to `blocked/`):** if a ticket's worktree setup or dependency installation fails, the environment cannot be prepared, so the toolchain or dependencies will not install, that is a **setup failure**, and it is handled differently from a normal failure. **Attempt no workaround of any kind:** no "magic", no alternative install path, no substitute toolchain, no borrowing or copying another worktree's state, no hand-patching the environment. A broken environment is the developer's to fix, not the agent's to route around. Capture the full error output as evidence, record the failure, and move the ticket **straight to `blocked/`** (bypass the retry ladder, retrying will not repair a broken environment). Surface it in the top `⚠ Needs your action` section of `current-state.md` with the error message(s) and the evidence path, so the developer sees exactly what failed. The ticket stays blocked until a human fixes the environment and re-admits it.
+**Exception (setup failure → straight to `blocked/`):** if a ticket's worktree setup or dependency installation fails, the environment cannot be prepared, so the toolchain or dependencies will not install, that is a **setup failure**, and it is handled differently from a normal failure. **Attempt no workaround of any kind:** no "magic", no alternative install path, no substitute toolchain, no borrowing or copying another worktree's state, no hand-patching the environment. A broken environment is the developer's to fix, not the agent's to route around. Capture the full error output as evidence, record the failure, and move the ticket **straight to `blocked/`** (bypass the retry ladder, retrying will not repair a broken environment). Surface it in chat with the error message(s) and the evidence path, so the developer sees exactly what failed. The ticket stays blocked until a human fixes the environment and re-admits it.
 
 ## Environmental failure
 
@@ -123,7 +123,7 @@ Handle it in this order:
 
 1. **Reconcile every failed ticket first** (record and route each by count, per **Failures** point 4). Handing back never means leaving a ticket mid-stage.
 2. **Stop launching new work and hand back** to the developer. Never work around it by switching parallel→serial or re-driving tickets by hand.
-3. **Record the cause** in the top `⚠ Needs your action` section of `current-state.md` as a `Run halted: environmental failure` entry naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this entry is the only record of why the run stopped.
+3. **Record the cause** in chat as a `Run halted: environmental failure` report naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this chat report is the only record of why the run stopped; the queues remain the durable state and `pb:status` shows the in-flight state.
 
 ## Interruption and resume
 
@@ -132,7 +132,7 @@ An **interruption** is the run being cut off from outside, not a ticket failing:
 Handle it like this:
 
 1. **Don't record it.** Never run `fail-ticket.ts` for an interrupted ticket, never increment its `**Failures:**`, never route it to `blocked/`, and never write a `Run halted: environmental failure` entry. An interruption leaves no failure trace, because treating one as a failure would wrongly march an untouched ticket toward the block cap.
-2. **Stop cleanly and leave the queues as they are.** The instant a session or rate limit is hit (the parent's own or a sub-agent's), stop launching new work and hand back. A ticket left mid-stage stays exactly where it is; do not reconcile it as a failure. If the parent still has capacity, it adds a one-line `Run interrupted (session limit); resume with pb:next` note to the top of `current-state.md`; if it doesn't, the queues themselves are the record and `pb:status` shows the in-flight state.
+2. **Stop cleanly and leave the queues as they are.** The instant a session or rate limit is hit (the parent's own or a sub-agent's), stop launching new work and hand back. A ticket left mid-stage stays exactly where it is; do not reconcile it as a failure. It states in chat that the run was interrupted and to resume with `pb:next`; the queues themselves are the durable record and `pb:status` shows the in-flight state.
 3. **Resume by re-running `pb:next`** when the developer says to. The queues are the durable state and every script is idempotent, so resuming is simply invoking `pb:next` again: it reads `next-tickets.ts` and continues from the live queue state. A ticket the interruption left mid-stage (in `in-progress/` or `agent-review/`) is **re-driven from where it sits, not failed**: the implement or review sub-agent just redoes that stage into a fresh `evidence/implementation-N/` or `review-N/`. This is the one case where a stranded ticket is re-driven rather than recorded as a failure (contrast the within-turn reconciliation in **Failures** point 4, which only fails strandings left by a sub-agent that returned alive this turn).
 
 The "don't run `pb:next` again until the developer unblocks something" rule is about a **clean** finish, where forward progress is genuinely exhausted. After an interruption the opposite holds: re-running `pb:next` is exactly how the developer resumes.
@@ -149,7 +149,7 @@ All scaffolding is under [templates/](../templates/) ([README.md](../templates/R
 
 ## Development loop
 
-Rhythm: check `current-state.md`, run a skill, repeat. Skills (in `.claude/commands/pb/`):
+Rhythm: run `/pb:status`, run a skill, repeat. Skills (in `.claude/commands/pb/`):
 
 | Skill | Purpose |
 |---|---|
@@ -202,7 +202,7 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 
 ## Agent review
 
-Agent-review is the automated gate before human review. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
+Agent-review is the automated gate before human review. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). Its only writes are to the ticket's own state; the parent reports the outcome in chat after the turn.
 
 For each review pass N it:
 

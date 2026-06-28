@@ -4,9 +4,9 @@
 // Usage (run with the state repo as the current working directory):
 //   bun playbook/scripts/move.ts <id> <target-queue>
 //
-// The script moves the directory only. Updating the `current-state.md`
-// narrative remains the responsibility of the invoking agent. The reusable move
-// logic lives in ./lib/move.ts; this file is the thin CLI wrapper.
+// The script moves the directory only; the queue the ticket sits in is the
+// record of its state. The reusable move logic lives in ./lib/move.ts; this
+// file is the thin CLI wrapper.
 
 import { join, relative } from "node:path";
 

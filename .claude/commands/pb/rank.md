@@ -19,8 +19,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 2. Print the script output verbatim and wait for the developer's pick. Resolve the selection per [docs/ticket-selection.md](../../../docs/ticket-selection.md).
 3. For each selected ID, ask the new priority (lower = sooner). One question per ticket, unless the developer gives one number for all selected.
 4. For each ID, run `(cd state && bun ../scripts/set-priority.ts <id> <priority>)` from `state/`. Each call auto-commits its ticket-scoped change.
-5. Update `current-state.md` if it mentions ordering. Commit when changed: `(cd state && bun ../scripts/commit-state.ts "<summary>" current-state.md)`.
-6. Report each ticket's new priority.
+5. Report each ticket's new priority.
 
 ## Example
 

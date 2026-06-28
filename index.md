@@ -9,6 +9,7 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [docs/output-format.md](docs/output-format.md): how skills present output to the developer.
 - [docs/ticket-selection.md](docs/ticket-selection.md): shared ticket selection menu format.
 - [docs/plans/](docs/plans/): implementation plans.
+- [docs/decisions.md](docs/decisions.md): chronological log of decisions about the process (what changed and why), newest first.
 - [CLAUDE.md](CLAUDE.md): standing instructions, loaded when Claude Code launches from the playbook repo root.
 - [glossary.md](glossary.md): standard terminology.
 - [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan/break, docs, add, promote, rank, next, review, debug, customize, reset.
@@ -36,7 +37,6 @@ Paths below are under `project/` when working from the playbook root (e.g. `proj
 Paths below are under `state/` when working from the playbook root (e.g. `state/tickets/todo/`).
 
 - `tickets/{todo,backlog,in-progress,agent-review,human-review,merge-queue,done}/`: the pipeline queues plus `backlog/` (captured work, not picked by `pb:next` until promoted). Each holds one directory per ticket (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs. `todo/` admission order for `pb:next` is by `**Priority:**` then ID.
-- `current-state.md`: scannable snapshot of what's in flight, what's blocked, what needs developer attention.
 
 ## Conventions
 - A ticket's ID is `{feature-id}-{n}`, declared in its `index.md` `**ID:**` field and mirrored by the ticket's directory name.

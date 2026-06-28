@@ -19,8 +19,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 1. Show the developer what will be reset before doing anything: list the tickets in `in-progress/` (the IDs that will return to `todo/`) and the worktrees under `project/worktrees/` (which will be force-removed). Confirm they want to proceed, since unmerged work is discarded.
 2. Run the reset from the state repo: `(cd state && bun ../scripts/reset-loop.ts)`. It moves every `in-progress/` ticket back to `todo/`, force-removes every worktree under `project/worktrees/`, deletes each `worktrees/<id>` branch, and prunes stale worktree records. The script is the only supported way to do this; never move queue directories or run `git worktree` / `git branch -D` by hand.
-3. Update `current-state.md` to reflect the reset: the requeued tickets are back in `todo/` and nothing is in flight. Amend only the entries this changes, leaving the rest intact. If a `Run halted: systemic failure` entry in the `⚠ Needs your action` section prompted the reset, clear it once its cause is addressed.
-4. Report what was reset: the tickets returned to `todo/`, and the worktrees and branches removed.
+3. Report what was reset: the tickets returned to `todo/` (nothing is now in flight), and the worktrees and branches removed. If a systemic-failure halt prompted the reset, acknowledge in chat that its cause has been addressed (there is no persisted note to clear).
 
 ## Notes
 
@@ -40,7 +39,7 @@ Proceed? This discards any unmerged work in those worktrees.
 > yes
 
 reset: requeued 2 ticket(s) to todo/ (search-3, search-4); removed 2 worktree(s), deleted 2 branch(es)
-current-state.md updated: nothing in flight, 2 tickets back in todo/.
+Nothing in flight, 2 tickets back in todo/.
 ```
 
 ## Next

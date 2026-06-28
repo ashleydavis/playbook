@@ -28,7 +28,7 @@ This process is semi-autonomous, not autonomous. Claude does the labour (plannin
 The developer is in the loop at the two ends of the pipeline, and out of it in the middle:
 
 - **In the loop, at the start (deciding what to build).** Work enters the queue only when the developer puts it there, through `/pb:plan:break`, `/pb:todo:break`, `/pb:add`, `/pb:docs`, and `/pb:customize`. The developer sets the spec, the acceptance criteria, and the rules the work is judged against.
-- **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch `current-state.md`, but nothing requires them to.
+- **Out of the loop, in the middle (the autonomous run).** `/pb:next` takes unblocked work from `todo/` all the way to `human-review/` without asking for input: implementing, testing, and running an automated review on every ticket. The developer can watch progress via `/pb:status`, but nothing requires them to.
 - **In the loop, at the end (the approval gate).** `human-review/` is the one place a person decides. In `/pb:review` the developer reads the diff and the captured evidence and approves (it merges), rejects with notes (it returns to `todo/` for rework), or skips. Nothing merges without that explicit yes.
 
 Two other moments need a human and only a human: a blocked ticket (parked after repeated failure) re-enters the loop only when the developer moves it back to `todo/`, and a broken `main` is handed back for the developer to fix. Everywhere else the process runs itself. The automated agent-review gate exists precisely so the developer's review time is spent only on work that has already passed the mechanical checks.
@@ -78,7 +78,7 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`/pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `project/docs/rules/`) from the answers. Leaves you with an empty `state/current-state.md` and queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `project/docs/rules/`) from the answers. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
@@ -93,7 +93,7 @@ Start Claude Code and check where the project stands, then pick a skill. There a
 
 A typical session (the host/VM labels apply only in host + VM mode; in host only, everything runs on the host):
 
-1. Check where things stand: read `state/current-state.md` directly, or run `/pb:status` (host) for a summary and a recommended next skill.
+1. Check where things stand: run `/pb:status` (host) for a summary and a recommended next skill (or `/pb:board` for a bare queue listing).
 2. `/pb:plan:break`, `/pb:todo:break`, `/pb:docs`, or `/pb:add` (host) to get work into `todo/`.
 3. `/pb:next` (VM) to implement everything unblocked through to human review.
 4. `/pb:review` (host) to approve or reject the tickets waiting for you; approved tickets merge.
@@ -105,7 +105,7 @@ New to the process? Run `/pb:help`.
 
 The loop has a simple rhythm: check where things stand, run a skill that prompts you through the substantive work (planning, reviewing, testing, reading docs, exploring the UI, etc.), then repeat. The skill is what gets invoked, but most of the actual work happens outside Claude. The skills and ticket completion criteria keep Claude on the rails.
 
-`state/current-state.md` is the source of truth for where things stand and is designed to be human-readable at a glance: developers will typically keep it open in their editor and see the current state without asking. From there they can pick a skill directly, or invoke `/pb:status` to have Claude summarise the state and recommend a skill to run next. 
+The ticket queues are the source of truth for where things stand. To see the current state, the developer runs `/pb:status`, which summarises the live queues and recommends a skill to run next (or `/pb:board` for a bare listing). There is no separate file to keep open: the queues are read on demand.
 
 The full pipeline a ticket travels through, from session start to merge:
 
@@ -169,7 +169,7 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 **One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
-**The developer is told through `state/current-state.md`.** Anything that needs the developer (a block, a broken main, or an environmental failure) is recorded in the top `⚠ Needs your action` section of `state/current-state.md`, which leads the file so it is the first thing seen, directly or via `/pb:status`; routine progress sits below it.
+**The developer is told in chat.** Anything that needs the developer (a block, a broken main, or an environmental failure) is surfaced in the `/pb:next` run report in chat, naming the ticket and the one-line reason. `/pb:status` regenerates the same picture from the live queues on demand.
 
 **Exception: broken main.** If a merge lands on main but its post-merge checks then fail, the ticket still goes to `todo/` (not `blocked/`) so fixing main stays actionable, and the run stops because every later ticket builds on main.
 
@@ -179,7 +179,7 @@ An **environmental failure** is two or more tickets failing the same stage or ch
 
 The loop reconciles every failed ticket first (recording and routing each by its count), then stops launching new work and hands back to the developer. It never works around the failure by switching from parallel to serial or re-driving a ticket by hand, the slow-but-grinding mode this design exists to prevent.
 
-The cause is recorded as a `Run halted: environmental failure` entry in the top `⚠ Needs your action` section of `current-state.md`, naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this entry is the only record of why the run stopped.
+The cause is reported in chat as a `Run halted: environmental failure` summary, naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this chat report is the only record of why the run stopped; the queues remain the durable state.
 
 ### Interruption and resume
 
@@ -263,7 +263,6 @@ Manages the project's state, so both the developer and Claude know what is happe
 
 ```bash
 state/
-  current-state.md    # Snapshot of current state.
   tickets/
     todo/             # Pending tickets (pb:next picks by priority then ID)
     backlog/          # Captured for later (not a pipeline stage; promote to todo/)
@@ -292,7 +291,7 @@ todo/
 
 ### Pushing code is your responsibility
 
-Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **not** create GitHub repositories or push anything. Create a remote for each yourself and push periodically (the state repo too, so your queues and `current-state.md` are backed up). Playbook will not do this for you.
+Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **not** create GitHub repositories or push anything. Create a remote for each yourself and push periodically (the state repo too, so your queues are backed up). Playbook will not do this for you.
 
 ## Planning
 
@@ -319,7 +318,7 @@ Skills are the `pb:*` slash commands that drive each stage of the process. The d
 
 ### pb:status
 
-Reads `state/current-state.md` and the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
+Reads the queues, summarises what was completed, what is in flight or awaiting review, and what is blocked, then recommends the next skill. The usual session-start entry point. See [.claude/commands/pb/status.md](.claude/commands/pb/status.md).
 
 ### pb:plan:break
 
@@ -355,7 +354,7 @@ When a skill asks the developer to pick ticket(s) from a numbered list, it follo
 
 ### pb:review
 
-The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). The developer can also **abort** a ticket (`ab`): it moves to `aborted/` with an optional reason in its History, the work is abandoned, and it is dropped from `current-state.md`. A skipped ticket stays in `human-review/` for later. See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
+The human approval gate. Walks the developer through each ticket in `human-review/` (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, then moves the ticket to `merge-queue/` on approval or back to `todo/` on rejection (rejection requires a note). The developer can also **abort** a ticket (`ab`): it moves to `aborted/` with an optional reason in its History, the work is abandoned, and the `aborted/` directory is its only record. A skipped ticket stays in `human-review/` for later. See [.claude/commands/pb/review.md](.claude/commands/pb/review.md).
 
 **The review loop.** The developer is not marched through the tickets in a fixed order. Instead `/pb:review` runs a loop: it prints the reviewable tickets **numbered from 1** and asks "Which ticket do you want to review?". The developer selects one by **number or name**, is walked through it, and resolves it (approve, reject, skip, or abort). Then the same numbered list and question come back, with the resolved ticket gone (a skipped one stays, so it reappears). The loop repeats until the developer stops (`q`/`quit`/`stop`) or no reviewable tickets remain. This lets the developer choose what to review first and stop whenever they like, rather than being forced through every ticket in queue order.
 
@@ -532,17 +531,9 @@ Every commit follows one template, so history stays uniform and each commit trac
 
 The template lives at [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). The `/pb:next` sub-agents make the commits using this template.
 
-## Current State Format
+## Seeing where things stand
 
-The queue directories are the source of truth for the state of things. `current-state.md` is the curated narrative layer on top, summarising what the developer needs to know at a glance:
-
-- What is in progress
-- What is waiting on the developer
-- What is blocked and why
-- What was recently completed
-- Anything that needs developer attention: tickets parked in `blocked/` and why, sub-agent timeouts, repeated failures on the same ticket, merges left on main in a broken state
-
-Sub-agents update this file whenever a ticket changes queue or something significant happens that requires manual rectification. Keep it scannable: short, structured, no prose padding.
+The queue directories are the source of truth for the state of things. There is no separate maintained summary file. To see where things stand, run `/pb:status`, which summarises the live queues on demand: what is in progress, what is waiting on the developer, what is blocked and why, what was recently completed, and anything that needs developer attention (tickets parked in `blocked/`, sub-agent timeouts, repeated failures, a broken main). `/pb:board` gives a bare queue listing. A `/pb:next` run also reports needs-action items in its chat run report as it goes.
 
 ## Claude Code Configuration
 
@@ -603,7 +594,7 @@ Whatever its kind, every check result carries the same fields, so deterministic 
 
 ## Agent review
 
-Agent-review is the automated gate between implementation and the human review queue. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). It never writes `current-state.md`; the parent reflects the outcome there after the turn.
+Agent-review is the automated gate between implementation and the human review queue. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). Its only writes are to the ticket's own state; the parent reports the outcome in chat after the turn.
 
 For each review pass N it:
 
@@ -691,7 +682,7 @@ The development loop relies on this in three places:
 
 - `/pb:next`'s own top-level loop condition terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` ticket moved downstream).
 - Each per-ticket sub-agent (merge, implement, agent-review) has its own completion criteria scoped to that ticket, with its own timeout.
-- A sub-agent that cannot meet its completion criteria records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), recorded in `current-state.md`. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
+- A sub-agent that cannot meet its completion criteria records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), the queue move being the record. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
 
 The full criteria text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). To interrupt early, stop the run; `/pb:status` shows the live state from the queues.
 
@@ -706,11 +697,11 @@ The answer is to turn permissions off and run Claude inside a VM, while sharing 
 1. Spin up a lightweight Ubuntu VM with Multipass (or equivalent).
 2. Clone the playbook repo on the host; bootstrap creates the project and state repos inside it. Share that directory into the VM (e.g. `multipass mount`), so the host and the VM operate on the same files.
 3. In the VM, install the prerequisites and launch Claude Code from the playbook repo root (see Setup). The committed `.claude/settings.json` runs with permission prompts off, so `/pb:next` never stalls waiting for approval.
-4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching `current-state.md`, and doing reviews, all live, because the files are the same.
+4. Claude runs the loop in the VM, editing the shared repos. The developer works on the host: reading code, running the app, watching progress via `/pb:status`, and doing reviews, all live, because the files are the same.
 
 What the VM contains is command execution: a reckless command hits the VM's own OS and tooling, not the host system. The repos are deliberately shared, so they sit outside that wall; git is what protects them. Every change is committed and revertible, and changes surface in `/pb:review` before they land. The developer never has to leave the host to see what Claude is doing.
 
 This applies to both repos, by two distinct mechanisms:
 
 - **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `merge-ticket.ts` stacks the approved worktrees onto one train worktree and fast-forwards them onto the project branch together.
-- **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a failure recorded, a failure reset, a ticket created, a `current-state.md` update) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted.
+- **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a failure recorded, a failure reset, a ticket created) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted.

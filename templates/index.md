@@ -19,7 +19,6 @@ Copied wholesale into a new project by `pb:bootstrap:new`.
 Copied wholesale into a new project by `pb:bootstrap:*`.
 
 - [state/CLAUDE.md](state/CLAUDE.md): state repo root rules.
-- [state/current-state.md](state/current-state.md): empty starting state.
 - [state/tickets/CLAUDE.md](state/tickets/CLAUDE.md): queue and ticket rules.
 - [state/tickets/README.md](state/tickets/README.md): tickets orientation.
 - `state/tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).

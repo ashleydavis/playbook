@@ -7,8 +7,8 @@
 // The state repo records how each ticket moved through the pipeline. The
 // mutation scripts (move, setup-ticket, fail-ticket, reset-failures) call
 // commitState() from their CLI main() to commit their own change automatically;
-// agents call this CLI directly for free-form edits (a current-state.md update,
-// a newly created ticket) that no script performs.
+// agents call this CLI directly for free-form edits (e.g. a newly created
+// ticket) that no script performs.
 //
 // The reusable commit logic lives in ./lib/commit-state.ts; this file is the
 // thin CLI wrapper.
