@@ -53,6 +53,7 @@ import { join, resolve } from "node:path";
 
 import { commitState } from "./lib/commit-state";
 import { move } from "./lib/move";
+import { relativizeWorktree } from "./lib/relative-worktree";
 
 // Raised for any expected, user-facing failure (missing args, missing repo, a git
 // failure that is not a cherry-pick conflict). The CLI maps it to a non-zero exit
@@ -190,6 +191,11 @@ export async function buildTrain(
     if (add.code !== 0) {
         throw new MergeError(`git worktree add failed: ${add.stderr}`);
     }
+    // Rewrite the train worktree's link files to relative paths so it survives
+    // the repo being shared across machines (NFS) at different mount points.
+    // Best-effort: under the mocked runGit in tests the train `.git` file does
+    // not exist, so this no-ops.
+    await relativizeWorktree(trainPath);
 
     const included: string[] = [];
     const noops: string[] = [];

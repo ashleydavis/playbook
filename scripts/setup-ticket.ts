@@ -28,6 +28,7 @@ import { join, resolve } from "node:path";
 
 import { commitState } from "./lib/commit-state";
 import { move, type MoveResult } from "./lib/move";
+import { relativizeWorktree } from "./lib/relative-worktree";
 
 // Raised for any expected, user-facing failure (missing id, no project repo,
 // git failure). The CLI maps this to a non-zero exit with a clean message;
@@ -72,6 +73,11 @@ const realGit: GitRunner = async (projectDir, worktreePath, branch) => {
         const err = (await new Response(proc.stderr).text()).trim();
         throw new SetupError(`git worktree add failed: ${err}`);
     }
+    // Rewrite the worktree's link files to relative paths so the worktree
+    // survives the repo being shared across machines (NFS) at different mount
+    // points. Best-effort and confined to realGit, so the injected test runner
+    // is untouched.
+    await relativizeWorktree(worktreePath);
 };
 
 // Core logic: create the ticket's worktree and admit it into in-progress/.
