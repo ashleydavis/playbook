@@ -18,4 +18,3 @@ changes.
 - Would an mcp server be a better way to manipulate the current state?
     - Most of the actions (e.g. move from todo/ to in-progress/) could be implemented as mcp tools.
     - If I want to try this, I think this would be an alternative version of Playbook so that I don't message up the original.
-- Do we have ticket types? Prioritizing issue tickets automatically might be useful.
