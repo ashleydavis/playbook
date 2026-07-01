@@ -15,7 +15,6 @@ import {
     MergeError,
     buildTrain,
     landTrain,
-    cleanupTrain,
     discardTrain,
     type GitOutput,
     type GitRunner,
@@ -161,15 +160,23 @@ describe("buildTrain()", () => {
 });
 
 describe("landTrain()", () => {
-    test("fast-forwards, then moves each ticket merge-queue/ -> done/", async () => {
+    test("fast-forwards, moves each ticket to done/, and closes its worktree", async () => {
         await mkdir(join(stateDir, "tickets", "merge-queue", "feat-1"), {
             recursive: true,
         });
         await mkdir(join(stateDir, "tickets", "done"), { recursive: true });
+        // The ticket's worktree exists on disk so concludeTicket's teardown runs.
+        await mkdir(join(root, "project", "worktrees", "feat-1"), {
+            recursive: true,
+        });
 
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse
             ok(), // merge --ff-only
+            ok(), // worktree remove --force feat-1
+            ok(), // show-ref feat-1 branch (present)
+            ok(), // branch -D feat-1
+            ok(), // worktree prune
         ]);
 
         const result = await landTrain(
@@ -190,6 +197,12 @@ describe("landTrain()", () => {
         expect(
             await isDir(join(stateDir, "tickets", "merge-queue", "feat-1")),
         ).toBe(false);
+        // And its worktree + branch were closed as part of concluding it.
+        expect(result.worktreesRemoved).toEqual([
+            join(root, "project", "worktrees", "feat-1"),
+        ]);
+        expect(result.branchesDeleted).toEqual(["worktrees/feat-1"]);
+        expect(result.teardownWarnings).toEqual([]);
     });
 
     test("throws when the train no longer fast-forwards", async () => {
@@ -200,36 +213,6 @@ describe("landTrain()", () => {
         await expect(
             landTrain(stateDir, "merge-test", ["feat-1"], runGit),
         ).rejects.toThrow(MergeError);
-    });
-});
-
-describe("cleanupTrain()", () => {
-    test("removes the train and each ticket worktree + branch", async () => {
-        await mkdir(join(root, "project", "worktrees", "merge-test"));
-        await mkdir(join(root, "project", "worktrees", "feat-1"));
-
-        const { runGit, calls } = scriptedGit([
-            ok(), // worktree remove train
-            ok(), // show-ref train branch (present)
-            ok(), // branch -D train
-            ok(), // worktree remove feat-1
-            ok(), // show-ref feat-1 branch (present)
-            ok(), // branch -D feat-1
-            ok(), // worktree prune
-        ]);
-
-        const result = await cleanupTrain(
-            stateDir,
-            "merge-test",
-            ["feat-1"],
-            runGit,
-        );
-
-        expect(result.branchesDeleted).toEqual([
-            "worktrees/merge-test",
-            "worktrees/feat-1",
-        ]);
-        expect(calls.at(-1)?.args).toEqual(["worktree", "prune"]);
     });
 });
 

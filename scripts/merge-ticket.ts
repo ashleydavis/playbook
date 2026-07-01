@@ -52,24 +52,24 @@ import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { commitState } from "./lib/commit-state";
-import { move } from "./lib/move";
+import { concludeTicket } from "./lib/conclude-ticket";
 import { relativizeWorktree } from "./lib/relative-worktree";
+import {
+    WorktreeTeardownError,
+    realGit,
+    removeWorktreeAndBranch,
+    type GitOutput,
+    type GitRunner,
+} from "./lib/worktree-teardown";
+
+// Re-exported so this module's existing test imports keep resolving; the git
+// runner and its types now live with the shared teardown they belong to.
+export type { GitOutput, GitRunner };
 
 // Raised for any expected, user-facing failure (missing args, missing repo, a git
 // failure that is not a cherry-pick conflict). The CLI maps it to a non-zero exit
 // with a clean message; tests assert on it.
 export class MergeError extends Error {}
-
-export interface GitOutput {
-    code: number;
-    stdout: string;
-    stderr: string;
-}
-
-// Injectable git runner: takes the cwd to run in and the argv after `git`, and
-// returns the captured result. The unit test passes a scripted fake; the smoke
-// test uses the real one against a throwaway repo.
-export type GitRunner = (cwd: string, args: string[]) => Promise<GitOutput>;
 
 export interface BuildResult {
     trainId: string;
@@ -90,11 +90,12 @@ export interface LandResult {
     projectBranch: string;
     // Tickets moved merge-queue/ -> done/.
     landed: string[];
-}
-
-export interface CleanupResult {
+    // The ticket worktrees / branches closed as those tickets were concluded.
     worktreesRemoved: string[];
     branchesDeleted: string[];
+    // Non-fatal teardown warnings, one per ticket whose worktree would not close
+    // (the ticket is still landed and done; the leak is reaped later).
+    teardownWarnings: string[];
 }
 
 export interface DiscardResult {
@@ -111,19 +112,6 @@ async function exists(path: string): Promise<boolean> {
         return false;
     }
 }
-
-const realGit: GitRunner = async (cwd, args) => {
-    const proc = Bun.spawn(["git", "-C", cwd, ...args], {
-        stdout: "pipe",
-        stderr: "pipe",
-    });
-    const [code, stdout, stderr] = await Promise.all([
-        proc.exited,
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-    ]);
-    return { code, stdout: stdout.trim(), stderr: stderr.trim() };
-};
 
 function paths(stateDir: string, trainId: string) {
     const projectDir = resolve(stateDir, "..", "project");
@@ -306,94 +294,41 @@ export async function landTrain(
         );
     }
 
-    // Merged. Move each ticket to done/ (fs only here; the CLI commits).
-    const ticketsDir = join(stateDir, "tickets");
+    // Merged. Conclude each ticket: move it to done/ AND close its worktree, the
+    // shared path a Debug ticket also takes. Teardown is best-effort inside
+    // concludeTicket, so it never throws here and can never strand a merged ticket
+    // short of done/; the CLI commits the done/ moves after this returns.
     const landed: string[] = [];
-    for (const id of ticketIds) {
-        await move(id, "done", ticketsDir);
-        landed.push(id);
-    }
-
-    return { trainId, projectBranch, landed };
-}
-
-// Remove a worktree and delete its branch, guarding both so a re-run converges.
-async function removeWorktreeAndBranch(
-    projectDir: string,
-    worktreePath: string,
-    branch: string,
-    runGit: GitRunner,
-    removed: string[],
-    deleted: string[],
-): Promise<void> {
-    if (await exists(worktreePath)) {
-        const out = await runGit(projectDir, [
-            "worktree",
-            "remove",
-            "--force",
-            worktreePath,
-        ]);
-        if (out.code !== 0) {
-            throw new MergeError(
-                `git worktree remove ${worktreePath} failed: ${out.stderr}`,
-            );
-        }
-        removed.push(worktreePath);
-    }
-    const present = await runGit(projectDir, [
-        "show-ref",
-        "--verify",
-        "--quiet",
-        `refs/heads/${branch}`,
-    ]);
-    if (present.code === 0) {
-        const del = await runGit(projectDir, ["branch", "-D", branch]);
-        if (del.code !== 0) {
-            throw new MergeError(
-                `git branch -D ${branch} failed: ${del.stderr}`,
-            );
-        }
-        deleted.push(branch);
-    }
-}
-
-// Tear down the train worktree/branch and every landed ticket's worktree/branch.
-// Called after land has merged and moved the tickets to done/, so a failure here
-// only leaks a worktree (reaped later), never un-merges or un-dones a ticket.
-export async function cleanupTrain(
-    stateDir: string,
-    trainId: string,
-    ticketIds: string[],
-    runGit: GitRunner = realGit,
-): Promise<CleanupResult> {
-    const { projectDir, trainPath, trainBranch } = paths(stateDir, trainId);
     const worktreesRemoved: string[] = [];
     const branchesDeleted: string[] = [];
+    const teardownWarnings: string[] = [];
+    for (const id of ticketIds) {
+        const concluded = await concludeTicket(stateDir, id, runGit);
+        landed.push(id);
+        if (concluded.worktreeRemoved) {
+            worktreesRemoved.push(concluded.worktreeRemoved);
+        }
+        if (concluded.branchDeleted) {
+            branchesDeleted.push(concluded.branchDeleted);
+        }
+        if (concluded.teardownWarning) {
+            teardownWarnings.push(`${id}: ${concluded.teardownWarning}`);
+        }
+    }
 
-    await removeWorktreeAndBranch(
-        projectDir,
-        trainPath,
-        trainBranch,
-        runGit,
+    return {
+        trainId,
+        projectBranch,
+        landed,
         worktreesRemoved,
         branchesDeleted,
-    );
-    for (const id of ticketIds) {
-        await removeWorktreeAndBranch(
-            projectDir,
-            join(projectDir, "worktrees", id),
-            `worktrees/${id}`,
-            runGit,
-            worktreesRemoved,
-            branchesDeleted,
-        );
-    }
-    await runGit(projectDir, ["worktree", "prune"]);
-
-    return { worktreesRemoved, branchesDeleted };
+        teardownWarnings,
+    };
 }
 
-// Tear down a failed train, leaving the ticket worktrees in place to rebuild.
+// Tear down a failed train, leaving the ticket worktrees in place to rebuild. Also
+// used after a successful land to remove the (now-merged) train worktree itself,
+// once concludeTicket has already closed each landed ticket's own worktree.
 export async function discardTrain(
     stateDir: string,
     trainId: string,
@@ -465,6 +400,8 @@ async function main(argv: string[]): Promise<void> {
                 );
                 process.exit(1);
             }
+            // landTrain concludes each ticket (moves it to done/ and closes its
+            // worktree); the only cleanup left is the throwaway train worktree.
             const result = await landTrain(stateDir, trainId, ticketIds);
             // The merge has landed: commit the done/ moves immediately, so a
             // merged ticket is recorded as done before anything else can fail.
@@ -478,18 +415,19 @@ async function main(argv: string[]): Promise<void> {
                     ]),
                 );
             }
-            // Cleanup is best-effort: the tickets are already merged and committed
-            // to done/, so a worktree-removal failure must not fail the command.
+            // Removing the train worktree is best-effort: the tickets are already
+            // merged and committed to done/, so a removal failure must not fail the
+            // command (the leak is reaped by pb:next / reset-loop).
             try {
-                const cleaned = await cleanupTrain(stateDir, trainId, ticketIds);
-                console.log(JSON.stringify({ ...result, ...cleaned }));
+                const train = await discardTrain(stateDir, trainId);
+                console.log(JSON.stringify({ ...result, train }));
             } catch (cleanupErr) {
                 const msg =
                     cleanupErr instanceof Error
                         ? cleanupErr.message
                         : String(cleanupErr);
                 console.error(
-                    `warning: train ${trainId} landed but cleanup failed (leak reaped later): ${msg}`,
+                    `warning: train ${trainId} landed but train-worktree removal failed (leak reaped later): ${msg}`,
                 );
                 console.log(JSON.stringify(result));
             }
@@ -506,7 +444,7 @@ async function main(argv: string[]): Promise<void> {
             process.exit(1);
         }
     } catch (err) {
-        if (err instanceof MergeError) {
+        if (err instanceof MergeError || err instanceof WorktreeTeardownError) {
             console.error(err.message);
             process.exit(1);
         }
