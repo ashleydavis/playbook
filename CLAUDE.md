@@ -29,7 +29,7 @@ TODO: Is this in process.md ?
 Three repos (full detail in `docs/process.md`):
 
 - **Playbook** (the playbook repo root): this process, the skills, the templates, the scripts. One clone per project, launched from the root. You are reading its instructions now.
-- **Project repo** (per project): the code at `project/`, its spec (`project/docs/spec/`), testing manual, and rules. Has its own `CLAUDE.md` that takes precedence when you are working inside it.
+- **Project repo** (per project): the code at `project/` and any docs and rules it keeps. May have its own `CLAUDE.md` that takes precedence when you are working inside it.
 - **State repo** (per project): at `state/`, the ticket queues (`state/tickets/`). Lives beside the project repo.
 
 When you are inside a project's work or state repo, that repo's `CLAUDE.md` applies on top of this file.

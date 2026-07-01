@@ -23,9 +23,9 @@ A compact orientation map: what lives where across the playbook and a project's 
 
 ## In a project repo (project-specific)
 
-Paths below are under `project/` when working from the playbook root (e.g. `project/docs/spec/`).
+Paths below are under `project/` when working from the playbook root (e.g. `project/docs/spec/`). None are required; they are conventions a project may adopt. Whatever docs and rules a project keeps are respected and kept current with the code.
 
-- `CLAUDE.md` at the root: project-specific instructions (stack, how to run, comms style). Always present. Knows nothing about the playbook; the rules enforced by agents live in `docs/rules/`, not in `CLAUDE.md`.
+- `CLAUDE.md` at the root: project-specific instructions (stack, how to run, comms style), if present. Knows nothing about the playbook; the rules enforced by agents live in `docs/rules/`, not in `CLAUDE.md`.
 - `docs/spec/`: source of truth. `docs/spec/index.md` is the feature index; each `<feature>/index.md` declares an ID; `<feature>/detail.md` is the full spec.
 - `docs/testing-manual/`: mirrors `docs/spec/`. `detail.md` for full steps.
 - `docs/rules/`: the enforced rule set (coding-style, testing, documentation, and any others). The review agent reads it in full. Tuned with `pb:customize`.

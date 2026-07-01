@@ -78,11 +78,11 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`/pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates and seeds the docs (spec, testing manual, `project/docs/rules/`) from the answers. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates and fills the starter rule set from the answers. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
-Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then analyses the code for what the process needs but is missing (`CLAUDE.md`, `project/docs/spec/`, `project/docs/testing-manual/`, `project/docs/rules/`, `project/docs/roadmap.md`, smoke/e2e setup, a unit test framework) and queues a ticket to fill each gap. These tickets become dependencies for most future feature work. Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
+Interviews the developer, clones the project into `project/` and creates the state repo at `state/`, then confirms the test baseline is green. It **assumes the project's documentation is already complete**: it does not analyse for or report missing docs and queues no doc work; the only ticket it may create is one to get a failing suite green (a dependency of future feature work). Full steps are in the [skill](.claude/commands/pb/bootstrap/existing.md).
 
 ## Running a Session
 
@@ -218,11 +218,11 @@ See the playbook [README.md](README.md) for the full file-by-file layout.
 
 The actual project code. Whatever app you are building!
 
-The project repo is fully self-contained: nothing in it (code, docs, rules, or templates) references, connects to, or relates to anything outside the project. It knows nothing of the playbook or the state repo. The project repo itself is an ordinary project that just happens to keep a spec in `docs/spec/` and a set of rules in `docs/rules/`.
+The project repo is fully self-contained: nothing in it (code, docs, rules, or templates) references, connects to, or relates to anything outside the project. It knows nothing of the playbook or the state repo. The project repo itself is an ordinary project; it simply happens to be developed through this process.
 
 The layout of code, tests, and project-specific docs is up to the developer and not prescribed. Want test-first, good for you. Want test-last, that's great too. You do you. 
 
-The process only requires that a handful of things exist *somewhere* in the repo and are findable: `CLAUDE.md` at the root, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, and a `docs/roadmap.md`. Everything else (where source lives, how tests are organised, what other docs exist) is the developer's call.
+The process requires no particular documents. A project may keep a `CLAUDE.md` at the root, a spec (`docs/spec/`), a testing manual (`docs/testing-manual/`), rules (`docs/rules/`), a `docs/roadmap.md`, and other guides, but none are mandatory; whatever docs and rules the project keeps are respected and kept current with the code. Everything else (where source lives, how tests are organised, what docs exist) is the developer's call.
 
 Here is an example layout:
 
@@ -549,7 +549,7 @@ The directory ships with three rule files plus a `README.md`, all in [templates/
 
 - `coding-style.md`: project-specific style (naming, formatting, file layout, idioms) filled in during bootstrap, plus the default minimalism rules (keep it minimal, minimise complexity, don't overengineer, keep it as simple as possible) that ship with every project.
 - `testing.md`: which kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows), coverage expectations, and how to run each suite. Filled in during bootstrap and revised with `/pb:customize`.
-- `documentation.md`: which documents the project requires beyond the always-required set (`CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`), and the rules for keeping them current. The agent-review stage checks this file, so a required doc that is missing or stale fails review.
+- `documentation.md`: which documents the project requires (if any) and the rules for keeping them current. The agent-review stage checks this file, so a doc it names that is missing or stale fails review.
 
 ### docs/process.md (playbook)
 

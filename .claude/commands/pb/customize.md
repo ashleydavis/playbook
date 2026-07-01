@@ -17,9 +17,9 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 1. Interview the developer across four areas, showing the current setting for each and asking what to change:
    - **Coding style.** Naming, formatting, file layout, language idioms, and the minimalism defaults. Written to `project/docs/rules/coding-style.md`.
-   - **Required documents.** Which docs must exist and stay current beyond the always-required set (e.g. `project/docs/how-it-works.md`, `project/docs/architecture.md`, a user guide), and what each is for. Written to `project/docs/rules/documentation.md`.
+   - **Required documents.** Which docs (if any) the project requires and must keep current (e.g. a spec, a testing manual, `project/docs/how-it-works.md`, `project/docs/architecture.md`, a user guide), and what each is for. None are required by the process; this is the project's choice. Written to `project/docs/rules/documentation.md`.
    - **Testing rules.** What kinds of tests are required and when (unit always, smoke for endpoints, e2e for UI flows, coverage expectations). Written to `project/docs/rules/testing.md`.
-   - **Process rules.** Standing rules every ticket must follow (always write unit tests, always update the spec and testing manual, never leave a failing test, and so on). Written to whichever rule file fits, or a new file under `project/docs/rules/` for a rule category that does not have one yet (e.g. `project/docs/rules/security.md`). No skill edit is needed: the review agent already reads the whole directory.
+   - **Process rules.** Standing rules every ticket must follow (always write unit tests, keep the project's docs current with the code, never leave a failing test, and so on). Written to whichever rule file fits, or a new file under `project/docs/rules/` for a rule category that does not have one yet (e.g. `project/docs/rules/security.md`). No skill edit is needed: the review agent already reads the whole directory.
 2. Write the answers into the matching files (creating new ones under `project/docs/rules/` where needed), preserving anything the developer did not change.
 3. Show the diff and confirm it with the developer before finishing.
 

@@ -40,14 +40,14 @@ Launch Claude Code from the root of the playbook repo.
 
 Once per project, on host or VM. Already bootstrapped? Don't run it again; start the loop with `pb:status` or `pb:next`.
 
-- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/`, seeds docs (spec, testing manual, `project/docs/rules/`), leaves empty queues ready to run.
-- `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, finds gaps (`CLAUDE.md`, `project/docs/spec/`, `project/docs/testing-manual/`, `project/docs/rules/`, `project/docs/roadmap.md`, smoke/e2e setup), queues a ticket per gap (these become dependencies for future work).
+- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/` (the project inherits the template's `docs/` stubs and starter rules), fills the starter rules from the interview, leaves empty queues ready to run.
+- `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, and confirms a green test baseline. It **assumes the project's documentation is already complete**: it does not analyse for or report missing docs and queues no doc work (the only ticket it may create is one to get a failing suite green).
 
 ## Repos
 
 Three repos, each a separate concern:
 - **Playbook** (the playbook repo root) describes the AI development process including skills, templates, and scripts that drive every project. The repo this file lives in. Playbook is cloned once for each project; launch Claude Code from its root.
-- **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. Must contain (paths relative to the project repo root): `CLAUDE.md`, `docs/spec/`, `docs/testing-manual/`, `docs/rules/`, `docs/roadmap.md`. Each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
+- **Project repo** is the product: the code being built and its docs. Lives at `project/` under the playbook repo root. No particular docs are required. A project may keep a `CLAUDE.md`, a spec (`docs/spec/`), a testing manual (`docs/testing-manual/`), rules (`docs/rules/`), a roadmap, and other guides; whatever docs and rules it keeps are respected and kept current with the code. Where a spec is kept, each feature lives under `docs/spec/<id>/` as an `index.md` and a `detail.md`.
 - **State repo** manages the state of the process: it records what is happening, will happen, and has happened, so the developer and Claude stay in sync. Holds the ticket queues. Lives at `state/` under the playbook repo root (a sibling of `project/`, not inside it) so it stays external to and consistent across worktrees.
 
 ## Queues
@@ -73,14 +73,15 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 - The queues are the source of truth for process state. There is no separate maintained summary file: `pb:status` summarises the live queues on demand (progress, what's in flight, what's blocked) and `pb:board` lists them.
 - The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically (ticket-scoped, lock-safe). For a hand edit (e.g. a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
 
-## Spec and docs
+## Docs
 
 In the project repo (`project/`):
 
-- `docs/spec/` is the source of truth for app behaviour. The testing manual (`docs/testing-manual/`) mirrors its layout and IDs exactly; derived docs (how-it-works, user guide) follow from it.
-- Edits can start from any surface (spec, derived doc, testing manual, code). Whichever changes first, the AI fans the change out to the rest. Conflicts resolve in the spec's favour.
+- No particular documents are required. Keep whatever documentation the project has (README, spec, testing manual, how-it-works, guides) in sync with the code.
+- Edits can start from any surface (a doc or the code). Whichever changes first, the AI fans the change out to the rest.
+- Where the project keeps a spec, `docs/spec/` is the source of truth for app behaviour, the testing manual (`docs/testing-manual/`) mirrors its layout and IDs, derived docs follow from it, and any conflict resolves in the spec's favour.
 - Each feature `index.md` carries two status fields: `**Spec:**` (Draft/Settled) and `**Implementation:**` (None/Partial/Complete); a retired feature adds `**Deprecated:**`.
-- Ticket acceptance criteria are derived from the feature's `detail.md`, not invented in the ticket.
+- Ticket acceptance criteria are derived from the feature's `detail.md` where a spec exists, otherwise from the ticket's description and the developer's intent; not invented.
 
 ## Tickets
 
