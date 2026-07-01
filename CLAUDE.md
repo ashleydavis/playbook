@@ -8,6 +8,8 @@ Claude Code is launched from the root of this repo and these are your standing i
 
 **Never commit unless the developer explicitly asks for it, or the process requires it.** A question is not a command. Do not commit just because changes look ready.
 
+**Never invoke a skill without an explicit instruction to do so.** A skill runs only when the developer names it (`/pb:next`, `pb:review`, ...) or tells you in plain words to run that specific skill. Describing a problem, asking a question, or saying "figure this out" is not permission to invoke a skill; it never chains into one on its own, and one skill never auto-invokes another. When a skill would be the right next step, recommend it and stop. Do not run it until told.
+
 **Never permanently change the working directory.** Always run from the directory you were launched in. Use absolute paths, or `git -C <dir>`, or wrap a directory change in a subshell so it does not persist: `(cd state && bun ../scripts/move.ts …)`. Never run a bare `cd`. Subagents stay locked to their worktree the same way.
 
 **At session start, read `docs/process.md`.** It is the concise description of how the process works: the repos, the queues, the ticket format, the development loop, goals, and the verification rules. 

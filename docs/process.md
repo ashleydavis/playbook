@@ -150,7 +150,7 @@ All scaffolding is under [templates/](../templates/) ([README.md](../templates/R
 
 ## Development loop
 
-Rhythm: run `/pb:status`, run a skill, repeat. Skills (in `.claude/commands/pb/`):
+Rhythm: run `/pb:status`, run a skill, repeat. The developer drives that rhythm: a skill runs only when the developer explicitly invokes it or tells you in plain words to run that specific skill. Never invoke a skill on your own initiative, and never let one skill auto-invoke another (a skill's "Next" section *recommends* the next skill; it does not run it). Describing a problem or asking you to "figure it out" is not an instruction to invoke a skill. Skills (in `.claude/commands/pb/`):
 
 | Skill | Purpose |
 |---|---|
