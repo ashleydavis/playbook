@@ -83,15 +83,15 @@ if run_setup feat-1 > /dev/null; then
     WT_BRANCH="$(git -C "$ROOT/project/worktrees/feat-1" rev-parse --abbrev-ref HEAD)"
     [[ "$WT_BRANCH" == "worktrees/feat-1" ]] \
         || fail "worktree not on branch worktrees/feat-1 (got $WT_BRANCH)"
-    # The worktree's own .git link must be relative so the repo survives being
-    # shared across machines (NFS) at different mount points; the admin back-link
-    # stays absolute (git 2.43.0 requires it for worktree management).
+    # Both link files must be RELATIVE (git worktree add --relative-paths, git
+    # >= 2.48) so the repo survives being shared across machines (NFS) at
+    # different mount points: the worktree's own .git and the admin back-link.
     grep -q '^gitdir: /' "$ROOT/project/worktrees/feat-1/.git" \
         && fail "worktree .git is absolute: $(cat "$ROOT/project/worktrees/feat-1/.git")"
     grep -q '^/' "$ROOT/project/.git/worktrees/feat-1/gitdir" \
-        || fail "admin gitdir is not absolute: $(cat "$ROOT/project/.git/worktrees/feat-1/gitdir")"
+        && fail "admin gitdir is absolute: $(cat "$ROOT/project/.git/worktrees/feat-1/gitdir")"
     git -C "$ROOT/project/worktrees/feat-1" status >/dev/null 2>&1 \
-        || fail "git status fails in the worktree after relativizing"
+        || fail "git status fails in the worktree with relative links"
 else
     fail "setup-ticket feat-1 exited non-zero"
 fi

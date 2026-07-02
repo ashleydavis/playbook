@@ -17,6 +17,7 @@ import { relative } from "node:path";
 
 import { commitState } from "./lib/commit-state";
 import { concludeTicket } from "./lib/conclude-ticket";
+import { assertGitVersion, GitVersionError } from "./lib/git-version";
 import { MoveError, isDir } from "./lib/move";
 
 async function main(argv: string[]): Promise<void> {
@@ -35,6 +36,7 @@ async function main(argv: string[]): Promise<void> {
     }
 
     try {
+        await assertGitVersion();
         const result = await concludeTicket(stateDir, id);
         // Commit the done/ move, ticket-scoped, exactly as move.ts does. The
         // worktree teardown touches only the project repo, so nothing to commit
@@ -58,7 +60,7 @@ async function main(argv: string[]): Promise<void> {
             );
         }
     } catch (err) {
-        if (err instanceof MoveError) {
+        if (err instanceof MoveError || err instanceof GitVersionError) {
             console.error(err.message);
             process.exit(1);
         }

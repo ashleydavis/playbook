@@ -27,8 +27,8 @@ import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { commitState } from "./lib/commit-state";
+import { assertGitVersion, GitVersionError } from "./lib/git-version";
 import { move, type MoveResult } from "./lib/move";
-import { relativizeWorktree } from "./lib/relative-worktree";
 
 // Raised for any expected, user-facing failure (missing id, no project repo,
 // git failure). The CLI maps this to a non-zero exit with a clean message;
@@ -60,12 +60,25 @@ async function exists(path: string): Promise<boolean> {
     }
 }
 
-// Default runner: `git -C <projectDir> worktree add -b <branch> <worktreePath>`,
-// which creates the new branch at the project's current HEAD and checks it out
-// in the worktree.
+// Default runner:
+// `git -C <projectDir> worktree add --relative-paths -b <branch> <worktreePath>`,
+// which creates the new branch at the project's current HEAD, checks it out in
+// the worktree, and writes the worktree's link files as RELATIVE paths so the
+// repo survives being shared across machines (NFS) at different mount points.
+// `--relative-paths` needs git >= 2.48 (main() asserts this before we get here).
 const realGit: GitRunner = async (projectDir, worktreePath, branch) => {
     const proc = Bun.spawn(
-        ["git", "-C", projectDir, "worktree", "add", "-b", branch, worktreePath],
+        [
+            "git",
+            "-C",
+            projectDir,
+            "worktree",
+            "add",
+            "--relative-paths",
+            "-b",
+            branch,
+            worktreePath,
+        ],
         { stdout: "pipe", stderr: "pipe" },
     );
     const code = await proc.exited;
@@ -73,11 +86,6 @@ const realGit: GitRunner = async (projectDir, worktreePath, branch) => {
         const err = (await new Response(proc.stderr).text()).trim();
         throw new SetupError(`git worktree add failed: ${err}`);
     }
-    // Rewrite the worktree's link files to relative paths so the worktree
-    // survives the repo being shared across machines (NFS) at different mount
-    // points. Best-effort and confined to realGit, so the injected test runner
-    // is untouched.
-    await relativizeWorktree(worktreePath);
 };
 
 // Core logic: create the ticket's worktree and admit it into in-progress/.
@@ -145,6 +153,7 @@ async function main(argv: string[]): Promise<void> {
     }
 
     try {
+        await assertGitVersion();
         const result = await setupTicket(id, stateDir);
         const note = result.worktreeCreated
             ? `worktree ${result.worktreePath}`
@@ -164,7 +173,7 @@ async function main(argv: string[]): Promise<void> {
             ]);
         }
     } catch (err) {
-        if (err instanceof SetupError) {
+        if (err instanceof SetupError || err instanceof GitVersionError) {
             console.error(err.message);
             process.exit(1);
         }

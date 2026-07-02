@@ -93,13 +93,13 @@ TRAIN_ID="$(echo "$BUILD_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'
 [[ -d "$ROOT/project/worktrees/$TRAIN_ID" ]] || fail "train worktree not created"
 [[ -f "$ROOT/project/worktrees/$TRAIN_ID/a.txt" ]] || fail "feat-1 change missing from train"
 [[ -f "$ROOT/project/worktrees/$TRAIN_ID/b.txt" ]] || fail "feat-2 change missing from train"
-# The train worktree's own .git link must be relative so it survives the repo
-# being shared across machines (NFS) at different mount points; the admin
-# back-link stays absolute (git 2.43.0 requires it for worktree management).
+# Both of the train worktree's link files must be RELATIVE (git worktree add
+# --relative-paths, git >= 2.48) so it survives the repo being shared across
+# machines (NFS) at different mount points: its own .git and the admin back-link.
 grep -q '^gitdir: /' "$ROOT/project/worktrees/$TRAIN_ID/.git" \
     && fail "train .git is absolute: $(cat "$ROOT/project/worktrees/$TRAIN_ID/.git")"
 grep -q '^/' "$ROOT/project/.git/worktrees/$TRAIN_ID/gitdir" \
-    || fail "train admin gitdir is not absolute: $(cat "$ROOT/project/.git/worktrees/$TRAIN_ID/gitdir")"
+    && fail "train admin gitdir is absolute: $(cat "$ROOT/project/.git/worktrees/$TRAIN_ID/gitdir")"
 [[ ! -f "$ROOT/project/a.txt" ]] || fail "train leaked onto main before land"
 
 # ---- land: ff main, move tickets to done/, tear everything down ----

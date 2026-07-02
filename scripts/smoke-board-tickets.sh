@@ -66,9 +66,14 @@ fi
 if ! grep -q '"human-review":{"count":12,"truncated":true' <<<"$output"; then
     fail "human-review summary wrong in: $output"
 fi
-shown="$(bun -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(j["human-review"].tickets.length)' <<<"$output")"
+# Read the JSON from a file (passed as argv), not stdin: a second `bun -e`
+# reading fd 0 from a herestring is sensitive to bun version/platform and can
+# return a stray trailing byte, so the count "5" would not string-compare equal.
+printf '%s' "$output" > "$FIXTURE/board.json"
+shown="$(bun -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))["human-review"].tickets.length)' "$FIXTURE/board.json")"
+shown="${shown//[[:space:]]/}"
 if [[ "$shown" != "5" ]]; then
-    fail "human-review should display 5 tickets, displayed $shown"
+    fail "human-review should display 5 tickets, displayed '$shown'"
 fi
 
 # Empty queues report count 0 and no tickets.

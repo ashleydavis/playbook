@@ -83,9 +83,10 @@ describe("buildTrain()", () => {
         expect(result.included).toEqual(["feat-1", "feat-2"]);
         expect(result.noops).toEqual([]);
         expect(result.trainBranch).toBe("worktrees/merge-test");
-        expect(calls[1].args.slice(0, 4)).toEqual([
+        expect(calls[1].args.slice(0, 5)).toEqual([
             "worktree",
             "add",
+            "--relative-paths",
             "-b",
             "worktrees/merge-test",
         ]);

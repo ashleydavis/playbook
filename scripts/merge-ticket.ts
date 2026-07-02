@@ -53,7 +53,7 @@ import { join, resolve } from "node:path";
 
 import { commitState } from "./lib/commit-state";
 import { concludeTicket } from "./lib/conclude-ticket";
-import { relativizeWorktree } from "./lib/relative-worktree";
+import { assertGitVersion, GitVersionError } from "./lib/git-version";
 import {
     WorktreeTeardownError,
     realGit,
@@ -167,10 +167,14 @@ export async function buildTrain(
     }
     const projectBranch = branchOut.stdout;
 
-    // Create the train worktree at the project branch tip, on its own branch.
+    // Create the train worktree at the project branch tip, on its own branch,
+    // with RELATIVE link files so it survives the repo being shared across
+    // machines (NFS) at different mount points. `--relative-paths` needs git
+    // >= 2.48 (main() asserts this before we get here).
     const add = await runGit(projectDir, [
         "worktree",
         "add",
+        "--relative-paths",
         "-b",
         trainBranch,
         trainPath,
@@ -179,11 +183,6 @@ export async function buildTrain(
     if (add.code !== 0) {
         throw new MergeError(`git worktree add failed: ${add.stderr}`);
     }
-    // Rewrite the train worktree's link files to relative paths so it survives
-    // the repo being shared across machines (NFS) at different mount points.
-    // Best-effort: under the mocked runGit in tests the train `.git` file does
-    // not exist, so this no-ops.
-    await relativizeWorktree(trainPath);
 
     const included: string[] = [];
     const noops: string[] = [];
@@ -381,6 +380,7 @@ async function main(argv: string[]): Promise<void> {
     }
 
     try {
+        await assertGitVersion();
         if (sub === "build") {
             const ids = rest;
             if (ids.length === 0) {
@@ -444,7 +444,11 @@ async function main(argv: string[]): Promise<void> {
             process.exit(1);
         }
     } catch (err) {
-        if (err instanceof MergeError || err instanceof WorktreeTeardownError) {
+        if (
+            err instanceof MergeError ||
+            err instanceof WorktreeTeardownError ||
+            err instanceof GitVersionError
+        ) {
             console.error(err.message);
             process.exit(1);
         }

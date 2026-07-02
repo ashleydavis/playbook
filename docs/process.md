@@ -27,12 +27,12 @@ Launch Claude Code from the root of the playbook repo.
 
 **Host only**:
 1. Clone the playbook.
-2. Launch Claude Code from the playbook repo root. (`git`, `bun`, and Claude Code are assumed already installed on the host.)
+2. Launch Claude Code from the playbook repo root. (`git` (>= 2.48, for native relative-path worktrees), `bun`, and Claude Code are assumed already installed on the host.)
 
 **Host + VM**:
 1. On the host, clone the playbook.
 2. Spin up the VM (Multipass or similar) and share the host's playbook repo into it.
-3. In the VM: `scripts/install-prereqs.sh` (prerequisites).
+3. In the VM: `scripts/install-prereqs.sh` (prerequisites; installs the latest git, needed for relative-path worktrees).
 4. In the VM, install whatever the project needs to build, test, and run.
 5. In the VM, launch Claude Code from the playbook repo root.
 

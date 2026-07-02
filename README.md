@@ -19,7 +19,7 @@ flowchart LR
 
 ## Prerequisites
 
-[`git`](https://git-scm.com/downloads), [`bun`](https://bun.sh/docs/installation), and [Claude Code](https://docs.claude.com/en/docs/claude-code/setup), installed on your machine.
+[`git`](https://git-scm.com/downloads) **(>= 2.48**, for native relative-path worktrees; the worktree tooling refuses older git**)**, [`bun`](https://bun.sh/docs/installation), and [Claude Code](https://docs.claude.com/en/docs/claude-code/setup), installed on your machine. On a VM, `scripts/install-prereqs.sh` installs the latest git for you.
 
 ## Quickstart
 

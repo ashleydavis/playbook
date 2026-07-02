@@ -17,6 +17,7 @@
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+import { assertGitVersion, GitVersionError } from "./lib/git-version";
 import { move } from "./lib/move";
 
 // Raised for any expected, user-facing failure (no state repo, git failure).
@@ -163,6 +164,7 @@ async function main(): Promise<void> {
     }
 
     try {
+        await assertGitVersion();
         const result = await resetLoop(stateDir);
         const requeued = result.requeued.length
             ? ` (${result.requeued.join(", ")})`
@@ -173,7 +175,7 @@ async function main(): Promise<void> {
                 `deleted ${result.branchesDeleted.length} branch(es)`,
         );
     } catch (err) {
-        if (err instanceof ResetError) {
+        if (err instanceof ResetError || err instanceof GitVersionError) {
             console.error(err.message);
             process.exit(1);
         }

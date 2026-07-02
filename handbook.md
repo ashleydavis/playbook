@@ -50,7 +50,7 @@ The playbook is meant to be customised. To tune the skills, rules, and templates
 Try the playbook on your development computer:
 
 1. Clone the playbook (or your fork, if you made one). 
-2. Launch Claude Code from the playbook repo root to start your development session. (Prerequisites `git`, `bun`, and Claude Code are assumed already installed on the host.)
+2. Launch Claude Code from the playbook repo root to start your development session. (Prerequisites `git` (>= 2.48, for native relative-path worktrees), `bun`, and Claude Code are assumed already installed on the host. `scripts/install-prereqs.sh` installs the latest git on a VM.)
 
 ### Host + VM
 
