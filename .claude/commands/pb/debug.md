@@ -23,6 +23,8 @@ Create a Debug ticket in `todo/` with these acceptance criteria:
 - The root cause is found and proven, not guessed: evidence shows the causal chain from root cause to symptom (a trace, a diff against working code, a minimal experiment that toggles the behaviour).
 - A written root-cause analysis is recorded in the ticket's `detail.md`.
 
+**Allocate the ID with the tooling, never by hand.** Derive the feature prefix (its spec dir, or `misc`/`infra`) and run `bun ../scripts/next-id.ts <prefix> --debug` (from `state/`) for the next free `{prefix}-d{n}`. It scans **every** queue including `done/`, so the ID never collides with a retired ticket.
+
 After writing the Debug ticket directory, commit it to the state repo: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
 A Debug ticket is a pure investigation. **Any amount of experimentation on the code is allowed:** add logging, hack in instrumentation, comment things out, try ten different changes. None of it is kept. A Debug ticket produces no commits and its worktree is thrown away when the investigation ends, so the experimentation cannot reach main and does not need to be clean. The only output that survives is the write-up in `detail.md` plus the evidence.
@@ -46,7 +48,7 @@ Because nothing is committed, the in-progress completion criteria drop the "chan
 
 The review agent's job for a Debug ticket is to assess that the root cause has actually been proven, not merely asserted: the reproduction is present in evidence, the causal chain is supported, and the conclusion follows from it.
 
-- **Proven:** the review agent concludes the Debug ticket with `bun ../scripts/conclude-debug.ts <id>` (from `state/`), which moves it to `done/` (a debugging session produces no code, so it does not go to human-review or merge) **and closes its worktree** — a Debug ticket never passes through the merge train that would otherwise tear its worktree down, so this script is that teardown; do not use `move.ts` to conclude a Debug ticket. The review agent then creates a new **Fix** ticket (`**Type:** Fix`) in `todo/`. The Fix ticket carries the proven root cause and the failing reproduction in its Description/Notes, and acceptance criteria for the fix (below). It links back to the Debug ticket's ID. This spawn happens inside a `pb:next` agent-review sub-agent, so the review agent commits the new Fix ticket ticket-scoped: `bun ../scripts/commit-state.ts "add <fix-id>" tickets/todo/<fix-id>` (from `state/`). Its only state write is that ticket-scoped commit; the parent reports the outcome in chat after the turn.
+- **Proven:** the review agent concludes the Debug ticket with `bun ../scripts/conclude-debug.ts <id>` (from `state/`), which moves it to `done/` (a debugging session produces no code, so it does not go to human-review or merge) **and closes its worktree** — a Debug ticket never passes through the merge train that would otherwise tear its worktree down, so this script is that teardown; do not use `move.ts` to conclude a Debug ticket. The review agent then creates a new **Fix** ticket (`**Type:** Fix`) in `todo/`, allocating its ID with `bun ../scripts/next-id.ts <prefix>` (from `state/`; ordinary, no `--debug`) so the Fix ID is unique across every queue too. The Fix ticket carries the proven root cause and the failing reproduction in its Description/Notes, and acceptance criteria for the fix (below). It links back to the Debug ticket's ID. This spawn happens inside a `pb:next` agent-review sub-agent, so the review agent commits the new Fix ticket ticket-scoped: `bun ../scripts/commit-state.ts "add <fix-id>" tickets/todo/<fix-id>` (from `state/`). Its only state write is that ticket-scoped commit; the parent reports the outcome in chat after the turn.
 - **Not proven:** the review agent records in History what is missing or unconvincing, then runs `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the ticket's `**Failures:**` count and reads the new count it prints. Below three, it returns the Debug ticket to `todo/` so a fresh investigation session retries with that feedback (it does not give up on the first miss). At three, it moves the ticket to `blocked/` for the developer instead. The count is the deterministic gate, not a re-count of History.
 
 ### The Fix ticket
@@ -82,7 +84,7 @@ Phase 3 hypothesis confirmed: responses are not sequenced, so the slower first
 response overwrites the newer one. evidence/trace.txt shows the out-of-order resolve.
 
 (agent-review) Root cause proven -> search-d1 moved to done/.
-Created todo/search-d2 (Type: Fix): ignore responses for superseded queries; links search-d1.
+Created todo/search-1 (Type: Fix): ignore responses for superseded queries; links search-d1.
 ```
 
 ## Next

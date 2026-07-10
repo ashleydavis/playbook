@@ -30,7 +30,8 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
    - **Investigation** (e.g. "check if X is missing", "fix if necessary", root cause unknown): make it a `Debug` ticket (Debug tickets always land in `todo/`), not a guessed fix.
    - **Question / decision** (e.g. "or should they?", "is there any way to improve this?"): this is the developer's call, not a task. Do **not** silently ticket it. Collect these and surface them at sign-off so the developer can resolve each into a concrete ticket, send it to Debug, or drop it.
 4. For each task item, derive its feature and detail:
-   - Map it to the feature it touches and use that feature's spec dir as the ID prefix (e.g. a logs item → `live-logs`, a "Status page" rename → `cluster-overview`). Items not tied to a feature use a `misc`/`infra` prefix. IDs are `{feature-id}-{n}`.
+   - Map it to the feature it touches and use that feature's spec dir as the ID prefix (e.g. a logs item → `live-logs`, a "Status page" rename → `cluster-overview`). Items not tied to a feature use a `misc`/`infra` prefix.
+   - **Allocate IDs with the tooling, never by hand.** Run `bun ../scripts/next-id.ts <prefix>` (from `state/`) to get the next free `{prefix}-{n}`. It scans **every** queue including `done/`, so a feature whose earlier tickets already landed in `done/` keeps counting up instead of restarting at 1 and colliding with a retired ticket. When several items in this batch share a prefix, take the starting number from `next-id.ts` once and number them consecutively from there (the later tickets are not on disk yet, so do not call it per-item).
    - The todo line is terse, so derive Acceptance Criteria and Test Plan from the item's intent **plus the affected feature's `docs/spec/` where the project keeps one** (and the code where needed), not from the one line alone. Where the change implies a spec or testing-manual update, fold that into the same ticket.
 5. Set dependencies. Treat items as **independent by default (no `Depends on:`)**. Add a dependency only where one item genuinely must land before another (e.g. a rename that a later item references, a shared component two items both change). Number IDs so any dependent ticket is higher than what it depends on, and set `**Priority:**` to order the batch (e.g. `10`, `20`, `30`, ...), keeping the todo list's own order unless a dependency forces otherwise.
 6. Show the proposed ticket list for sign-off: each ticket's ID, type, one-line description, and what it depends on. List the flagged questions (step 3) separately and ask the developer to resolve them. Adjust on feedback (split, merge, reorder, re-scope, drop, or convert a question to a ticket) before writing anything.
@@ -57,13 +58,16 @@ Developer: break up the todo list.
 Source: project/todo.md (10 items).
 
 Proposed tickets (sign-off before I write them):
-- performance-tabs-1 (Tweak): rename Performance tabs to "Resource Utilization"
+(IDs come from next-id.ts, which continues each feature's numbering past any
+tickets already in done/. performance-tabs and live-logs already have tickets in
+done/ here, so they carry on from there rather than restarting at 1.)
+- performance-tabs-9 (Tweak): rename Performance tabs to "Resource Utilization"
 - cluster-overview-1 (Tweak): rename "Status" page/nav to "Cluster"
-- all-resources-1 (Debug): check whether the all-resources page omits resource kinds
-- live-logs-1 (Feature): highlight "error" red and "warning" yellow in the log viewer
-- live-logs-2 (Fix): keep global Logs auto-scroll pinned to the end           (deps: none)
-- live-logs-3 (Tweak): enlarge the pod picker so all pods are visible
-- live-logs-4 (Feature): remove a pod from the Logs page via a close button
+- all-resources-2 (Debug): check whether the all-resources page omits resource kinds
+- live-logs-4 (Feature): highlight "error" red and "warning" yellow in the log viewer
+- live-logs-5 (Fix): keep global Logs auto-scroll pinned to the end           (deps: none)
+- live-logs-6 (Tweak): enlarge the pod picker so all pods are visible
+- live-logs-7 (Feature): remove a pod from the Logs page via a close button
 - nodes-view-1 (Tweak): keep the actions column on screen on narrow windows
 - misc-1 (Tweak): show each page title once (navbar only), audit all pages
 
