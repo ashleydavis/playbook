@@ -19,7 +19,9 @@ flowchart LR
 
 ## Prerequisites
 
-[`git`](https://git-scm.com/downloads) **(>= 2.48**, for native relative-path worktrees; the worktree tooling refuses older git**)**, [`bun`](https://bun.sh/docs/installation), and [Claude Code](https://docs.claude.com/en/docs/claude-code/setup), installed on your machine. On a VM, `scripts/install-prereqs.sh` installs the latest git for you.
+[`git`](https://git-scm.com/downloads) **(>= 2.48**, for native relative-path worktrees; the worktree tooling refuses older git**)**, [`bun`](https://bun.sh/docs/installation), and [Claude Code](https://docs.claude.com/en/docs/claude-code/setup), installed on whichever machine runs Claude Code. `scripts/install-prereqs.sh` installs all three (including the latest git) on a fresh Ubuntu machine or VM.
+
+To run the process in a sandbox VM instead (recommended, and required for unattended `/pb:next` runs), two scripts do the whole setup: `bash scripts/setup-host.sh` once per machine (Multipass, NFS, IP forwarding), then `bash scripts/vm.sh` every session (creates or starts the VM, shares this repo into it over NFS, and opens a shell in it). Both are **only tested on Ubuntu**, hosting an Ubuntu VM. See [Host + VM](handbook.md#host--vm).
 
 ## Quickstart
 

@@ -19,7 +19,9 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [scripts/move.ts](scripts/move.ts): moves a ticket between queues.
 - [scripts/format-ticket-selection.ts](scripts/format-ticket-selection.ts): formats ticket selection menus for skills.
 - [scripts/reset-loop.ts](scripts/reset-loop.ts): unwinds a run (in-progress -> todo, tears down worktrees). Used by `pb:reset`.
-- [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code.
+- [scripts/install-prereqs.sh](scripts/install-prereqs.sh): installs git, bun, and Claude Code on the machine that runs Claude Code (usually the VM).
+- [scripts/setup-host.sh](scripts/setup-host.sh): one-time host setup for the sandbox VM (Multipass, NFS server, IP forwarding).
+- [scripts/vm.sh](scripts/vm.sh): brings the sandbox VM up with this repo NFS-mounted and opens a shell in it (`up`, `shell`, `stop`, `status`).
 
 ## In a project repo (project-specific)
 

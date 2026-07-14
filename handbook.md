@@ -56,12 +56,22 @@ Try the playbook on your development computer:
 
 For autonomous runs. The VM contains the blast radius so `/pb:next` works unattended. Repos live on the host and are shared into the VM (see Maximising Autonomy > Sandbox VM).
 
+Two scripts do the work. Both are idempotent, so re-running either is safe. **Both are only tested on Ubuntu** (an Ubuntu host running an Ubuntu VM): they assume snap, apt, systemd, `/etc/exports`, and the Multipass bridge. On another host OS, treat them as a description of the steps rather than something to run, and set the VM up by hand.
+
 1. On the host, clone the playbook (or your fork, if you made one).
-2. Spin up the VM (Multipass or equivalent) and share the host's playbook repo into it, so the host and the VM see the same files.
-3. In the VM, run `scripts/install-prereqs.sh` to install `git`, `bun`, and Claude Code (if not already installed). It needs root for the `apt` step, so it uses `sudo` (run it as a user with sudo, or as root). The installers add `bun` and `claude` to your shell profile, so open a **new** shell afterwards (or `source ~/.bashrc`); otherwise `claude` is "command not found" in the current one.
+2. On the host, run `bash scripts/setup-host.sh`. **Once per machine.** Installs Multipass and an NFS server, and turns on IP forwarding (Multipass routes the VM's traffic through the host, and the kernel default is off, which is the usual reason a VM has no internet).
+3. On the host, run `bash scripts/vm.sh`. **Every session.** It creates the VM if it does not exist (naming it after the repo directory), starts it if it is stopped, shares the repo from the host over NFS, mounts it in the VM at `/home/ubuntu/<repo>`, and opens a shell there. On the VM's first launch it also runs `scripts/install-prereqs.sh` inside it to install `git`, `bun`, and Claude Code.
 4. In the VM, set up git so the loop can commit (see [Git setup in the VM](#git-setup-in-the-vm) below).
 5. In the VM, install whatever the project itself needs to build, test, and run.
-6. In the VM, launch Claude Code from the playbook repo root, and authenticate it with your account. 
+6. In the VM, launch Claude Code from the repo root (the shell `vm.sh` opens already starts there), and authenticate it with your account.
+
+`vm.sh` takes a command: no argument brings the VM up and opens a shell in it; `up` brings it up and stays on the host; `shell` opens a shell; `stop` shuts the VM down; `status` prints the VM state, its IP, the export, and the mount. Size and naming are overridable with environment variables (`PB_VM_NAME`, `PB_VM_CPUS`, `PB_VM_MEMORY`, `PB_VM_DISK`, and others, listed at the top of the script).
+
+#### Why NFS, and why it needs no sudo after the first run
+
+The repo is shared into the VM over NFS rather than with `multipass mount`. Multipass's own mounts are far slower, and the loop is disk-heavy (worktrees, installs, test runs). Measured write speed on one machine: host 3,200 MB/s, NFS 1,700 MB/s, SSHFS (the Multipass default) 623 MB/s, virtio-fs 195 MB/s.
+
+The NFS export is granted to the whole Multipass bridge subnet, not to a single VM IP. The VM's IP changes whenever it restarts; the subnet does not. So `/etc/exports` is written once, on the first `vm.sh` run for a repo (the only step that asks for the host's `sudo` password), and every run after that needs no host sudo at all: the export is already correct, and mounting inside the VM uses the VM's own passwordless sudo.
 
 #### Git setup in the VM
 
