@@ -23,7 +23,7 @@ async function makeTicket(
     );
     await writeFile(
         join(tdir, "detail.md"),
-        `# ${id}: a real title\n\n## Test Plan\nUnit and e2e.\n\n## History\n- made\n`,
+        `# ${id}: a real title\n\n## Description\nThe lead description.\n\n### Root cause\nHidden analysis.\n\n## Test Plan\nUnit and e2e.\n\n## History\n- made\n`,
     );
     if (opts.results) {
         const pass = join(tdir, "evidence", "review-1");
@@ -59,6 +59,8 @@ describe("gatherCard", () => {
     test("captures title, evidence pass, results, screenshots, and a tailored menu", async () => {
         const card = await gatherCard(ticketsDir, "human-review", "a-1");
         expect(card.title).toBe("a-1: a real title");
+        // Description is the lead prose only; the "### Root cause" subsection is cut.
+        expect(card.description).toBe("The lead description.");
         expect(card.testPlan).toContain("Unit and e2e");
         expect(card.latestReview).toBe("review-1");
         expect(card.latestImplementation).toBe("implementation-1");
@@ -84,6 +86,7 @@ describe("gatherCard", () => {
 describe("formatCard", () => {
     const baseCard: TicketCard = {
         title: "a-1: a real title",
+        description: "The lead description.",
         changedFiles: [],
         changedFilesKnown: false,
         docsChanged: [],
@@ -103,11 +106,15 @@ describe("formatCard", () => {
     test("renders title, evidence pass, results, screenshots, and a numbered menu", () => {
         const out = formatCard("a-1", baseCard);
         expect(out).toContain("a-1: a real title");
+        expect(out).toContain("Description:");
+        expect(out).toContain("The lead description.");
         expect(out).toContain("Changed files: (unknown)");
         expect(out).toContain("Latest evidence pass: implementation-1 / review-1");
         expect(out).toContain("unit: EXIT=0");
         expect(out).toContain("Test plan:");
-        expect(out).toContain("light.png");
+        // The card shows a screenshot count, not every path.
+        expect(out).toContain("Screenshots: 2");
+        expect(out).not.toContain("Screenshots:\n");
         expect(out).toContain("Inspect menu:");
         expect(out).toContain("1. Show screenshots");
         expect(out).toContain("2. Show code diff");
@@ -116,5 +123,20 @@ describe("formatCard", () => {
     test("falls back to the id when the card has no title", () => {
         const out = formatCard("a-1", { ...baseCard, title: "" });
         expect(out.split("\n")[0]).toBe("a-1");
+    });
+
+    test("omits the Description block when the card has no description", () => {
+        const out = formatCard("a-1", { ...baseCard, description: null });
+        expect(out).not.toContain("Description:");
+    });
+
+    test("shows a changed-file count with a code/docs split, not the list", () => {
+        const out = formatCard("a-1", {
+            ...baseCard,
+            changedFiles: ["src/a.ts", "src/b.ts", "docs/x.md"],
+            docsChanged: ["docs/x.md"],
+        });
+        expect(out).toContain("Changed files: 3 (2 code, 1 docs)");
+        expect(out).not.toContain("  src/a.ts");
     });
 });

@@ -26,6 +26,10 @@ export interface InspectOption {
 
 export interface TicketCard {
     title: string;
+    // The ticket's Description (lead prose, before any "### " subsection), so
+    // the review loop can open with the ticket's name and description without a
+    // separate read. Null when the ticket has no Description section.
+    description: string | null;
     // One-line "what changed" summary parts.
     changedFiles: string[];
     changedFilesKnown: boolean;
@@ -57,6 +61,34 @@ function parseSection(md: string, heading: string): string | null {
     }
     const body = m[1].trim();
     return body.length > 0 ? body : null;
+}
+
+// Pull the ticket's Description: the lead prose of the "## Description" section,
+// stopping before any "### " subsection (e.g. a root-cause write-up) so the card
+// carries the description, not the whole analysis. Null when absent or empty.
+function parseDescription(md: string): string | null {
+    const body = parseSection(md, "Description");
+    if (!body) {
+        return null;
+    }
+    const lead = body.split(/^###\s+/m)[0].trim();
+    if (!lead) {
+        return null;
+    }
+    // Keep the card's description short: drop a "From the project todo list:"
+    // preamble and any blockquote lines, then take the first paragraph. The full
+    // Description stays in detail.md for anyone who opens it.
+    const cleaned = lead
+        .split("\n")
+        .filter(
+            (l) =>
+                !/^\s*>/.test(l) &&
+                !/^from the project todo list:/i.test(l.trim()),
+        )
+        .join("\n")
+        .trim();
+    const firstPara = (cleaned || lead).split(/\n\s*\n/)[0].trim();
+    return firstPara.length > 0 ? firstPara : null;
 }
 
 // List the evidence pass directories matching a prefix (implementation-N /
@@ -232,6 +264,7 @@ export async function gatherCard(
     }
 
     const title = parseTitle(md, id);
+    const description = parseDescription(md);
     const testPlan = parseSection(md, "Test Plan");
 
     const latestImplementation = await latestPass(evidenceDir, "implementation");
@@ -255,6 +288,7 @@ export async function gatherCard(
 
     return {
         title,
+        description,
         changedFiles: files,
         changedFilesKnown: known,
         docsChanged,
@@ -277,17 +311,28 @@ export function formatCard(id: string, card: TicketCard): string {
     lines.push(card.title || id);
     lines.push("");
 
+    if (card.description) {
+        lines.push("Description:");
+        lines.push(card.description);
+        lines.push("");
+    }
+
+    // Print a count, not the whole list, so the card stays a short summary. The
+    // full file list is one inspect-menu pick away (the code/doc diffs).
     if (card.changedFiles.length > 0) {
-        lines.push("Changed files:");
-        for (const f of card.changedFiles) {
-            lines.push(`  ${f}`);
-        }
+        const docs = card.docsChanged.length;
+        const code = card.changedFiles.length - docs;
+        lines.push(
+            `Changed files: ${card.changedFiles.length} (${code} code, ${docs} docs)`,
+        );
     } else {
         lines.push(
             `Changed files: ${card.changedFilesKnown ? "(none)" : "(unknown)"}`,
         );
     }
 
+    // The doc files are named (usually few) because the doc inspect options act
+    // on them by name.
     if (card.docsChanged.length > 0) {
         lines.push("Docs changed:");
         for (const f of card.docsChanged) {
@@ -315,11 +360,11 @@ export function formatCard(id: string, card: TicketCard): string {
         lines.push(card.testPlan);
     }
 
+    // Count plus the directory they live in, not every path: the "show the
+    // screenshots" inspect option lists and opens them from that directory.
     if (card.screenshots.length > 0) {
-        lines.push("Screenshots:");
-        for (const s of card.screenshots) {
-            lines.push(`  ${s}`);
-        }
+        const dir = card.screenshots[0].replace(/\/[^/]+$/, "");
+        lines.push(`Screenshots: ${card.screenshots.length} (in ${dir})`);
     }
 
     if (card.commit) {

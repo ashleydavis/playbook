@@ -15,7 +15,7 @@ You drive the whole thing with three scripts, and never anything else:
 
 - `start-review.ts` once, to start the session.
 - `format-ticket-selection.ts --mode pick-one-loop --queue human-review …` to render (and reprint) the numbered list, and the same script with `--mark <id> --outcome <x>` to record a ticket's outcome and reprint.
-- `format-ticket-selection.ts --card <id>` to get the selected ticket's summary and inspect menu.
+- `ticket-card.ts <id>` to get the selected ticket's summary card and inspect menu.
 
 The numbered list persists for the session: once started, its rows, their order, and their numbers are fixed and never renumber, and a resolved ticket stays on the list (checked, with its outcome) even after it leaves `human-review/`. The scripts handle all of that; you just run them and paste what they print.
 
@@ -26,7 +26,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 - A review step is two things: *what to look at* (a path, command, or `file:line`) and *what to check*. Nothing else.
 - **Show only, nothing trailing.** When the developer picks an inspect option (screenshots, diff, docs, tests) or asks to be shown anything, output the artifact and then go straight to the inspect menu. Add nothing in between or after: no description of what it contains, no recap, no analysis, no verdict ("All correct", "Looks good", "Passes"). The developer asked to see it, not to be told about it, and the extra prose is also what makes them wait while you compose it. The verdict is theirs alone at this gate.
 - Lead each bullet with the action: **Open `<path>`**, **Run `<command>`**, **Look at `<file>:<line>`**.
-- A ticket summary is at most 3 bullets: what changed, the evidence (test result + screenshot paths), the diff (files touched). Build it from the card; do not retell the History.
+- On selecting a ticket, print its **human-rejection history** (Step 2), then the ticket's **summary card** as the script produced it: a short summary (name, description, changed-file and screenshot counts, evidence pass, test results) ending in the inspect menu. It is already concise, so print it as-is; do not expand the counts into full file or screenshot lists, and do not re-summarise or drop any of it. The full lists are behind the inspect menu, reached on demand. Apart from the human-rejection list, do not retell the History.
 
 ## Responses
 
@@ -73,7 +73,7 @@ Selection rules:
 - A **skipped** ticket (checked, still in `human-review/`): the developer may reselect it to look again or resolve it now.
 - An **approved/rejected/blocked/backlogged/aborted** ticket (checked, gone from `human-review/`): tell the developer it is already resolved and reprint the checklist; do not reopen it.
 
-The deep read stays delayed: the card gives you the summary and the inspect menu. Only open `detail.md` (full History, Issues, acceptance criteria) and the `evidence/` tree for a ticket when the developer drills into something the card does not carry, and only for the selected ticket, never all up front.
+The deep read stays delayed until a ticket is selected: for the list itself the card gives you the ticket's facts and the inspect menu. When a ticket **is** selected you read its `## History` once, to list its human rejections (Step 2). Beyond that, only open the rest of `detail.md` (Issues, acceptance criteria) and the `evidence/` tree when the developer drills into something the card does not carry, and only for the selected ticket, never all up front.
 
 End the review loop when the developer stops (`q`/`quit`/`stop`), or when **every box is checked**. When all boxes are checked, say so plainly (e.g. "All tickets processed this pass; skipped ones remain in human-review for next time") so the developer knows the pass is exhausted.
 
@@ -83,13 +83,18 @@ When the developer selects a ticket (by number or name), walk them through that 
 
 For the chosen ticket:
 
-1. **Get and summarise the card.** Print the selected ticket's card:
+1. **Print the human-rejection history, then the summary card.** Get the card:
 
    `(cd state && bun ../scripts/ticket-card.ts <id>)`
 
-   It prints the ticket's summary facts (changed files, the evidence pass, test results, screenshot paths, commit, the paths to its `detail.md` and `evidence/`) and its tailored inspect menu. Give a short, simple summary (≤3 bullets) of the work and the evidence: what changed (the card's changed files), the test results, and the screenshot paths. Only open `detail.md`/`evidence/` when the developer asks for something the card does not cover (the full History/Issues, a specific transcript).
+   The card is a **short summary**: the ticket's name and Description, its changed-file and screenshot **counts** (not the full lists), the latest evidence pass, test results, test plan, commit, the `detail.md`/`evidence/` paths, and its tailored inspect menu. Present these two things, in this order:
 
-2. **Run the inspect loop.** Print the inspect menu the card lists (already tailored to this ticket) and let the developer pick options **in any order, one at a time**. Do not dump everything at once: run the picked option, then reprint the menu and wait. The full menu, before tailoring, is:
+   1. **Human rejections.** Read the ticket's `## History` (in its `detail.md`, path in the card) and list **every prior human rejection** of this ticket, oldest first: one line each, saying **what the developer rejected** and **a very brief note on how it was subsequently rectified** (from the rework/implementation entries that followed the rejection; write "not yet reworked" if none followed). This is **human** rejections only, a developer's decision at this gate ("Human review: REJECTED" entries), never agent-review rejections. If there have been none, print `Human rejections: none.`
+   2. **The summary card.** Print the card's output as the script produced it (its output goes to the tool result, which the developer may not see, so copy it into your reply). It is already concise: **do not expand the counts into full file or screenshot lists, and do not re-summarise or drop any of it.** The full detail lives behind the inspect menu (option 1 opens the screenshots, the diff options show the files), reached on demand. The card ends with the inspect menu, which is the developer's action prompt (Step 2); when there are screenshots you may add one line after it suggesting they start there.
+
+   Only open `detail.md`/`evidence/` beyond the History read above when the developer asks for something they do not cover (the Issues, acceptance criteria, a specific transcript).
+
+2. **Run the inspect loop.** The verbatim card you pasted in step 1 already ends with the tailored inspect menu, so it is on screen; do not retype it here. Let the developer pick options **in any order, one at a time**. Do not dump everything at once: run the picked option, then reprint the menu and wait. The full menu, before tailoring, is:
 
    ```
    1. Show the screenshots
@@ -108,7 +113,7 @@ For the chosen ticket:
 
    **Showing means pasting into your reply (mandatory, applies to every "show" pick and to any ad-hoc "show me ..." the developer types).** When the task is to *show* content (a file, a diff, a doc, command output), the content must appear **in the body of your reply as a fenced code block** (this is for text content; screenshots are not rendered inline, see option 1 below). Running `git show`/`git diff`/`cat`/`Read`/a test command does **not** count as showing it: command output and terminal scrollback are not your message and the developer may never see them. If you ran a command to fetch the content, copy the relevant content into your reply. For brand-new files, paste the file content itself, not a `+`-prefixed diff with repeated commit headers. Output the content and stop: add no description, recap, analysis, verdict, or summary after it (see **Show only, nothing trailing** in the Output style above). If the developer says they did not see what they asked for, assume it went to command output and re-send it inline.
 
-   1. **Show the screenshots.** Use the card's screenshot paths. State each screenshot's **full file path on disk** (e.g. `state/tickets/human-review/<id>/evidence/implementation-N/screenshots/<name>.png`), then **open them for the developer** in their image viewer (`xdg-open <path>` on Linux, `open <path>` on macOS), one command per screenshot. List every path. Showing the paths is mandatory, not optional. **Do not render the screenshots inline.** A `Read` of a PNG produces a tool result, which is scrollback the developer never sees in chat, so it is wasted work; `xdg-open` is the only thing that reaches their viewer. **Once the screenshots are open, this option is done: return to the inspect menu immediately.** Do not read other files, and add no description, analysis, or verdict.
+   1. **Show the screenshots.** List the PNG files in the card's **screenshots directory** (the card gives its path and count) to get their paths. State each screenshot's **full file path on disk** (e.g. `state/tickets/human-review/<id>/evidence/implementation-N/screenshots/<name>.png`), then **open them for the developer** in their image viewer (`xdg-open <path>` on Linux, `open <path>` on macOS), one command per screenshot. List every path. Showing the paths is mandatory, not optional. **Do not render the screenshots inline.** A `Read` of a PNG produces a tool result, which is scrollback the developer never sees in chat, so it is wasted work; `xdg-open` is the only thing that reaches their viewer. **Once the screenshots are open, this option is done: return to the inspect menu immediately.** Do not read other files, and add no description, analysis, or verdict.
    2. **Run it by hand.** Work out which part of the app this ticket changed (from its card's changed-files and `detail.md`), then give the developer everything they need to run and explore it themselves. Pull the exact commands from the **testing manual** (`project/docs/testing-manual/`) if the project keeps one, else from the README or run docs; only if none exist, work them out from the code. Do not invent commands the project already documents. Cover all six, in order:
       1. **Point to the source of the commands.** Name the file and section (the testing manual, README, or run docs) that covers running the app and testing this feature, if the project documents it.
       2. **Setup commands.** The exact command(s) from the manual to set up (e.g. load database fixtures, start test clusters).
@@ -159,11 +164,28 @@ See the `pick-one-loop` checklist example in [docs/ticket-selection.md](../../..
 ```
 Developer: 1
 
-search-3, debounced search input
-- Changed: src/search/input.tsx (+44 -3)
-- Evidence (review-1/): unit 12 passed, smoke exit 0
+Human rejections:
+- 2026-07-12: rejected because typing still fired a request per keystroke. Rectified: added a 300ms debounce and an e2e test asserting one request after a burst.
 
-How do you want to inspect it?
+[ticket-card.ts summary card, printed as-is:]
+search-3: debounced search input
+
+Description:
+Debounce the search box so it only queries after the user stops typing, not on every keystroke.
+
+Changed files: 2 (1 code, 1 docs)
+Docs changed:
+  docs/spec/search/detail.md
+Latest evidence pass: implementation-2 / review-1
+Test results:
+  unit: 12 passed
+  smoke: exit 0
+Screenshots: 2 (in state/tickets/human-review/search-3/evidence/implementation-2/screenshots)
+Commit: 1a2b3c4
+Detail: state/tickets/human-review/search-3/detail.md
+Evidence dir: state/tickets/human-review/search-3/evidence
+
+Inspect menu:
 1. Show the screenshots
 2. Run it by hand (I show you how)
 3. Start it for you (I launch the app, you explore it)
@@ -191,7 +213,9 @@ Developer: placeholder should say "Search docs".
 
 Developer: search-5
 
-search-5, fuzzy matching
+Human rejections: none.
+
+[ticket-card.ts summary card for search-5: name, Description, counts, evidence, inspect menu]
 Developer: ab, not shipping it.
 - Abort reason -> search-5 History. Moved -> aborted/.
 - Mark: --mark search-5 --outcome aborted (reprints the checklist).

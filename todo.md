@@ -1,5 +1,7 @@
 # Todo
 
+- Fix the scripts to none of them the require the LLM to do a cd. It makes mistakes when it does that.
+- The history of a project (e.g. rejections) should be yaml. That way the ts code can read it and present it to the user without the LLM having to get it into context and filter/summarise it.
 - Be cool if there are different interviews for different types of projects.
 - Be cool to set the CC status bar to show an overview of current stashouldfte.
 - I still need planning!
