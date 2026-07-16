@@ -111,6 +111,29 @@ async function latestPass(
     return ns.length > 0 ? `${prefix}-${ns[0]}` : null;
 }
 
+// Collect image file paths anywhere under a directory, at any nesting depth.
+// Screenshots may sit directly in screenshots/ or be grouped into subfolders
+// (e.g. light/, dark/, or deeper), so walk the whole tree rather than assume a
+// fixed layout.
+async function collectImages(dir: string): Promise<string[]> {
+    let entries;
+    try {
+        entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+    const found: string[] = [];
+    for (const e of entries) {
+        const path = join(dir, e.name);
+        if (e.isDirectory()) {
+            found.push(...(await collectImages(path)));
+        } else if (e.isFile() && /\.(png|jpg|jpeg)$/i.test(e.name)) {
+            found.push(path);
+        }
+    }
+    return found;
+}
+
 // Collect screenshot file paths under a pass's screenshots/ directory.
 async function passScreenshots(
     evidenceDir: string,
@@ -120,15 +143,7 @@ async function passScreenshots(
         return [];
     }
     const dir = join(evidenceDir, pass, "screenshots");
-    try {
-        const entries = await readdir(dir, { withFileTypes: true });
-        return entries
-            .filter((e) => e.isFile() && /\.(png|jpg|jpeg)$/i.test(e.name))
-            .map((e) => join(dir, e.name))
-            .sort();
-    } catch {
-        return [];
-    }
+    return (await collectImages(dir)).sort();
 }
 
 // Read the tail result of each check's .txt in a pass, as a short status line.
@@ -360,10 +375,17 @@ export function formatCard(id: string, card: TicketCard): string {
         lines.push(card.testPlan);
     }
 
-    // Count plus the directory they live in, not every path: the "show the
-    // screenshots" inspect option lists and opens them from that directory.
+    // Count plus the screenshots/ root they live under, not every path: the
+    // "show the screenshots" inspect option lists and opens them from there
+    // (recursing into any subfolders such as light/ and dark/).
     if (card.screenshots.length > 0) {
-        const dir = card.screenshots[0].replace(/\/[^/]+$/, "");
+        const first = card.screenshots[0];
+        const marker = "/screenshots/";
+        const idx = first.indexOf(marker);
+        const dir =
+            idx >= 0
+                ? first.slice(0, idx + marker.length - 1)
+                : first.replace(/\/[^/]+$/, "");
         lines.push(`Screenshots: ${card.screenshots.length} (in ${dir})`);
     }
 

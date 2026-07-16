@@ -36,7 +36,11 @@ async function makeTicket(
         const ss = join(tdir, "evidence", "implementation-1", "screenshots");
         await mkdir(ss, { recursive: true });
         for (const name of opts.screenshots) {
-            await writeFile(join(ss, name), "png");
+            // A name may carry subfolders (e.g. "light/01.png"), so create the
+            // parent dir before writing the file.
+            const file = join(ss, name);
+            await mkdir(join(file, ".."), { recursive: true });
+            await writeFile(file, "png");
         }
     }
 }
@@ -48,6 +52,14 @@ beforeAll(async () => {
     await makeTicket("a-1", "first ticket", {
         screenshots: ["light.png", "dark.png"],
         results: { unit: "EXIT=0", e2e: "396 passed" },
+    });
+    await makeTicket("c-1", "nested-screenshot ticket", {
+        screenshots: [
+            "light/01.png",
+            "light/02.png",
+            "dark/01.png",
+            "dark/02.png",
+        ],
     });
 });
 
@@ -80,6 +92,15 @@ describe("gatherCard", () => {
         const card = await gatherCard(ticketsDir, "human-review", "b-1");
         expect(card.screenshots).toHaveLength(0);
         expect(card.inspect.map((o) => o.key)).not.toContain("screenshots");
+    });
+
+    test("finds screenshots nested in subfolders (light/, dark/)", async () => {
+        const card = await gatherCard(ticketsDir, "human-review", "c-1");
+        expect(card.screenshots).toHaveLength(4);
+        expect(card.inspect.map((o) => o.key)).toContain("screenshots");
+        // The reported directory is the screenshots/ root, not a subfolder.
+        const out = formatCard("c-1", card);
+        expect(out).toMatch(/Screenshots: 4 \(in .*\/screenshots\)$/m);
     });
 });
 
