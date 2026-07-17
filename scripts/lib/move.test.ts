@@ -174,4 +174,26 @@ describe("move()", () => {
         expect(demoted.to).toBe("backlog");
         expect(await isDir(join(ticketsDir, "backlog", "later-1"))).toBe(true);
     });
+
+    test("moves a ticket merge-queue ↔ conflicts round trip", async () => {
+        // The conflict path: an approved ticket that will not cherry-pick onto
+        // main parks in conflicts/, is rebased there, and rejoins merge-queue/
+        // without passing back through todo/ or human-review/.
+        await makeTicket("merge-queue", "clash-1");
+
+        const parked = await move("clash-1", "conflicts", ticketsDir);
+        expect(parked.from).toBe("merge-queue");
+        expect(parked.to).toBe("conflicts");
+        expect(await isDir(join(ticketsDir, "conflicts", "clash-1"))).toBe(true);
+        expect(await isDir(join(ticketsDir, "merge-queue", "clash-1"))).toBe(
+            false,
+        );
+
+        const rejoined = await move("clash-1", "merge-queue", ticketsDir);
+        expect(rejoined.from).toBe("conflicts");
+        expect(rejoined.to).toBe("merge-queue");
+        expect(await isDir(join(ticketsDir, "merge-queue", "clash-1"))).toBe(
+            true,
+        );
+    });
 });

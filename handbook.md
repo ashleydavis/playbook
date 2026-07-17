@@ -160,6 +160,11 @@ flowchart TD
     MA -->|Tests Fail| FIX["Fix Immediately on Main"]
     FIX --> MA
     MA -->|"Gives up"| WQ
+    MA -->|"Cherry-pick conflicts (not a failure)"| CQ[("Conflicts Queue")]
+    CQ --> CA["Conflict Agent: Rebase onto Main, Re-run All Checks"]
+    CA -->|"Rebased and green"| MQ
+    CA -->|"Fail (retry the rebase)"| CQ
+    CA -->|"3rd failure"| BLK
     MA -->|Tests Pass| DONE(["Ticket Complete"])
     IMPL -->|"Fail (retry)"| WQ
     BLK -->|"developer re-admits"| WQ
@@ -167,15 +172,19 @@ flowchart TD
 
 Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
 
+The one arrow that skips the developer is `conflicts/` → `merge-queue/`. A cherry-pick conflict means main moved, not that the work is wrong, so the ticket is rebased and re-verified and rejoins the train on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
+
 Each stage is driven by a skill; see [Skills](#skills) for what each one does.
 
 ## Handling Failures
 
-A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a merge conflict can't be resolved, a Debug ticket back with no proven root cause, a Fix ticket doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
+A failure is any setback, whatever its source: a sub-agent times out or exhausts its turn budget, a check fails, a rebase in `conflicts/` can't be resolved, a Debug ticket back with no proven root cause, a Fix ticket doesn't solve its problem, or post-merge checks fail on main. They are all handled the same way, so the loop fails loudly and hands back rather than grinding.
+
+**A merge-train cherry-pick conflict is not a failure.** When an approved ticket won't apply onto main because main moved under it, nothing is wrong with the ticket: it needs a rebase, not a rework. It goes to `conflicts/` (see [The queues](#the-state-repo)), is never recorded with `fail-ticket.ts`, and counts toward no cap. `/pb:next` rebases it, re-runs its checks, and returns it straight to `merge-queue/` without troubling the developer, because they already approved it. Only a rebase that genuinely can't be resolved, or a check that then fails on the new main, is a failure.
 
 **Every failure is recorded.** Whichever agent hits the failure runs `fail-ticket.ts <id>` to increment the ticket's `**Failures:**` count in its `index.md`, and writes a History entry in the ticket's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the ticket.
 
-**Three strikes parks the ticket.** Below three failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action.
+**Three strikes parks the ticket.** Below three failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action. A ticket failing its rebase in `conflicts/` is the one exception to where it lands: under the cap it stays in `conflicts/` to have the rebase retried (it is already approved, so there is nothing to re-implement from `todo/`), and on the third failure it parks in `blocked/` like anything else.
 
 **One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
@@ -281,6 +290,7 @@ state/
     human-review/     # Tickets awaiting developer review
     merge-queue/      # Approved tickets waiting to merge
     done/             # Completed tickets
+    conflicts/        # Approved tickets that missed a train because main moved; pb:next rebases them back into merge-queue/
     blocked/          # Parked for the developer after a hard/repeated failure (not a pipeline stage)
     aborted/          # Killed by the developer during pb:review (abandoned, terminal; not a pipeline stage)
 ```
@@ -356,7 +366,7 @@ Sets or changes `**Priority:**` on tickets in `todo/` or `backlog/`. Lower numbe
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
+Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `conflicts/` → `merge-queue/` → `agent-review/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it rebases any approved ticket that missed the last train, merges approved tickets, then clears every review already in flight, then picks up to 10 unblocked `todo/` tickets into worktrees and runs a per-ticket sub-agent through each stage (implement, agent-review) until the ticket reaches `human-review/`. Draining `agent-review/` ahead of `todo/` keeps tickets flowing through to `human-review/` instead of piling up fresh `in-progress/` work behind a backlog of unreviewed tickets. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics, the blocked/-on-failure handling, and the Debug/Fix exceptions are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md).
 
 ### Ticket selection menu
 

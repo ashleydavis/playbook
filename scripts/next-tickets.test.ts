@@ -47,8 +47,9 @@ afterEach(async () => {
 });
 
 describe("nextTickets()", () => {
-    test("returns all four queues as empty arrays for an empty tickets/", async () => {
+    test("returns all five queues as empty arrays for an empty tickets/", async () => {
         expect(await nextTickets(ticketsDir)).toEqual({
+            conflicts: [],
             "merge-queue": [],
             todo: [],
             "in-progress": [],
@@ -56,17 +57,34 @@ describe("nextTickets()", () => {
         });
     });
 
-    test("lists merge-queue, in-progress and agent-review in full, sorted", async () => {
+    test("lists conflicts, merge-queue, in-progress and agent-review in full, sorted", async () => {
+        await makeTicket("conflicts", "auth-7");
         await makeTicket("merge-queue", "auth-5");
         await makeTicket("in-progress", "infra-2");
         await makeTicket("agent-review", "search-5");
         await makeTicket("agent-review", "search-4");
 
         const report = await nextTickets(ticketsDir);
+        expect(report.conflicts).toEqual(["auth-7"]);
         expect(report["merge-queue"]).toEqual(["auth-5"]);
         expect(report["in-progress"]).toEqual(["infra-2"]);
         expect(report["agent-review"]).toEqual(["search-4", "search-5"]);
         expect(report.todo).toEqual([]);
+    });
+
+    test("conflicts is reported first, ahead of merge-queue", async () => {
+        await makeTicket("conflicts", "auth-7");
+        await makeTicket("merge-queue", "auth-5");
+
+        // The key order is the order pb:next processes the queues: an approved
+        // ticket waiting to be rebased is nearer to done than the train itself.
+        expect(Object.keys(await nextTickets(ticketsDir))).toEqual([
+            "conflicts",
+            "merge-queue",
+            "agent-review",
+            "todo",
+            "in-progress",
+        ]);
     });
 
     test("todo lists actionable tickets sorted by priority then ID", async () => {
@@ -121,6 +139,30 @@ describe("nextTickets()", () => {
         const report = await nextTickets(ticketsDir, 2);
         expect(report.todo).toEqual(["a-1", "b-1"]);
         expect(report["merge-queue"]).toEqual(["m-1", "m-2"]);
+    });
+
+    test("conflicts share the in-flight budget with todo and in-progress", async () => {
+        // Rebasing a conflict ticket is implementation work in its own
+        // worktree, so it spends the same budget a todo admission would.
+        await makeTicket("conflicts", "c-1");
+        await makeTicket("todo", "a-1");
+        await makeTicket("todo", "b-1");
+
+        const report = await nextTickets(ticketsDir, 2);
+        expect(report.todo).toEqual(["a-1"]);
+        expect(report.conflicts).toEqual(["c-1"]);
+    });
+
+    test("the limit does not cap conflicts itself", async () => {
+        await makeTicket("conflicts", "c-1");
+        await makeTicket("conflicts", "c-2");
+        await makeTicket("conflicts", "c-3");
+        await makeTicket("todo", "a-1");
+
+        const report = await nextTickets(ticketsDir, 2);
+        expect(report.conflicts).toEqual(["c-1", "c-2", "c-3"]);
+        // conflicts already over the budget, so no todo is admitted alongside.
+        expect(report.todo).toEqual([]);
     });
 
     test("todo and in-progress share the limit budget", async () => {

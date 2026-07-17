@@ -4,15 +4,19 @@
 // Usage (run with the state repo as the current working directory):
 //   bun playbook/scripts/next-tickets.ts
 //
-// Prints a JSON object keyed by the four queues pb:next drives, each value the
+// Prints a JSON object keyed by the five queues pb:next drives, each value the
 // list of ticket IDs to act on in that queue. The keys are in the order pb:next
-// processes them each turn (merge-queue, then agent-review, then todo, then
-// in-progress: finish work nearest to done before starting new work):
+// processes them each turn (conflicts, then merge-queue, then agent-review, then
+// todo, then in-progress: finish work nearest to done before starting new work):
 //
-//   merge-queue, agent-review, in-progress: every ticket in the queue.
+//   conflicts, merge-queue, agent-review, in-progress: every ticket in the queue.
 //   todo: only the actionable tickets (dependencies resolved), sorted by
 //         **Priority:** ascending then ID, capped so that todo + in-progress
 //         together never exceed LIMIT tickets in flight.
+//
+// conflicts/ is drained first: it holds tickets the developer already approved
+// that failed to cherry-pick onto main, so they are the work nearest to done.
+// Each is rebased and re-verified in place and rejoins merge-queue/ on success.
 //
 // A todo ticket is actionable only when every one of its dependencies is in done/
 // (merged): tickets cannot start until their dependencies are merged. A dependency
@@ -21,9 +25,13 @@
 // to resolve dependencies; it is not reported. human-review/ and backlog/ are
 // neither driven nor read.
 //
-// The todo cap shares one budget with in-progress: the implementation stage runs
-// at most LIMIT tickets at once, so todo is trimmed to LIMIT minus however many are
-// already in-progress (zero todo once in-progress is full).
+// The todo cap shares one budget with in-progress and conflicts: rebasing a
+// conflict ticket is implementation work in its own worktree, so the three
+// together are what the implementation stage runs at once. todo is trimmed to
+// LIMIT minus however many are already in-progress or in conflicts (zero todo
+// once they fill it). Conflicts are drained first and count against the budget
+// so a pile of them cannot be joined by a fresh batch of todo work on the same
+// host.
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -38,6 +46,7 @@ import {
 // (finish work nearest to done before starting anything new). Reported in this
 // key order.
 export const QUEUES = [
+    "conflicts",
     "merge-queue",
     "agent-review",
     "todo",
@@ -74,7 +83,11 @@ export async function nextTickets(
     limit: number = LIMIT,
 ): Promise<NextTicketsReport> {
     const inProgress = await listQueue(join(ticketsDir, "in-progress"));
-    const todoBudget = Math.max(0, limit - inProgress.length);
+    const conflicts = await listQueue(join(ticketsDir, "conflicts"));
+    const todoBudget = Math.max(
+        0,
+        limit - inProgress.length - conflicts.length,
+    );
 
     const todoIds = await listQueue(join(ticketsDir, "todo"));
     const done = new Set(await listQueue(join(ticketsDir, "done")));
@@ -100,6 +113,7 @@ export async function nextTickets(
     const todoReady = actionable.slice(0, todoBudget).map((t) => t.id);
 
     return {
+        conflicts,
         "merge-queue": await listQueue(join(ticketsDir, "merge-queue")),
         "agent-review": await listQueue(join(ticketsDir, "agent-review")),
         todo: todoReady,
