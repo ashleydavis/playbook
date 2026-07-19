@@ -47,7 +47,11 @@ fi
 grep -q 'a-1: a real title' <<<"$output" || fail "title missing in: $output"
 grep -q 'Latest evidence pass:' <<<"$output" || fail "evidence pass missing in: $output"
 grep -q 'unit: EXIT=0' <<<"$output" || fail "test result missing in: $output"
-grep -q 'light.png' <<<"$output" || fail "screenshot missing in: $output"
+# The card prints a screenshot count and the directory, not the filenames.
+grep -q 'Screenshots: 2' <<<"$output" || fail "screenshot count missing in: $output"
+# This fixture has no project worktree, so the card must warn loudly rather than
+# stay silent: the code under review cannot be run/launched from anywhere.
+grep -q 'WARNING: no worktree found at project/worktrees/a-1' <<<"$output" || fail "missing-worktree warning missing in: $output"
 grep -q 'Inspect menu:' <<<"$output" || fail "inspect menu missing in: $output"
 
 # Error path: a missing id must exit non-zero.

@@ -117,6 +117,7 @@ describe("formatCard", () => {
         screenshots: ["light.png", "dark.png"],
         testPlan: "Unit and e2e.",
         commit: null,
+        worktree: { path: null, head: null, headMatchesCommit: false },
         paths: { detail: "d/detail.md", evidenceDir: "d/evidence" },
         inspect: [
             { key: "screenshots", label: "Show screenshots" },
@@ -159,5 +160,47 @@ describe("formatCard", () => {
         });
         expect(out).toContain("Changed files: 3 (2 code, 1 docs)");
         expect(out).not.toContain("  src/a.ts");
+    });
+
+    test("names the worktree as the place to run/launch/diff when HEAD matches the commit", () => {
+        const out = formatCard("a-1", {
+            ...baseCard,
+            commit: "abc123",
+            worktree: {
+                path: "/repo/project/worktrees/a-1",
+                head: "abc123",
+                headMatchesCommit: true,
+            },
+        });
+        expect(out).toContain(
+            "Worktree (run / launch / diff from HERE, never project/): /repo/project/worktrees/a-1",
+        );
+        expect(out).not.toContain("WARNING");
+    });
+
+    test("warns, not silently degrades, when no worktree exists for the ticket", () => {
+        const out = formatCard("a-1", {
+            ...baseCard,
+            commit: "abc123",
+            worktree: { path: null, head: null, headMatchesCommit: false },
+        });
+        expect(out).toContain("WARNING: no worktree found at project/worktrees/a-1");
+        expect(out).toContain("Do NOT launch project/ as a substitute");
+    });
+
+    test("warns when the worktree HEAD does not match the ticket commit", () => {
+        const out = formatCard("a-1", {
+            ...baseCard,
+            commit: "abc123",
+            worktree: {
+                path: "/repo/project/worktrees/a-1",
+                head: "def456",
+                headMatchesCommit: false,
+            },
+        });
+        expect(out).toContain(
+            "WARNING: the worktree's HEAD does not match the ticket commit abc123",
+        );
+        expect(out).toContain("Never fall back to project/");
     });
 });

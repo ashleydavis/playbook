@@ -41,6 +41,13 @@ export interface TicketCard {
     screenshots: string[];
     testPlan: string | null;
     commit: string | null;
+    // The ticket's worktree: where the code under review actually lives. The
+    // `project/` checkout is `main` and does NOT contain the ticket's changes
+    // until it merges, so every runnable/diff inspect action must operate here,
+    // never in `project/`. `headMatchesCommit` is the guard: false means the
+    // worktree is missing or checked out at a different commit than the branch
+    // tip, and the reviewer must stop rather than show the wrong code.
+    worktree: { path: string | null; head: string | null; headMatchesCommit: boolean };
     paths: { detail: string; evidenceDir: string };
     // The tailored inspect menu, already filtered and numbered.
     inspect: InspectOption[];
@@ -212,6 +219,35 @@ async function changedFiles(
     }
 }
 
+// Best-effort: resolve the ticket's worktree (`project/worktrees/<id>`) and its
+// checked-out HEAD, and confirm that HEAD matches the branch tip the card
+// reports as `commit`. This is the code the reviewer must run/launch/diff; the
+// `project/` checkout is `main` and lacks the ticket's changes. Never throws:
+// a missing worktree or absent git degrades to { path: null, head: null,
+// headMatchesCommit: false }, which the card renders as a loud warning.
+async function worktreeInfo(
+    id: string,
+    commit: string | null,
+): Promise<{ path: string | null; head: string | null; headMatchesCommit: boolean }> {
+    const path = join(process.cwd(), "..", "project", "worktrees", id);
+    try {
+        await stat(path);
+    } catch {
+        return { path: null, head: null, headMatchesCommit: false };
+    }
+    let head: string | null = null;
+    try {
+        const { stdout } = await run("git", ["-C", path, "rev-parse", "HEAD"], {
+            timeout: 10000,
+        });
+        head = stdout.trim();
+    } catch {
+        head = null;
+    }
+    const headMatchesCommit = head !== null && commit !== null && head === commit;
+    return { path, head, headMatchesCommit };
+}
+
 // Tailor the inspect menu to the ticket: drop options that cannot apply.
 function buildInspect(card: {
     screenshots: string[];
@@ -292,6 +328,7 @@ export async function gatherCard(
 
     const { files, known, commit } = await changedFiles(id);
     const docsChanged = files.filter((f) => f.startsWith("docs/"));
+    const worktree = await worktreeInfo(id, commit);
 
     const inspect = buildInspect({
         screenshots,
@@ -313,6 +350,7 @@ export async function gatherCard(
         screenshots,
         testPlan,
         commit,
+        worktree,
         paths: { detail: detailPath, evidenceDir },
         inspect,
     };
@@ -392,6 +430,34 @@ export function formatCard(id: string, card: TicketCard): string {
     if (card.commit) {
         lines.push(`Commit: ${card.commit}`);
     }
+
+    // The worktree is where the code under review lives. Name it explicitly and
+    // insist every runnable/diff action use it: `project/` is `main` and does
+    // NOT contain this ticket's changes, so launching the app or diffing from
+    // there shows the wrong code. A missing worktree or a HEAD that does not
+    // match the branch tip is a hard stop, printed as a warning the reviewer
+    // cannot miss, not a thinner card.
+    if (card.worktree.path && card.worktree.headMatchesCommit) {
+        lines.push(
+            `Worktree (run / launch / diff from HERE, never project/): ${card.worktree.path}`,
+        );
+    } else if (card.worktree.path) {
+        lines.push(
+            `Worktree: ${card.worktree.path}` +
+                (card.worktree.head ? ` (HEAD ${card.worktree.head})` : " (no HEAD)"),
+        );
+        lines.push(
+            `** WARNING: the worktree's HEAD does not match the ticket commit ${card.commit ?? "(unknown)"}. ` +
+                `Do NOT run, launch, test, or diff this ticket until it is reconciled. Never fall back to project/ (that is main). **`,
+        );
+    } else {
+        lines.push(
+            `** WARNING: no worktree found at project/worktrees/${id}. ` +
+                `The code under review is not checked out anywhere, so it cannot be run or launched. ` +
+                `Do NOT launch project/ as a substitute (that is main, without this ticket's changes). **`,
+        );
+    }
+
     lines.push(`Detail: ${card.paths.detail}`);
     lines.push(`Evidence dir: ${card.paths.evidenceDir}`);
 
