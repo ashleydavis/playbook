@@ -315,7 +315,7 @@ Bootstrap scaffolds `project/` and `state/` as local git repos only. It does **n
 
 ## Planning
 
-Playbook does not ship a plan-authoring skill. Writing a plan, deciding what to build and capturing it in detail, is done with the planning skills from the global Claude configuration at <https://github.com/ashleydavis/claude-config>. Install that configuration (see its README for setup) so the `/plan:*` commands are available wherever you launch Claude Code. Playbook is designed to work alongside it.
+Playbook does not ship a plan-authoring skill. Writing a plan, deciding what to build and capturing it in detail, is done with the planning skills from the global Claude configuration at <https://github.com/ashleydavis/agent-config>. Install that configuration (see its README for setup) so the `/plan:*` commands are available wherever you launch Claude Code. Playbook is designed to work alongside it.
 
 Those skills author and refine a plan and save it as a markdown file under `project/docs/plans/new/`:
 
