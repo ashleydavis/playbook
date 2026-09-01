@@ -41,7 +41,50 @@ cd playbook
 
 > **Permissions warning.** The committed `.claude/settings.json` sets `bypassPermissions`, so Claude Code runs with permission prompts **off** wherever the playbook repo is launched, including your own host. Run it inside a sandbox VM (see [Host + VM](handbook.md#host--vm)) so the blast radius is the VM, not your machine.
 
-> **Your remotes are your responsibility.** Bootstrap scaffolds `project/` and `state/` as local git repos only. It does not create GitHub repos or push for you. Create a remote for each (the state repo too) and push periodically; Playbook won't do that for you.
+> **Your remotes are your responsibility.** Bootstrap scaffolds `project/` and `state/` as local git repos only. It does not create GitHub repos or push for you. Create a remote for each (the state repo too) and push periodically; Playbook won't do that for you. See [Moving to a new machine](#moving-to-a-new-machine) for what that costs you if you skip it.
+
+## Moving to a new machine
+
+Bootstrap runs once per project, ever. Setting the same project up again on a second machine is three clones, not a bootstrap: **do not** run `/pb:bootstrap:existing` again, it scaffolds over work you already have.
+
+The playbook gitignores `project/` and `state/`, so cloning the playbook brings neither. Each has to be cloned into place itself, which means each needs a remote. If the state repo has no remote yet, give it one from the old machine first (once, ever):
+
+```bash
+gh repo create karse-state --private --source=state --remote=origin
+git -C state push -u origin main
+```
+
+Then on the new machine, a worked example for the `karse` project (substitute your own repo names):
+
+```bash
+# 1. Clone the playbook, one clone per project.
+git clone https://github.com/ashleydavis/playbook.git playbook-karse
+cd playbook-karse
+
+# 2. Prerequisites: git >= 2.48, bun, Claude Code.
+#    On a fresh Ubuntu machine this installs all three; skip it if you have them.
+bash scripts/install-prereqs.sh
+
+# 3. The project repo goes at project/, the state repo at state/.
+#    The directory names matter: the skills and scripts look for exactly these.
+git clone git@github.com:ashleydavis/karse.git project
+git clone git@github.com:ashleydavis/karse-state.git state
+
+# 4. Whatever the project itself needs to build, test and run.
+#    For karse that is its pinned toolchain and its dependencies:
+(cd project && mise trust && mise install && bun install)
+
+# 5. Launch Claude Code from the playbook repo root (playbook-karse/), then:
+#      /pb:status
+```
+
+Before you move, know what does not travel:
+
+- **Unmerged ticket work.** Ticket branches and their worktrees under `project/worktrees/` are local to the machine that ran `/pb:next`, and nothing in the process pushes them. Drain the queues to `done/` first, or run `/pb:reset` to requeue and discard them; anything left in `in-progress/`, `agent-review/` or `human-review/` arrives on the new machine as a ticket whose branch does not exist.
+- **Merges.** `/pb:next` merges approved tickets into the local `main` of `project/` and does not push. Push `project/` before you move, or the new clone is behind.
+- **Gitignored files.** Local Claude Code settings, build output, caches, logs. Recreate them on the new machine.
+
+Both machines can now stay in step, because both clone from the same three remotes. The state repo is the one people forget: the queues, the review history and every screenshot of captured evidence live there and nowhere else, so an unpushed state repo means one disk failure loses the record of everything the process has done.
 
 ## Next steps
 
