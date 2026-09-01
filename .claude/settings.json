@@ -2,5 +2,8 @@
     "permissions": {
         "defaultMode": "bypassPermissions"
     },
-    "autoMemoryEnabled": false
+    "autoMemoryEnabled": false,
+    "env": {
+        "EXPRESSIVE_PERMISSIONS": "off"
+    }
 }
