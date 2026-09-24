@@ -4,8 +4,31 @@ import {
     compareTickets,
     DEFAULT_PRIORITY,
     parseDependsOn,
+    parsePlatforms,
     parsePriority,
 } from "./ticket-meta";
+
+describe("parsePlatforms()", () => {
+    test("returns [] when the line is absent", () => {
+        expect(parsePlatforms("# ticket\n\n**ID:** ticket\n")).toEqual([]);
+    });
+
+    test("returns [] for an empty Platforms line", () => {
+        expect(parsePlatforms("**Platforms:**\n")).toEqual([]);
+    });
+
+    test("parses a single platform", () => {
+        expect(parsePlatforms("**Platforms:** linux\n")).toEqual(["linux"]);
+    });
+
+    test("parses and trims a comma-separated list", () => {
+        expect(parsePlatforms("**Platforms:** linux , darwin,win32\n")).toEqual([
+            "linux",
+            "darwin",
+            "win32",
+        ]);
+    });
+});
 
 describe("parsePriority()", () => {
     test("returns DEFAULT_PRIORITY when the line is absent", () => {

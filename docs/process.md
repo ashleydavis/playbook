@@ -88,7 +88,7 @@ In the project repo (`project/`):
 
 ## Tickets
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), optional `**Priority:**` (lower = sooner; default `100` when absent; tie-break by ID among actionable `todo/` tickets), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), optional `**Priority:**` (lower = sooner; default `100` when absent; tie-break by ID among actionable `todo/` tickets), optional `**Platforms:**` (`linux`, `darwin`, `win32`; a locked ticket enters `in-progress/` only on one of those platforms; absent means any), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
 - Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a reading-order hint only; `**Depends on:**` gates execution and `**Priority:**` orders actionable `todo/` tickets for `pb:next`.
 - Before writing any new ticket directory, the creating skill **always** asks where it should land (no default):
@@ -174,6 +174,7 @@ Rhythm: run `/pb:status`, run a skill, repeat. The developer drives that rhythm:
 | `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
 | `pb:promote` | Pull tickets from `backlog/` to `todo/` |
 | `pb:rank` | Set or change `**Priority:**` on tickets in `todo/` or `backlog/` |
+| `pb:platforms` | Set or clear `**Platforms:**` on tickets in `todo/` or `backlog/` |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
 | `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:reset` | Unwind a crashed/abandoned run: requeue in-progress, tear down worktrees |

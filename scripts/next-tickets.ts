@@ -18,6 +18,10 @@
 // that failed to cherry-pick onto main, so they are the work nearest to done.
 // Each is rebased and re-verified in place and rejoins merge-queue/ on success.
 //
+// A todo ticket locked to platforms (a `**Platforms:**` line) is actionable only
+// on one of those platforms (process.platform), so it enters in-progress/ only
+// on a machine that can work it. An unlocked ticket is actionable anywhere.
+//
 // A todo ticket is actionable only when every one of its dependencies is in done/
 // (merged): tickets cannot start until their dependencies are merged. A dependency
 // sitting anywhere else (todo, in-progress, agent-review, human-review,
@@ -39,6 +43,7 @@ import { join } from "node:path";
 import {
     compareTickets,
     parseDependsOn,
+    parsePlatforms,
     parsePriority,
 } from "./lib/ticket-meta";
 
@@ -78,9 +83,11 @@ async function listQueue(queueDir: string): Promise<string[]> {
 
 // Core logic: given the tickets/ directory, return the per-queue report.
 // `ticketsDir` is the path to the state repo's `tickets/` directory.
+// `platform` is the platform this machine runs on.
 export async function nextTickets(
     ticketsDir: string,
     limit: number = LIMIT,
+    platform: string = process.platform,
 ): Promise<NextTicketsReport> {
     const inProgress = await listQueue(join(ticketsDir, "in-progress"));
     const conflicts = await listQueue(join(ticketsDir, "conflicts"));
@@ -104,7 +111,11 @@ export async function nextTickets(
             indexMd = "";
         }
         const deps = parseDependsOn(indexMd);
-        if (deps.every((dep) => done.has(dep))) {
+        const platforms = parsePlatforms(indexMd);
+        if (
+            deps.every((dep) => done.has(dep)) &&
+            (platforms.length === 0 || platforms.includes(platform))
+        ) {
             actionable.push({ id, priority: parsePriority(indexMd) });
         }
     }

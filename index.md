@@ -12,7 +12,7 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [docs/decisions.md](docs/decisions.md): chronological log of decisions about the process (what changed and why), newest first.
 - [CLAUDE.md](CLAUDE.md): standing instructions, loaded when Claude Code launches from the playbook repo root.
 - [glossary.md](glossary.md): standard terminology.
-- [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan/break, docs, add, promote, rank, next, review, debug, customize, reset.
+- [.claude/commands/pb/](.claude/commands/pb/): help, status, board, plan/break, docs, add, promote, rank, platforms, next, review, debug, customize, reset.
 - [.claude/commands/pb/bootstrap/](.claude/commands/pb/bootstrap/): new, existing. Run once per project (`pb:bootstrap:*`).
 - [.claude/settings.json](.claude/settings.json): Claude Code settings for the playbook repo (permission prompts off).
 - [templates/](templates/): all templates, with its own [README.md](templates/README.md) and [index.md](templates/index.md). `project/` and `state/` are scaffolded into new projects by `pb:bootstrap:*`; `feature-template/` and `ticket-template/` are copied per ticket by `pb:plan:break`/`pb:add`; `commit-template/` is registered in place via `git config commit.template`.

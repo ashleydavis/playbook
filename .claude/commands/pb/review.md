@@ -184,6 +184,7 @@ search-3: debounced search input
 Description:
 Debounce the search box so it only queries after the user stops typing, not on every keystroke.
 
+Platforms: any
 Changed files: 2 (1 code, 1 docs)
 Docs changed:
   docs/spec/search/detail.md

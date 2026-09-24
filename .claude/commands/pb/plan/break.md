@@ -28,8 +28,13 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
    2. backlog, captured for later; pull to todo when ready
    ```
    Accept `1`/`2`, or `todo`/`backlog`. All tickets in the batch share the chosen queue.
+   Then ask once for the whole batch which platforms the tickets can run on (default `any`):
+   ```
+   Which platforms can these tickets run on? (linux, darwin, win32, comma-separated; or any)
+   ```
+   The developer may name different platforms for specific tickets.
 7. Create each ticket in `state/tickets/<queue>/<id>/` from `templates/ticket-template/`:
-   - `index.md`: ID, Type, Depends on, Failures `0`, Priority, and a one-line description.
+   - `index.md`: ID, Type, Depends on, Failures `0`, Priority, Platforms (omit the line for `any`), and a one-line description.
    - `detail.md`: Description, Acceptance Criteria, and Test Plan **derived from the plan's own Steps / Unit Tests / Smoke Tests / Verify sections**, not invented. Carry the plan's relevant guidance into Implementation Notes and Testing Notes. Where the plan calls for spec or testing-manual updates, fold them into the ticket that implements that slice (so the spec is authored by the work, not upfront).
    - A Test Plan is required. Use `N/A: <reason>` with a Manual Verification section only when the ticket has no testable behaviour. **A ticket that creates or changes a UI component may not use `N/A`, and may not defer its screenshots to a later ticket** (e.g. the e2e ticket that wires it in). If the slice adds or edits anything that renders, its Test Plan must require screenshots of that component (light + dark), rendered **in isolation** with sample props when no page consumes it yet. If a planned component cannot be screenshotted on its own, do not break it into a standalone ticket: bundle it with the first page that consumes it, or have the ticket add an isolated render/story harness, so screenshots are always possible.
    - **The final ticket archives the plan.** The last ticket in execution order (the one every other ticket depends on) gets an extra acceptance criterion: move the plan from `project/docs/plans/new/` to `project/docs/plans/done/` as part of that ticket's own committed, reviewed work, so the plan is archived on disk exactly when the last slice lands on main. This is a real file move in the project repo, not an output-less step; fold it into that ticket rather than creating a separate cleanup ticket.

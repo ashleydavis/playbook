@@ -1,6 +1,7 @@
 // Shared parsers for ticket surface fields read from index.md, plus the ticket
-// sort order. Imported by board-tickets, next-tickets, review-snapshot, and
-// format-ticket-selection, so it keeps parsing and sort order in one place.
+// sort order. Imported by board-tickets, next-tickets, review-snapshot,
+// format-ticket-selection, and ticket-card, so it keeps parsing and sort order
+// in one place.
 
 const PRIORITY_FIELD = /^\*\*Priority:\*\*[ \t]*(-?\d+)[ \t]*$/m;
 
@@ -19,6 +20,20 @@ export function parseDependsOn(indexMd: string): string[] {
         .map((id) => id.trim())
         .filter((id) => id.length > 0)
         .filter((id) => id.toLowerCase() !== "none");
+}
+
+// Pull the platform names out of an index.md's `**Platforms:**` line. Returns
+// [] when the line is absent or empty, meaning the ticket is not locked to any
+// platform.
+export function parsePlatforms(indexMd: string): string[] {
+    const match = indexMd.match(/^\*\*Platforms:\*\*(.*)$/m);
+    if (!match) {
+        return [];
+    }
+    return match[1]
+        .split(",")
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
 }
 
 // Read `**Priority:** <n>` from index.md. Returns DEFAULT_PRIORITY when the

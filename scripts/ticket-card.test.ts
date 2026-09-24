@@ -13,13 +13,19 @@ let ticketsDir: string;
 async function makeTicket(
     id: string,
     body: string,
-    opts: { screenshots?: string[]; results?: Record<string, string> } = {},
+    opts: {
+        screenshots?: string[];
+        results?: Record<string, string>;
+        platforms?: string;
+    } = {},
 ): Promise<void> {
     const tdir = join(ticketsDir, "human-review", id);
     await mkdir(tdir, { recursive: true });
+    const platformsLine =
+        opts.platforms !== undefined ? `**Platforms:** ${opts.platforms}\n` : "";
     await writeFile(
         join(tdir, "index.md"),
-        `# ${id}: a title\n\n**ID:** ${id}\n**Failures:** 0\n\n${body}\n`,
+        `# ${id}: a title\n\n**ID:** ${id}\n**Failures:** 0\n${platformsLine}\n${body}\n`,
     );
     await writeFile(
         join(tdir, "detail.md"),
@@ -49,6 +55,7 @@ beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), "ticket-card-test-"));
     ticketsDir = join(dir, "tickets");
     await makeTicket("b-1", "second ticket");
+    await makeTicket("d-1", "locked ticket", { platforms: "linux, darwin" });
     await makeTicket("a-1", "first ticket", {
         screenshots: ["light.png", "dark.png"],
         results: { unit: "EXIT=0", e2e: "396 passed" },
@@ -102,12 +109,20 @@ describe("gatherCard", () => {
         const out = formatCard("c-1", card);
         expect(out).toMatch(/Screenshots: 4 \(in .*\/screenshots\)$/m);
     });
+
+    test("reads the platforms from index.md, empty when not locked", async () => {
+        const locked = await gatherCard(ticketsDir, "human-review", "d-1");
+        expect(locked.platforms).toEqual(["linux", "darwin"]);
+        const unlocked = await gatherCard(ticketsDir, "human-review", "b-1");
+        expect(unlocked.platforms).toEqual([]);
+    });
 });
 
 describe("formatCard", () => {
     const baseCard: TicketCard = {
         title: "a-1: a real title",
         description: "The lead description.",
+        platforms: [],
         changedFiles: [],
         changedFilesKnown: false,
         docsChanged: [],
@@ -140,6 +155,15 @@ describe("formatCard", () => {
         expect(out).toContain("Inspect menu:");
         expect(out).toContain("1. Show screenshots");
         expect(out).toContain("2. Show code diff");
+    });
+
+    test("shows Platforms: any when the ticket is not locked", () => {
+        expect(formatCard("a-1", baseCard)).toContain("Platforms: any");
+    });
+
+    test("shows the platforms a locked ticket is limited to", () => {
+        const out = formatCard("a-1", { ...baseCard, platforms: ["linux", "darwin"] });
+        expect(out).toContain("Platforms: linux, darwin");
     });
 
     test("falls back to the id when the card has no title", () => {

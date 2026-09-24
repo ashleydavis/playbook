@@ -15,6 +15,8 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { parsePlatforms } from "./lib/ticket-meta";
+
 const run = promisify(execFile);
 
 // The eight inspect-loop options, in their canonical order. Each card lists the
@@ -30,6 +32,9 @@ export interface TicketCard {
     // the review loop can open with the ticket's name and description without a
     // separate read. Null when the ticket has no Description section.
     description: string | null;
+    // The platforms the ticket is locked to (its `**Platforms:**` line in
+    // index.md). Empty when it is not locked, shown as "any".
+    platforms: string[];
     // One-line "what changed" summary parts.
     changedFiles: string[];
     changedFilesKnown: boolean;
@@ -314,8 +319,16 @@ export async function gatherCard(
         md = "";
     }
 
+    let indexMd = "";
+    try {
+        indexMd = await readFile(join(ticketDir, "index.md"), "utf8");
+    } catch {
+        indexMd = "";
+    }
+
     const title = parseTitle(md, id);
     const description = parseDescription(md);
+    const platforms = parsePlatforms(indexMd);
     const testPlan = parseSection(md, "Test Plan");
 
     const latestImplementation = await latestPass(evidenceDir, "implementation");
@@ -341,6 +354,7 @@ export async function gatherCard(
     return {
         title,
         description,
+        platforms,
         changedFiles: files,
         changedFilesKnown: known,
         docsChanged,
@@ -369,6 +383,9 @@ export function formatCard(id: string, card: TicketCard): string {
         lines.push(card.description);
         lines.push("");
     }
+
+    const platforms = card.platforms ?? [];
+    lines.push(`Platforms: ${platforms.length > 0 ? platforms.join(", ") : "any"}`);
 
     // Print a count, not the whole list, so the card stays a short summary. The
     // full file list is one inspect-menu pick away (the code/doc diffs).

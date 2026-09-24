@@ -23,7 +23,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
    1. todo, ready for pb:next to pick up
    2. backlog, captured for later; pull to todo when ready
    ```
-   Accept `1`/`2`, or `todo`/`backlog`. Create tickets in `state/tickets/<queue>/<id>/`. When you create more than one, set each ticket's `**Depends on:**` field to capture the dependencies between them so they implement in the right order, and where possible number them in execution order so a dependent ticket gets a higher number than the tickets it depends on. Commit each new ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`). (The doc files themselves live in the project repo, not the state repo.)
+   Accept `1`/`2`, or `todo`/`backlog`. Also ask once per batch which platforms the tickets can run on (`linux`, `darwin`, `win32`, comma-separated; default `any`), and write a `**Platforms:**` line in each ticket's `index.md` unless the answer is `any`. Create tickets in `state/tickets/<queue>/<id>/`. When you create more than one, set each ticket's `**Depends on:**` field to capture the dependencies between them so they implement in the right order, and where possible number them in execution order so a dependent ticket gets a higher number than the tickets it depends on. Commit each new ticket: `bun ../scripts/commit-state.ts "add <id>" tickets/<queue>/<id>` (from `state/`). (The doc files themselves live in the project repo, not the state repo.)
 
 ## Example
 

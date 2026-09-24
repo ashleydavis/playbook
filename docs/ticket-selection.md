@@ -25,7 +25,7 @@ There is no hand-formatting fallback. If the script genuinely cannot represent a
 
 | Mode | Use when | Developer picks | Loop |
 |---|---|---|---|
-| `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No, act once, then report |
+| `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`, `pb:platforms`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No, act once, then report |
 | `pick-one-loop` | Repeated single-ticket work until done or stop (`pb:review`) | One number or ticket ID per turn; `q` / `quit` / `stop` ends the loop | Yes, reprint menu after each ticket is processed |
 
 ## Numbering rules (both modes)

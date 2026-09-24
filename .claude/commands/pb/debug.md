@@ -25,6 +25,8 @@ Create a Debug ticket in `todo/` with these acceptance criteria:
 
 **Allocate the ID with the tooling, never by hand.** Derive the feature prefix (its spec dir, or `misc`/`infra`) and run `bun ../scripts/next-id.ts <prefix> --debug` (from `state/`) for the next free `{prefix}-d{n}`. It scans **every** queue including `done/`, so the ID never collides with a retired ticket.
 
+Ask the developer which platforms the bug occurs on (`linux`, `darwin`, `win32`, comma-separated; default `any`), and write a `**Platforms:**` line in the Debug ticket's `index.md` unless the answer is `any`.
+
 After writing the Debug ticket directory, commit it to the state repo: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
 A Debug ticket is a pure investigation. **Any amount of experimentation on the code is allowed:** add logging, hack in instrumentation, comment things out, try ten different changes. None of it is kept. A Debug ticket produces no commits and its worktree is thrown away when the investigation ends, so the experimentation cannot reach main and does not need to be clean. The only output that survives is the write-up in `detail.md` plus the evidence.
@@ -53,7 +55,7 @@ The review agent's job for a Debug ticket is to assess that the root cause has a
 
 ### The Fix ticket
 
-The Fix ticket then flows through the full pipeline normally (in-progress -> agent-review -> human-review -> merge-queue -> done). Its acceptance criteria:
+The Fix ticket copies the Debug ticket's `**Platforms:**` line, if it has one, into its own `index.md`. The Fix ticket then flows through the full pipeline normally (in-progress -> agent-review -> human-review -> merge-queue -> done). Its acceptance criteria:
 - The bug no longer reproduces: the failing reproduction from the Debug ticket now passes, captured to evidence.
 - The fix targets the proven root cause, not the symptom.
 - The fix is minimal and simple: the smallest change that solves the problem, no extra scope.

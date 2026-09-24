@@ -194,4 +194,35 @@ describe("nextTickets()", () => {
 
         expect((await nextTickets(ticketsDir)).todo).toEqual(["real-1"]);
     });
+
+    test("admits an unlocked ticket on any platform", async () => {
+        await makeTicket("todo", "free-1");
+
+        expect((await nextTickets(ticketsDir, 10, "linux")).todo).toEqual(["free-1"]);
+        expect((await nextTickets(ticketsDir, 10, "darwin")).todo).toEqual(["free-1"]);
+    });
+
+    test("admits a ticket locked to this platform, skips one locked elsewhere", async () => {
+        await makeLockedTicket("here-1", "linux, darwin");
+        await makeLockedTicket("there-1", "win32");
+
+        expect((await nextTickets(ticketsDir, 10, "darwin")).todo).toEqual(["here-1"]);
+    });
+
+    test("a ticket locked elsewhere does not use up the limit", async () => {
+        await makeLockedTicket("a-1", "win32");
+        await makeTicket("todo", "b-1");
+
+        expect((await nextTickets(ticketsDir, 1, "linux")).todo).toEqual(["b-1"]);
+    });
 });
+
+// Create a todo ticket locked to `platforms` (the raw `**Platforms:**` value).
+async function makeLockedTicket(id: string, platforms: string): Promise<void> {
+    const dir = join(ticketsDir, "todo", id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+        join(dir, "index.md"),
+        `# ${id}\n\n**ID:** ${id}\n**Platforms:** ${platforms}\n`,
+    );
+}
