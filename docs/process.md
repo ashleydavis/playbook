@@ -170,6 +170,7 @@ Rhythm: run `/pb:status`, run a skill, repeat. The developer drives that rhythm:
 | `pb:docs` | Write/update docs; queue tickets |
 | `pb:add` | Create a ticket in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |
+| `pb:next:preview` | Say what `pb:next` would do, without doing it |
 | `pb:review` | Walk the developer through `human-review/` |
 | `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
 | `pb:promote` | Pull tickets from `backlog/` to `todo/` |

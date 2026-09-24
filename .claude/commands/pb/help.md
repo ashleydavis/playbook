@@ -62,6 +62,7 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 | `pb:rank` | Set or change `**Priority:**` on tickets in `todo/` or `backlog/` |
 | `pb:platforms` | Set or clear `**Platforms:**` on tickets in `todo/` or `backlog/` |
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel through to human review |
+| `pb:next:preview` | Say what `pb:next` would do, without doing it |
 | `pb:review` | Walk you through `human-review/` |
 | `pb:unblock` | Re-admit blocked tickets (reset failures, move to `todo/`) |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |

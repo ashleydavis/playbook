@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-09-24: `pb:next:preview` says what `pb:next` would do
+
+**What changed:** a new skill, `pb:next:preview`, runs the same `next-tickets.ts` report `pb:next` acts on and describes, in `pb:next`'s processing order, what its first turn would do with each ticket. It runs no other command, spawns no sub-agent, and changes nothing. Listed in `docs/process.md`, `pb:help`, `handbook.md` and `index.md`.
+
+**Why:** the developer wanted to see what `pb:next` would do before letting it act. The report already held the answer but as raw JSON, with no skill to read it out. The preview covers the first turn only because later turns depend on outcomes that cannot be known in advance.
+
 ## 2026-09-23: Tickets can be locked to platforms
 
 **What changed:** a ticket's `index.md` can carry an optional `**Platforms:**` line listing the platforms it may be worked on (Node's `process.platform` names: `linux`, `darwin`, `win32`). The only filter is entry into `in-progress/`: `next-tickets.ts` leaves a locked `todo/` ticket out of its `todo` list unless this machine's platform is in the list, and a ticket locked elsewhere does not use up the ten-ticket budget. No other queue is filtered. The ticket card in `pb:review` shows `Platforms:` with the list, or `any`. Platforms are set when a ticket is created (`pb:add`, `pb:plan:break`, `pb:todo:break`, `pb:docs` and `pb:debug` ask; a Fix ticket copies its Debug ticket's line) and set or cleared afterwards by the new `pb:platforms` skill through the new `set-platforms.ts` script. Encoded in `scripts/lib/ticket-meta.ts`, `scripts/next-tickets.ts`, `scripts/ticket-card.ts`, `scripts/set-platforms.ts` (plus their tests), the ticket template, those skills, `docs/process.md`, `handbook.md`, `index.md` and `scripts/CLAUDE.md`.
