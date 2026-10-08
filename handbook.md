@@ -88,7 +88,7 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`/pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates and fills the starter rule set from the answers. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates, then interviews the developer about each template doc in turn (`CLAUDE.md`, setup, development, architecture, and the rules). For each it shows a draft inferred from earlier answers, asks whether to update, replace or annotate it, and asks for examples (code, commands, links). Every one has a good first version when bootstrap ends, ready for the developer to extend. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
@@ -573,7 +573,7 @@ The queue directories are the source of truth for the state of things. There is 
 
 #### Rule set: `docs/rules/`
 
-The project's enforced rules live in `docs/rules/`. The agent-review stage (see `/pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview fills in the starting rules; `/pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no skill edit needed.
+The project's enforced rules live in `docs/rules/`. The agent-review stage (see `/pb:next`) reads the whole directory, so every file here is enforced by the review agent. The bootstrap interview writes the starting rules; `/pb:customize` revises them and can add new rule files. Referencing the directory (not a fixed list of files) means a new rule category is just a new file, with no skill edit needed.
 
 The directory ships with three rule files plus a `README.md`, all in [templates/project/docs/rules/](templates/project/docs/rules/); projects add more as needed:
 

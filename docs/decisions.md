@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-08: Bootstrap writes a first version of every template doc
+
+**What changed:** `pb:bootstrap:new` no longer stops at filling the starter rules. After copying the templates it interviews the developer about each template doc in order (`CLAUDE.md`, `docs/setup.md`, `docs/development.md`, `docs/architecture.md`, and the three rule files). For each doc it drafts from earlier answers, shows the draft, asks the remaining questions and for examples (including links to similar products, asked for up front as inspiration for the features and structure) (code, commands, links it then reads), and asks whether to update, replace or annotate the draft. No placeholder text is left behind. `templates/project/docs/architecture.md` is new, `templates/project/CLAUDE.md` gained a "What it does" section, and the template documentation rule now names `docs/architecture.md` as a required document instead of `how-it-works.md`.
+
+**Why:** bootstrap had never been used on a real project, and the docs it left behind were templates full of prompts. The developer wanted a good first pass of every doc in place straight after bootstrap, built from the interview, then extended and iterated by hand. The spec and testing manual are still left as stubs.
+
 ## 2026-09-24: `pb:next:preview` says what `pb:next` would do
 
 **What changed:** a new skill, `pb:next:preview`, runs the same `next-tickets.ts` report `pb:next` acts on and describes, in `pb:next`'s processing order, what its first turn would do with each ticket. It runs no other command, spawns no sub-agent, and changes nothing. Listed in `docs/process.md`, `pb:help`, `handbook.md` and `index.md`.

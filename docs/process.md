@@ -40,7 +40,7 @@ Launch Claude Code from the root of the playbook repo.
 
 Once per project, on host or VM. Already bootstrapped? Don't run it again; start the loop with `pb:status` or `pb:next`.
 
-- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/` (the project inherits the template's `docs/` stubs and starter rules), fills the starter rules from the interview, leaves empty queues ready to run.
+- `pb:bootstrap:new`: for a greenfield project. Interviews the developer, scaffolds both repos into `project/` and `state/`, then interviews the developer about each template doc in turn (`CLAUDE.md`, setup, development, architecture, and the rules), drafting from earlier answers and asking for updates, replacements, annotations and examples, so every one has a good first version. The spec and testing manual stay as template stubs. Leaves empty queues ready to run.
 - `pb:bootstrap:existing`: for an existing project. Clones the project into `project/`, creates the state repo at `state/`, and confirms a green test baseline. It **assumes the project's documentation is already complete**: it does not analyse for or report missing docs and queues no doc work (the only ticket it may create is one to get a failing suite green).
 
 ## Repos

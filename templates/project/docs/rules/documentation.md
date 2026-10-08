@@ -4,7 +4,7 @@
 
 These must exist and stay in sync with the spec.
 
-- `docs/how-it-works.md`: internal/architectural overview. <or architecture.md, etc.>
+- `docs/architecture.md`: the system's parts, how they fit together, and the design decisions behind them.
 - `docs/user-guide.md`: user-facing guide.
 - <Add or remove entries to suit the project.>
 
