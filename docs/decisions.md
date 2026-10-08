@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-09: Bootstrap pins the project's tools in `mise.toml`
+
+**What changed:** the project template gained a `mise.toml` with an empty `[tools]` table. `pb:bootstrap:new` now asks which tools must be installed to build, run and test the project, finds the latest version of each with `mise latest <tool>`, pins that exact version in `project/mise.toml`, and runs `mise trust && mise install` to confirm the pins install. The `setup.md` questions list the tools from that file instead of asking again.
+
+**Why:** a project that pins its tools builds the same way on every machine and in every worktree, and the pins used to be typed by hand from memory. Asking the tool registry for the latest version removes the guess.
+
 ## 2026-10-08: Bootstrap writes a first version of every template doc
 
 **What changed:** `pb:bootstrap:new` no longer stops at filling the starter rules. After copying the templates it interviews the developer about each template doc in order (`CLAUDE.md`, `docs/setup.md`, `docs/development.md`, `docs/architecture.md`, and the three rule files). For each doc it drafts from earlier answers, shows the draft, asks the remaining questions and for examples (including links to similar products, asked for up front as inspiration for the features and structure) (code, commands, links it then reads), and asks whether to update, replace or annotate the draft. No placeholder text is left behind. `templates/project/docs/architecture.md` is new, `templates/project/CLAUDE.md` gained a "What it does" section, and the template documentation rule now names `docs/architecture.md` as a required document instead of `how-it-works.md`.

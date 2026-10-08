@@ -1,0 +1,3 @@
+# Tools this project needs, each pinned to an exact version. Bootstrap fills this in from the tools the developer names.
+# Install with `mise trust && mise install`.
+[tools]
