@@ -128,11 +128,11 @@ Sufficient means enough that the developer can confirm every part of the criteri
 
       > <id> has passed agent review and moved from agent-review/ to human-review/, with the evidence required by Verification and Evidence captured to evidence/review-N/ (N one more than the highest existing review-N), or it has been rejected back to todo/ as a failure (a ticket with any unticked issue in its `## Issues` section, or a ticked issue that is not actually fixed, is rejected automatically). Or stop after 10 turns.
 
-      The sub-agent **reviews only**: it makes no code changes and writes nothing but the ticket's own state. It re-runs the deterministic checks fresh (lint, format, unit, smoke, and any others), runs the judgement checks (every file in `project/docs/rules/`, the touched `CLAUDE.md` files, and `documentation.md`), and reviews the committed diff hunk by hunk against the acceptance criteria, capturing all of it to `evidence/review-N/`.
+      The sub-agent **reviews only**: it makes no code changes and writes nothing but the ticket's own state. It re-runs the deterministic checks fresh (lint, format, unit, smoke, and any others), runs the judgement checks (every file in `project/docs/rules/`, the touched `CLAUDE.md` files, `documentation.md`, and the global coding rules, loading the ones that apply to this project), and reviews the committed diff hunk by hunk against the acceptance criteria, capturing all of it to `evidence/review-N/`.
 
       **The review rejects the ticket if any of these is true:**
       - A deterministic check fails (lint, format, unit, smoke, or any other).
-      - A judgement check fails (any rule in `project/docs/rules/`, a touched `CLAUDE.md`, or `documentation.md`).
+      - A judgement check fails (any rule in `project/docs/rules/`, a touched `CLAUDE.md`, `documentation.md`, or a global coding rule that applies to this project).
       - The committed diff does not meet the acceptance criteria.
       - The commit contains any change not required by the ticket (committed evidence-collection code being the leading example).
       - Any checkbox in the ticket's `## Issues` section is unticked.
