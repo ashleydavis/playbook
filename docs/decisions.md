@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-24: Bootstrap can follow starter instructions for the kind of project
+
+**What changed:** `pb:bootstrap:new` takes optional starter instructions: a link or path to the instructions an agent follows to start a project of this kind, such as a framework's quick start for agents. When given, bootstrap follows them in the empty `project/` first, then copies the project template into it, merging any file both create and keeping the tool versions the starter pinned. The rest of bootstrap is unchanged.
+
+**Why:** frameworks such as Ziggy ship agent instructions that create a working app from their template, and those expect an empty directory. Running them before the template copy lets bootstrap start a project from them without a separate step or a hand merge afterwards.
+
 ## 2026-10-09: Bootstrap pins the project's tools in `mise.toml`
 
 **What changed:** the project template gained a `mise.toml` with an empty `[tools]` table. `pb:bootstrap:new` now asks which tools must be installed to build, run and test the project, finds the latest version of each with `mise latest <tool>`, pins that exact version in `project/mise.toml`, and runs `mise trust && mise install` to confirm the pins install. The `setup.md` questions list the tools from that file instead of asking again.

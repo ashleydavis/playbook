@@ -7,6 +7,8 @@ description: "Invoke once to set up a brand-new greenfield project under this pr
 
 Bootstrap a greenfield project: create both project/ and state/ repos under the playbook repo, where Claude Code is launched, from the playbook templates, then interview the developer about each template doc so that every one has a good first version when bootstrap ends. The developer extends and iterates them afterwards. For an existing codebase, use `pb:bootstrap:existing` instead.
 
+The developer may pass starter instructions with the command: a link or path to the instructions an agent follows to start a project of this kind, for example a framework's quick start for agents. Bootstrap then follows them as well as its own steps (see step 2).
+
 ## Output style
 
 Follow the project's [output format](../../../../docs/output-format.md) (load it once per session if it is not already in your context). Specific to bootstrap:
@@ -27,7 +29,7 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
 
    - Which tools must be installed to build, run and test it (language runtimes, package managers, CLIs, test tools)? List them back as a short list and ask what is missing.
 
-2. Create the project repo at `project/` under the playbook repo by copying [templates/project/](../../../../templates/project/). Leave the placeholders; step 5 fills them. Then fill `project/mise.toml` from the tools named in step 1: for each tool, run `mise latest <tool>` to find its latest version and pin that exact version under `[tools]`. Never type a version from memory. If `mise latest` cannot find a tool, say so and ask the developer for its mise name or a version. Run `mise trust && mise install` in `project/` to confirm the pins install, and report any that fail.
+2. Create the project repo at `project/` under the playbook repo. When starter instructions were given, read them first, then follow them in the empty `project/` directory to create the project. Then copy [templates/project/](../../../../templates/project/) into it, merging any file both create instead of overwriting it, and keeping the tool versions the starter instructions pinned. Without starter instructions, create it by copying [templates/project/](../../../../templates/project/). Leave the placeholders; step 5 fills them. Then fill `project/mise.toml` from the tools named in step 1: for each tool, run `mise latest <tool>` to find its latest version and pin that exact version under `[tools]`. Never type a version from memory. If `mise latest` cannot find a tool, say so and ask the developer for its mise name or a version. Run `mise trust && mise install` in `project/` to confirm the pins install, and report any that fail.
 3. Create the state repo at `state/` under the playbook repo by copying [templates/state/](../../../../templates/state/) (tickets/ queues and the scoped CLAUDE.md files). Then **initialise it as a git repo** (`git init` in `state/`) and make an initial commit of the scaffolded contents (`scaffold state repo`). This makes the state repo's history an audit log; all subsequent state changes are committed automatically by the helper scripts or via `commit-state.ts` (see the **Queues** audit-log paragraph in `docs/process.md`).
 
 4. Know the template docs. Each is a live doc: the developer keeps extending it after bootstrap, so write real content a reader can use, not a stub. They are covered in this order:
