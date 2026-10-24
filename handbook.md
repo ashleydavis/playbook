@@ -88,7 +88,7 @@ Run the bootstrap once per project, on the host or in the VM. A project that has
 
 ### Greenfield Project (`/pb:bootstrap:new`)
 
-Interviews the developer, then scaffolds both per-project repos from the playbook templates, then interviews the developer about each template doc in turn (`CLAUDE.md`, setup, development, architecture, and the rules). For each it shows a draft inferred from earlier answers, asks whether to update, replace or annotate it, and asks for examples (code, commands, links). Every one has a good first version when bootstrap ends, ready for the developer to extend. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
+Interviews the developer, then scaffolds both per-project repos from the playbook templates, then writes each template doc in turn (`CLAUDE.md`, setup, development, architecture, and the rules) from the interview answers. Every one has a good first version when bootstrap ends, ready for the developer to extend. Leaves you with empty queues, ready to run the loop. Full steps are in the [skill](.claude/commands/pb/bootstrap/new.md).
 
 ### Existing Project (`/pb:bootstrap:existing`)
 
