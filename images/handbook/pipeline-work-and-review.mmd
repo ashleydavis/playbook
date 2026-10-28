@@ -1,0 +1,31 @@
+%%{init: {'layout': 'dagre', 'flowchart': {'nodeSpacing': 300, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+flowchart LR
+    SESSION{{"Session Start: What next?"}} --> PLAN
+    SESSION --> ADD_WI
+    SESSION --> DEBUG
+    SESSION -->|"<span style='font-family:monospace'>/pb:next</span>"| IMPL
+
+    PLAN["<span style='font-family:monospace'>/pb:plan:break</span><br/>split a plan into tickets (the plan is written beforehand)"] --> WQ
+    ADD_WI["<span style='font-family:monospace'>/pb:add</span><br/>add one ticket to implement something or fix a bug"] --> WQ
+    DEBUG["<span style='font-family:monospace'>/pb:debug</span><br/>add a ticket to find the cause of a bug"] --> WQ
+
+    WQ[("Work Queue")] --> IMPL
+
+    IMPL["Work Agent (up to 10 in parallel)<br/>implement tickets, write code, test code, update docs"]
+
+    CHK["Review Agent<br/>review code, run tests, push back"]
+
+    IMPL -->|Pass| AR[("Agent Review Queue")]
+    AR --> CHK
+    CHK -->|"Fail (retry)"| WQ
+    CHK -->|"3rd failure"| BLK[("Blocked: needs human")]
+    CHK -->|Pass| HR[("Human Review Queue")]
+    IMPL -->|"Fail (retry)"| WQ
+    BLK -->|"developer re-admits"| WQ
+    classDef queue stroke:#58a6ff,stroke-width:4px
+    class WQ,AR,HR,BLK queue
+    classDef human stroke:#3fb950,stroke-width:4px
+    classDef agent stroke:#f0883e,stroke-width:4px
+    class SESSION,PLAN,ADD_WI,DEBUG human
+    class IMPL,CHK agent
+    linkStyle default stroke:#ffffff,stroke-width:2px

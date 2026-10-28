@@ -125,73 +125,15 @@ The full pipeline a ticket travels through, from session start to merge:
 
 ### Pipeline part 1: work and review
 
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 300, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
-flowchart LR
-    SESSION{{"Session Start: What next?"}} --> PLAN
-    SESSION --> ADD_WI
-    SESSION --> DEBUG
-    SESSION -->|"<span style='font-family:monospace'>/pb:next</span>"| IMPL
-
-    PLAN["<span style='font-family:monospace'>/pb:plan:break</span><br/>split a plan into tickets (the plan is written beforehand)"] --> WQ
-    ADD_WI["<span style='font-family:monospace'>/pb:add</span><br/>add one ticket to implement something or fix a bug"] --> WQ
-    DEBUG["<span style='font-family:monospace'>/pb:debug</span><br/>add a ticket to find the cause of a bug"] --> WQ
-
-    WQ[("Work Queue")] --> IMPL
-
-    IMPL["Work Agent (up to 10 in parallel)<br/>implement tickets, write code, test code, update docs"]
-
-    CHK["Review Agent<br/>review code, run tests, push back"]
-
-    IMPL -->|Pass| AR[("Agent Review Queue")]
-    AR --> CHK
-    CHK -->|"Fail (retry)"| WQ
-    CHK -->|"3rd failure"| BLK[("Blocked: needs human")]
-    CHK -->|Pass| HR[("Human Review Queue")]
-    IMPL -->|"Fail (retry)"| WQ
-    BLK -->|"developer re-admits"| WQ
-    classDef queue stroke:#58a6ff,stroke-width:4px
-    class WQ,AR,HR,BLK queue
-    classDef human stroke:#3fb950,stroke-width:4px
-    classDef agent stroke:#f0883e,stroke-width:4px
-    class SESSION,PLAN,ADD_WI,DEBUG human
-    class IMPL,CHK agent
-    linkStyle default stroke:#ffffff,stroke-width:2px
-```
+![Pipeline part 1: work and review](images/handbook/pipeline-work-and-review.png)
 
 ### Pipeline part 2: human review
 
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 200, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
-flowchart LR
-    HR[("Human Review Queue")] --> VIEW
-
-    VIEW["<span style='font-family:monospace'>/pb:review</span><br/>human reviews and approves or rejects each ticket"]
-
-    VIEW -->|Reject + Notes| WQ[("Work Queue")]
-    VIEW -->|Approve| MQ[("Merge Queue")]
-    MQ --> MA["Merge Agent<br/>merge to main, run tests"]
-    MA -->|Tests Pass| DONE(["Ticket Complete"])
-    MA -->|Tests Fail| FIX["Fix Immediately on Main"]
-    FIX --> MA
-    MA -->|"Gives up"| WQ
-    MA -->|"Cherry-pick conflicts"| CQ[("Conflicts Queue")]
-    CQ --> CA["Conflict Agent<br/>rebase onto main, run tests"]
-    CA -->|"Rebased and green"| MQ
-    CA -->|"Fail (retry the rebase)"| CQ
-    CA -->|"3rd failure"| BLK[("Blocked: needs human")]
-    classDef queue stroke:#58a6ff,stroke-width:4px
-    class HR,WQ,MQ,CQ,BLK queue
-    classDef human stroke:#3fb950,stroke-width:4px
-    classDef agent stroke:#f0883e,stroke-width:4px
-    class VIEW human
-    class MA,FIX,CA agent
-    classDef done stroke:#a371f7,stroke-width:4px
-    class DONE done
-    linkStyle default stroke:#ffffff,stroke-width:2px
-```
+![Pipeline part 2: human review](images/handbook/pipeline-human-review.png)
 
 _These diagrams are designed to be viewed in dark mode._
+
+The diagram sources are the `.mmd` files beside the images in `images/handbook/`. After editing one, re-render it with `bash scripts/render-diagrams.sh images/handbook/<name>.mmd` (see [scripts/render-diagrams.md](scripts/render-diagrams.md)).
 
 Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
 

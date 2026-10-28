@@ -1,0 +1,27 @@
+%%{init: {'layout': 'dagre', 'flowchart': {'nodeSpacing': 200, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+flowchart LR
+    HR[("Human Review Queue")] --> VIEW
+
+    VIEW["<span style='font-family:monospace'>/pb:review</span><br/>human reviews and approves or rejects each ticket"]
+
+    VIEW -->|Reject + Notes| WQ[("Work Queue")]
+    VIEW -->|Approve| MQ[("Merge Queue")]
+    MQ --> MA["Merge Agent<br/>merge to main, run tests"]
+    MA -->|Tests Pass| DONE(["Ticket Complete"])
+    MA -->|Tests Fail| FIX["Fix Immediately on Main"]
+    FIX --> MA
+    MA -->|"Gives up"| WQ
+    MA -->|"Cherry-pick conflicts"| CQ[("Conflicts Queue")]
+    CQ --> CA["Conflict Agent<br/>rebase onto main, run tests"]
+    CA -->|"Rebased and green"| MQ
+    CA -->|"Fail (retry the rebase)"| CQ
+    CA -->|"3rd failure"| BLK[("Blocked: needs human")]
+    classDef queue stroke:#58a6ff,stroke-width:4px
+    class HR,WQ,MQ,CQ,BLK queue
+    classDef human stroke:#3fb950,stroke-width:4px
+    classDef agent stroke:#f0883e,stroke-width:4px
+    class VIEW human
+    class MA,FIX,CA agent
+    classDef done stroke:#a371f7,stroke-width:4px
+    class DONE done
+    linkStyle default stroke:#ffffff,stroke-width:2px

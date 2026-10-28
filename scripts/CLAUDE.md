@@ -37,6 +37,10 @@ Three bash scripts set up the machines the process runs on. They are not part of
 - `vm.sh`: the per-session script. Creates the VM if absent (named after the repo directory) or starts it if stopped, exports the repo from the host over NFS, mounts it in the VM at `/home/ubuntu/<repo>`, and opens a shell there (`vm.sh` = up + shell; also `up`, `shell`, `stop`, `status`). NFS is used because Multipass's own SSHFS/virtio-fs mounts are several times slower. The export is granted to the Multipass **bridge subnet**, not to the VM's IP, because the IP changes on every VM restart while the subnet does not: that is what lets every run after the first need no host sudo. On a fresh VM it runs `install-prereqs.sh` inside it. Overridable with `PB_VM_*` environment variables (listed at the top of the script).
 - `install-prereqs.sh`: installs `git` (>= 2.48, from the git-core PPA when the distro's is too old), `bun`, and Claude Code on the machine that runs Claude Code, which is usually the VM. Called by `vm.sh` on a VM's first launch; run it by hand on a host that runs the process without a VM.
 
+## Docs scripts (bash, not part of the Bun project)
+
+- `render-diagrams.sh <file.mmd> ...`: renders Mermaid diagram files to PNG images beside them, for docs that show the images instead of inline Mermaid (GitHub lays inline Mermaid out with a different engine). See `render-diagrams.md`.
+
 ## Shared library (`lib/`)
 
 `lib/` holds the code imported by two or more scripts, extracted so each CLI stays a thin wrapper around its own `main()`. A symbol lives in `lib/` only when at least two distinct non-test files import it; code used by one place stays with that place. Each lib module has its own `lib/<name>.test.ts`.
