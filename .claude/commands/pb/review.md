@@ -210,7 +210,7 @@ Inspect menu:
 
 Developer: 1
 - state/tickets/human-review/search-3/evidence/review-1/screenshots/results.png (rendered below).
-- Check: results list updates after typing stops. Both light + dark mode present.
+- Check: results list updates after typing stops. Every mode the app has is present.
 [menu]
 
 Developer: 4

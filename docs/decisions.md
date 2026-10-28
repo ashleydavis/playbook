@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-29: Light and dark screenshots only for apps with a light/dark mode setting
+
+**What changed:** screenshots are required in both light and dark mode only when the app has a light/dark mode setting. An app with no such setting is screenshotted once per view, in the mode it shows by default, and agent review does not check which mode a screenshot shows. Changed in `pb:next`, `pb:review`, `pb:add`, `pb:plan:break`, `pb:todo:break`, `docs/process.md`, `handbook.md` and the project template's `docs/rules/testing.md`.
+
+**Why:** an app is not required to have a light/dark mode setting. Graft has none yet, and its Linux build under Xvfb always shows one mode, so two tickets failed because a dark mode screenshot could not be taken.
+
 ## 2026-10-24: Bootstrap can follow starter instructions for the kind of project
 
 **What changed:** `pb:bootstrap:new` takes optional starter instructions: a link or path to the instructions an agent follows to start a project of this kind, such as a framework's quick start for agents. When given, bootstrap follows them in the empty `project/` first, then copies the project template into it, merging any file both create and keeping the tool versions the starter pinned. The rest of bootstrap is unchanged.
