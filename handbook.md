@@ -13,13 +13,17 @@ The definitions of the terms used throughout this handbook live in [glossary.md]
 The developer plans the work, Claude builds and self-reviews it, the developer reviews and approves or rejects.
 
 ```mermaid
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
 flowchart LR
     DEV["Developer:<br/>plan / add work"] --> Q[("Work queue")]
     Q --> AI["Claude:<br/>implement, test, review"]
     AI --> REV{"Developer:<br/>review each (review loop),<br/>test, read"}
     REV -->|approve| DONE(["merged"])
     REV -->|reject, with notes| Q
+    linkStyle default stroke:#ffffff,stroke-width:2px
 ```
+
+_This diagram is designed to be viewed in dark mode._
 
 ## The Human in the Loop
 
@@ -120,7 +124,8 @@ The ticket queues are the source of truth for where things stand. To see the cur
 The full pipeline a ticket travels through, from session start to merge:
 
 ```mermaid
-flowchart TD
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
+flowchart LR
     SESSION{{"Session Start: What next?"}} --> PLAN
     SESSION --> DOCS
     SESSION --> ADD_WI
@@ -168,7 +173,10 @@ flowchart TD
     MA -->|Tests Pass| DONE(["Ticket Complete"])
     IMPL -->|"Fail (retry)"| WQ
     BLK -->|"developer re-admits"| WQ
+    linkStyle default stroke:#ffffff,stroke-width:2px
 ```
+
+_This diagram is designed to be viewed in dark mode._
 
 Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
 
@@ -418,6 +426,7 @@ The developer drives both loops with these commands. Each has a short alias and 
 #### The review and inspect loops
 
 ```mermaid
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
 flowchart TD
     LIST["List tickets in human-review/"]
     LIST -->|"stop / list empty"| END(["End review"])
@@ -429,7 +438,10 @@ flowchart TD
     RESOLVE -->|"reject + notes"| TODO[("todo/")]
     RESOLVE -->|"abort"| ABORT[("aborted/")]
     RESOLVE -->|"next ticket (skip stays in human-review/)"| LIST
+    linkStyle default stroke:#ffffff,stroke-width:2px
 ```
+
+_This diagram is designed to be viewed in dark mode._
 
 ### pb:debug
 
