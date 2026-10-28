@@ -126,22 +126,20 @@ The full pipeline a ticket travels through, from session start to merge:
 ### Pipeline part 1: work and review
 
 ```mermaid
-%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+%%{init: {'flowchart': {'nodeSpacing': 300, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
 flowchart LR
     SESSION{{"Session Start: What next?"}} --> PLAN
     SESSION --> ADD_WI
     SESSION --> DEBUG
-    SESSION --> REVIEW_WI
     SESSION -->|"<span style='font-family:monospace'>/pb:next</span>"| IMPL
 
     PLAN["<span style='font-family:monospace'>/pb:plan:break</span><br/>split a plan into tickets (the plan is written beforehand)"] --> WQ
-    ADD_WI["<span style='font-family:monospace'>/pb:add</span><br/>add one ticket"] --> WQ
+    ADD_WI["<span style='font-family:monospace'>/pb:add</span><br/>add one ticket to implement something or fix a bug"] --> WQ
     DEBUG["<span style='font-family:monospace'>/pb:debug</span><br/>add a ticket to find the cause of a bug"] --> WQ
-    REVIEW_WI["Review Tickets: code, tests, docs, manual testing"] --> HR
 
-    WQ[("Work Queue")] -->|"up to 10 in parallel"| IMPL
+    WQ[("Work Queue")] --> IMPL
 
-    IMPL["Work Agent<br/>implement tickets, write code, test code, update docs"]
+    IMPL["Work Agent (up to 10 in parallel)<br/>implement tickets, write code, test code, update docs"]
 
     CHK["Review Agent<br/>review code, run tests, push back"]
 
@@ -156,7 +154,7 @@ flowchart LR
     class WQ,AR,HR,BLK queue
     classDef human stroke:#3fb950,stroke-width:4px
     classDef agent stroke:#f0883e,stroke-width:4px
-    class SESSION,PLAN,ADD_WI,DEBUG,REVIEW_WI human
+    class SESSION,PLAN,ADD_WI,DEBUG human
     class IMPL,CHK agent
     linkStyle default stroke:#ffffff,stroke-width:2px
 ```
@@ -164,7 +162,7 @@ flowchart LR
 ### Pipeline part 2: human review
 
 ```mermaid
-%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+%%{init: {'flowchart': {'nodeSpacing': 200, 'rankSpacing': 40}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
 flowchart LR
     HR[("Human Review Queue")] --> VIEW
 
@@ -173,21 +171,23 @@ flowchart LR
     VIEW -->|Reject + Notes| WQ[("Work Queue")]
     VIEW -->|Approve| MQ[("Merge Queue")]
     MQ --> MA["Merge Agent<br/>merge to main, run tests"]
+    MA -->|Tests Pass| DONE(["Ticket Complete"])
     MA -->|Tests Fail| FIX["Fix Immediately on Main"]
     FIX --> MA
     MA -->|"Gives up"| WQ
     MA -->|"Cherry-pick conflicts"| CQ[("Conflicts Queue")]
-    CQ --> CA["Conflict Agent<br/>rebase onto main, run checks"]
+    CQ --> CA["Conflict Agent<br/>rebase onto main, run tests"]
     CA -->|"Rebased and green"| MQ
     CA -->|"Fail (retry the rebase)"| CQ
     CA -->|"3rd failure"| BLK[("Blocked: needs human")]
-    MA -->|Tests Pass| DONE(["Ticket Complete"])
     classDef queue stroke:#58a6ff,stroke-width:4px
     class HR,WQ,MQ,CQ,BLK queue
     classDef human stroke:#3fb950,stroke-width:4px
     classDef agent stroke:#f0883e,stroke-width:4px
     class VIEW human
     class MA,FIX,CA agent
+    classDef done stroke:#a371f7,stroke-width:4px
+    class DONE done
     linkStyle default stroke:#ffffff,stroke-width:2px
 ```
 
