@@ -13,7 +13,7 @@ The definitions of the terms used throughout this handbook live in [glossary.md]
 The developer plans the work, Claude builds and self-reviews it, the developer reviews and approves or rejects.
 
 ```mermaid
-%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
 flowchart LR
     DEV["Developer:<br/>plan / add work"] --> Q[("Work queue")]
     Q --> AI["Claude:<br/>implement, test, review"]
@@ -123,60 +123,75 @@ The ticket queues are the source of truth for where things stand. To see the cur
 
 The full pipeline a ticket travels through, from session start to merge:
 
-```mermaid
-%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
-flowchart LR
-    SESSION{{"Session Start: What next?"}} --> PLAN
-    SESSION --> DOCS
-    SESSION --> ADD_WI
-    SESSION --> REVIEW_WI
-    SESSION -->|pb:next| IMPL
+### Pipeline part 1: work and review
 
-    PLAN["Plan/update a Feature: updates spec, docs, testing manual"] --> WQ
-    DOCS["Write Documentation: updates spec, docs, testing manual"] --> WQ
-    ADD_WI["Add a Ticket"] --> WQ
+```mermaid
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+flowchart TD
+    SESSION{{"Session Start: What next?"}} --> PLAN
+    SESSION --> ADD_WI
+    SESSION --> DEBUG
+    SESSION --> REVIEW_WI
+    SESSION -->|"<span style='font-family:monospace'>/pb:next</span>"| IMPL
+
+    PLAN["<span style='font-family:monospace'>/pb:plan:break</span><br/>split a plan into tickets (the plan is written beforehand)"] --> WQ
+    ADD_WI["<span style='font-family:monospace'>/pb:add</span><br/>add one ticket"] --> WQ
+    DEBUG["<span style='font-family:monospace'>/pb:debug</span><br/>add a ticket to find the cause of a bug"] --> WQ
     REVIEW_WI["Review Tickets: code, tests, docs, manual testing"] --> HR
 
     WQ[("Work Queue")] -->|"up to 10 in parallel"| IMPL
 
-    subgraph WorkAgent ["Work Agent: Worktrees"]
-        IMPL["Implement Ticket + Write Tests + Update Docs"] --> RT["Run Tests: Unit, Smoke, e2e"]
-        RT -->|Fail| STL["Stop the Line: Fix Issues"]
-        STL --> RT
-    end
+    IMPL["Work Agent<br/>implement tickets, write code, test code, update docs"]
 
-    subgraph ReviewAgent ["Review Agent"]
-        CHK["Review only (no edits): Re-run checks (lint, format, tests) + Rules, Style, Docs current + Every change justified by the ticket"]
-    end
+    CHK["Review Agent<br/>review code, run tests, push back"]
 
-    subgraph DevReview ["Developer Review: pb:review (review loop)"]
-        VIEW["Select a ticket by number, Review Code, Tests and UI, then Approve or Reject. Repeat for the next selection"]
-    end
-
-    RT -->|Pass| AR[("Agent Review Queue")]
+    IMPL -->|Pass| AR[("Agent Review Queue")]
     AR --> CHK
     CHK -->|"Fail (retry)"| WQ
     CHK -->|"3rd failure"| BLK[("Blocked: needs human")]
     CHK -->|Pass| HR[("Human Review Queue")]
-    HR --> VIEW
-    VIEW -->|Reject + Notes| WQ
-    VIEW -->|Approve| MQ[("Merge Queue")]
-    MQ --> MA["Merge Agent: Merge Worktree to Main, Run All Tests"]
-    MA -->|Tests Fail| FIX["Fix Immediately on Main"]
-    FIX --> MA
-    MA -->|"Gives up"| WQ
-    MA -->|"Cherry-pick conflicts (not a failure)"| CQ[("Conflicts Queue")]
-    CQ --> CA["Conflict Agent: Rebase onto Main, Re-run All Checks"]
-    CA -->|"Rebased and green"| MQ
-    CA -->|"Fail (retry the rebase)"| CQ
-    CA -->|"3rd failure"| BLK
-    MA -->|Tests Pass| DONE(["Ticket Complete"])
     IMPL -->|"Fail (retry)"| WQ
     BLK -->|"developer re-admits"| WQ
+    classDef queue stroke:#58a6ff,stroke-width:4px
+    class WQ,AR,HR,BLK queue
+    classDef human stroke:#3fb950,stroke-width:4px
+    classDef agent stroke:#f0883e,stroke-width:4px
+    class SESSION,PLAN,ADD_WI,DEBUG,REVIEW_WI human
+    class IMPL,CHK agent
     linkStyle default stroke:#ffffff,stroke-width:2px
 ```
 
-_This diagram is designed to be viewed in dark mode._
+### Pipeline part 2: human review
+
+```mermaid
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
+flowchart TD
+    HR[("Human Review Queue")] --> VIEW
+
+    VIEW["<span style='font-family:monospace'>/pb:review</span><br/>human reviews and approves or rejects each ticket"]
+
+    VIEW -->|Reject + Notes| WQ[("Work Queue")]
+    VIEW -->|Approve| MQ[("Merge Queue")]
+    MQ --> MA["Merge Agent<br/>merge to main, run tests"]
+    MA -->|Tests Fail| FIX["Fix Immediately on Main"]
+    FIX --> MA
+    MA -->|"Gives up"| WQ
+    MA -->|"Cherry-pick conflicts"| CQ[("Conflicts Queue")]
+    CQ --> CA["Conflict Agent<br/>rebase onto main, run checks"]
+    CA -->|"Rebased and green"| MQ
+    CA -->|"Fail (retry the rebase)"| CQ
+    CA -->|"3rd failure"| BLK[("Blocked: needs human")]
+    MA -->|Tests Pass| DONE(["Ticket Complete"])
+    classDef queue stroke:#58a6ff,stroke-width:4px
+    class HR,WQ,MQ,CQ,BLK queue
+    classDef human stroke:#3fb950,stroke-width:4px
+    classDef agent stroke:#f0883e,stroke-width:4px
+    class VIEW human
+    class MA,FIX,CA agent
+    linkStyle default stroke:#ffffff,stroke-width:2px
+```
+
+_These diagrams are designed to be viewed in dark mode._
 
 Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
 
@@ -426,7 +441,7 @@ The developer drives both loops with these commands. Each has a short alias and 
 #### The review and inspect loops
 
 ```mermaid
-%%{init: {'themeVariables': {'lineColor': '#ffffff'}}}%%
+%%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
 flowchart TD
     LIST["List tickets in human-review/"]
     LIST -->|"stop / list empty"| END(["End review"])
