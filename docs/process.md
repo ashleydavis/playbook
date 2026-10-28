@@ -118,7 +118,7 @@ Every failure is handled the same way:
 3. **Surface it.** Every block, environmental failure, and broken main is surfaced in chat in the run report, naming the ticket and the one-line reason. `/pb:status` regenerates the same picture from the live queues on demand.
 4. **Reconcile before the turn ends (invariant).** When a `pb:next` turn ends, `in-progress/` is empty: every ticket the parent admitted sits in a terminal queue (`agent-review/` on success, `todo/` or `blocked/` on failure). A sub-agent records and routes its own failure when it is alive to do so, but one that times out, dies, or returns a bare failure verdict cannot, so recording can never depend on it. The parent therefore re-runs `next-tickets.ts` as the final act of every turn: any ticket the report still shows in `in-progress/` (no sub-agent is working it now) is by definition an un-recorded failure, so the parent runs `fail-ticket.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. A ticket is never left mid-stage.
 
-A single failure never aborts the loop; the run continues with the other tickets. Two or more tickets failing the same stage or check in one run is an **environmental failure** and stops the run (see [Environmental failure](#environmental-failure)). Never work around a failure by switching parallel→serial or re-driving a ticket by hand.
+A single failure never aborts the loop; the run continues with the other tickets. Two or more tickets failing the same check with the same error in one run is an **environmental failure** and stops the run (see [Environmental failure](#environmental-failure)). Never work around a failure by switching parallel→serial or re-driving a ticket by hand.
 
 **Exception (broken main):** if a merge lands but its post-merge checks then fail, the ticket goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later ticket builds on main.
 
@@ -126,13 +126,13 @@ A single failure never aborts the loop; the run continues with the other tickets
 
 ## Environmental failure
 
-An **environmental failure** is two or more tickets failing the same stage or check in one run. The shared cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help: the run must stop and hand back. A session or rate limit is **not** an environmental failure even though it can stop several sub-agents at once: nothing about the environment-under-test broke, the run simply ran out of capacity, and the tickets are unharmed (see [Interruption and resume](#interruption-and-resume)).
+An **environmental failure** is two or more tickets failing the same check with the same error in one run. The shared cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help: the run must stop and hand back. A session or rate limit is **not** an environmental failure even though it can stop several sub-agents at once: nothing about the environment-under-test broke, the run simply ran out of capacity, and the tickets are unharmed (see [Interruption and resume](#interruption-and-resume)).
 
 Handle it in this order:
 
 1. **Reconcile every failed ticket first** (record and route each by count, per **Failures** point 4). Handing back never means leaving a ticket mid-stage.
 2. **Stop launching new work and hand back** to the developer. Never work around it by switching parallel→serial or re-driving tickets by hand.
-3. **Record the cause** in chat as a `Run halted: environmental failure` report naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this chat report is the only record of why the run stopped; the queues remain the durable state and `pb:status` shows the in-flight state.
+3. **Record the cause** in chat as a `Run halted: environmental failure` report naming the shared check and error, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this chat report is the only record of why the run stopped; the queues remain the durable state and `pb:status` shows the in-flight state.
 
 ## Interruption and resume
 

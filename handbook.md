@@ -151,7 +151,7 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 **Three strikes parks the ticket.** Below three failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action. A ticket failing its rebase in `conflicts/` is the one exception to where it lands: under the cap it stays in `conflicts/` to have the rebase retried (it is already approved, so there is nothing to re-implement from `todo/`), and on the third failure it parks in `blocked/` like anything else.
 
-**One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same stage or check in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
+**One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same check with the same error in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
 **The developer is told in chat.** Anything that needs the developer (a block, a broken main, or an environmental failure) is surfaced in the `/pb:next` run report in chat, naming the ticket and the one-line reason. `/pb:status` regenerates the same picture from the live queues on demand.
 
@@ -159,11 +159,11 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 ### Environmental failure
 
-An **environmental failure** is two or more tickets failing the same stage or check in one run. The cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help and the run must stop.
+An **environmental failure** is two or more tickets failing the same check with the same error in one run. The cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help and the run must stop.
 
 The loop reconciles every failed ticket first (recording and routing each by its count), then stops launching new work and hands back to the developer. It never works around the failure by switching from parallel to serial or re-driving a ticket by hand, the slow-but-grinding mode this design exists to prevent.
 
-The cause is reported in chat as a `Run halted: environmental failure` summary, naming the shared stage or check, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this chat report is the only record of why the run stopped; the queues remain the durable state.
+The cause is reported in chat as a `Run halted: environmental failure` summary, naming the shared check and error, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/`, so this chat report is the only record of why the run stopped; the queues remain the durable state.
 
 ### Interruption and resume
 
@@ -526,7 +526,7 @@ Rules:
 
 ## Commit Format
 
-Every commit follows one template, so history stays uniform and each commit traces back to the ticket that produced it. The subject is `<id>: <imperative summary>`; the body carries the prose, an optional `Acceptance criteria:` list, and `Type:` / `Ticket:` trailers tooling can grep by.
+Every commit follows one template, so history stays uniform and each commit traces back to the ticket that produced it. The subject is `<id>: <summary>`; the body carries the prose, an optional `Acceptance criteria:` list, and `Type:` / `Ticket:` trailers tooling can grep by.
 
 The template lives at [templates/commit-template/commit-template.txt](templates/commit-template/commit-template.txt). The `/pb:next` sub-agents make the commits using this template.
 

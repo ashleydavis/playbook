@@ -1,7 +1,7 @@
-<id>: <imperative summary>
-# Subject line: present tense, imperative, under ~72 chars.
+<id>: <summary>
+# Subject line: under ~72 chars.
 
-# Why this change, and what it does. Prose, wrapped at about 72 columns.
+# Why this change, and what it does. Prose.
 # Keep it directly relevant to the work done: no waffle, no filler, no
 # unnecessary detail. Clearly explain the intent behind the change.
 

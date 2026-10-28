@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-29: Environmental failure needs the same error, and implement checks the rules
+
+**What changed:** an environmental failure is now two or more tickets failing the same check with the same error in one run, not the same stage or check. The implement sub-agent of `pb:next` checks every line of its diff against every rule file that applies, and fixes every breach, before it commits. The commit template no longer asks for an imperative subject or a body wrapped at 72 columns.
+
+**Why:** two tickets failed agent review on different rule breaks in their own code, and the run halted as an environmental failure. Agent review checks the rules, so the implement step has to as well. The commit template's wording conflicted with the developer's own commit rules.
+
 ## 2026-10-29: Light and dark screenshots only for apps with a light/dark mode setting
 
 **What changed:** screenshots are required in both light and dark mode only when the app has a light/dark mode setting. An app with no such setting is screenshotted once per view, in the mode it shows by default, and agent review does not check which mode a screenshot shows. Changed in `pb:next`, `pb:review`, `pb:add`, `pb:plan:break`, `pb:todo:break`, `docs/process.md`, `handbook.md` and the project template's `docs/rules/testing.md`.
