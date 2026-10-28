@@ -127,7 +127,7 @@ The full pipeline a ticket travels through, from session start to merge:
 
 ```mermaid
 %%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
-flowchart TD
+flowchart LR
     SESSION{{"Session Start: What next?"}} --> PLAN
     SESSION --> ADD_WI
     SESSION --> DEBUG
@@ -165,7 +165,7 @@ flowchart TD
 
 ```mermaid
 %%{init: {'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
-flowchart TD
+flowchart LR
     HR[("Human Review Queue")] --> VIEW
 
     VIEW["<span style='font-family:monospace'>/pb:review</span><br/>human reviews and approves or rejects each ticket"]
