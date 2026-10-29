@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-29: Conflicts are resolved by merging main, and the train merges branches
+
+**What changed:** the `conflicts/` step merges the current main into the ticket's branch and commits the resolved merge, instead of rebasing the branch onto main. `merge-ticket.ts build` merges each ticket's branch onto the train with a merge commit (`git merge --no-ff`), instead of cherry-picking the ticket's commits, and aborts a conflicting merge with `git merge --abort`. Landing is still a fast-forward of main to the train, so main now holds one merge commit per ticket.
+
+**Why:** a rebase rewrites the ticket's history, which the process now bans. Merging main into a branch only adds a commit, but it leaves a merge commit on the branch, and cherry-picking a range holding a merge commit fails, so the train has to merge branches too.
+
 ## 2026-10-29: pb:next never stops while there is work, and the failure cap is six
 
 **What changed:** `pb:next` prints a `/goal` for the developer to paste and stops; the loop runs under that goal. It never stops to ask a question or for a decision, and a sub-agent that asks or says it is blocked is sent back to decide or unblock itself, recording the decision in the ticket's History and its commit message. The 50 turn limit on the loop is gone. A ticket now moves to `blocked/` at six failures, not three.

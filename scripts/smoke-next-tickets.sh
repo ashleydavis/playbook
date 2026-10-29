@@ -34,7 +34,7 @@ make_ticket() {
 }
 
 # Build a fixture spanning all reported queues, plus done/ for dependencies.
-#   conflicts: infra-9 (approved, waiting to be rebased onto main; reported first)
+#   conflicts: infra-9 (approved, waiting to have main merged in; reported first)
 #   merge-queue: auth-5
 #   done: auth-0 (a merged dependency; done/ is read, not reported)
 #   todo: auth-1 (ready), auth-2 (dep auth-1 only in todo -> blocked), auth-3 (dep

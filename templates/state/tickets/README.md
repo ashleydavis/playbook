@@ -23,7 +23,7 @@ The queues are flat: ticket directories sit directly under the queue with no nes
 
 `conflicts/` hangs off `merge-queue/` and is drained by the loop, not by a human:
 
-- `conflicts/`: An approved ticket whose commits would not cherry-pick onto main, because main moved under it. `pb:next` drains this **first**, rebases and re-verifies the ticket in its existing worktree, and returns it straight to `merge-queue/`. A cherry-pick conflict is **not a failure** (it says nothing about the ticket's work), so the ticket never goes back to `todo/` and never returns to `human-review/`: the developer's approval still stands.
+- `conflicts/`: An approved ticket whose branch would not merge cleanly onto main, because main moved under it. `pb:next` drains this **first**, merges main into the ticket's branch in its existing worktree, re-verifies it, and returns it straight to `merge-queue/`. A merge conflict is **not a failure** (it says nothing about the ticket's work), so the ticket never goes back to `todo/` and never returns to `human-review/`: the developer's approval still stands.
 
 Three side pens sit outside the pipeline, and a human moves tickets out of each:
 

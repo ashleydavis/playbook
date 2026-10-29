@@ -10,7 +10,7 @@
 //   bun ../scripts/merge-ticket.ts discard <trainId>         -> tear the train down
 //
 // Why a train: merging N tickets one at a time runs the full check suite N times
-// in series. A train cherry-picks every ticket's commits onto a single scratch
+// in series. A train merges every ticket's branch onto a single scratch
 // worktree, the agent runs the suite ONCE there, and on green the project branch
 // fast-forwards to the train in one step. On red the agent bisects (rebuilding
 // smaller trains) to find the breaking ticket. This script does the deterministic
@@ -26,11 +26,12 @@
 //   build:
 //     1. Read the project's current branch.
 //     2. Create the train worktree at that branch tip (new branch worktrees/<trainId>).
-//     3. For each ticket in order, cherry-pick ITS OWN commits
-//        (merge-base(branch, worktrees/<id>)..worktrees/<id>) onto the train.
+//     3. For each ticket in order, merge its branch (worktrees/<id>) onto the train
+//        with a merge commit. A merge rewrites no history, and it takes a branch
+//        that has main merged into it, which is how a conflict is resolved.
 //        - clean:    record it as included.
-//        - no commits: record it as a noop (nothing to pick; landed for free).
-//        - conflict: abort that pick (the train keeps the earlier, clean picks)
+//        - no commits of its own: record it as a noop (landed for free).
+//        - conflict: abort that merge (the train keeps the earlier, clean merges)
 //                    and report the offending ticket so the agent can drop it and
 //                    rebuild without it.
 //   land:
@@ -67,7 +68,7 @@ import {
 export type { GitOutput, GitRunner };
 
 // Raised for any expected, user-facing failure (missing args, missing repo, a git
-// failure that is not a cherry-pick conflict). The CLI maps it to a non-zero exit
+// failure that is not a merge conflict). The CLI maps it to a non-zero exit
 // with a clean message; tests assert on it.
 export class MergeError extends Error {}
 
@@ -77,9 +78,9 @@ export interface BuildResult {
     trainPath: string;
     projectBranch: string;
     status: "built" | "conflict";
-    // Tickets whose commits were cherry-picked cleanly, in order.
+    // Tickets whose branches were merged cleanly, in order.
     included: string[];
-    // Tickets that had no commits to pick (landed for free).
+    // Tickets that had no commits of their own (landed for free).
     noops: string[];
     // Present only when status is "conflict": the ticket that would not apply.
     conflict?: { ticket: string; conflicts: string[] };
@@ -120,7 +121,7 @@ function paths(stateDir: string, trainId: string) {
     return { projectDir, trainPath, trainBranch };
 }
 
-// Paths git reports as unmerged during a conflicted cherry-pick.
+// Paths git reports as unmerged during a conflicted merge.
 async function conflictedPaths(
     cwd: string,
     runGit: GitRunner,
@@ -136,7 +137,7 @@ async function conflictedPaths(
     return out.stdout.split("\n").filter((l) => l.length > 0);
 }
 
-// Create the train worktree and cherry-pick each ticket's commits onto it.
+// Create the train worktree and merge each ticket's branch onto it.
 export async function buildTrain(
     stateDir: string,
     trainId: string,
@@ -190,8 +191,8 @@ export async function buildTrain(
     for (const id of ids) {
         const ticketBranch = `worktrees/${id}`;
 
-        // The commit where this ticket diverged from the branch: cherry-pick only
-        // the ticket's own commits, never anything already on the branch.
+        // The commit where this ticket diverged from the branch: the ticket's own
+        // commits are the ones after it, never anything already on the branch.
         const baseOut = await runGit(projectDir, [
             "merge-base",
             projectBranch,
@@ -219,13 +220,19 @@ export async function buildTrain(
             continue;
         }
 
-        const pick = await runGit(trainPath, ["cherry-pick", range]);
-        if (pick.code !== 0) {
+        const merge = await runGit(trainPath, [
+            "merge",
+            "--no-ff",
+            "-m",
+            `Merged ${id}`,
+            ticketBranch,
+        ]);
+        if (merge.code !== 0) {
             const conflicts = await conflictedPaths(trainPath, runGit);
-            // Abort this pick so the train is left clean (it still holds the
-            // earlier, cleanly picked tickets); the agent drops this ticket and
+            // Abort this merge so the train is left clean (it still holds the
+            // earlier, cleanly merged tickets); the agent drops this ticket and
             // rebuilds without it.
-            await runGit(trainPath, ["cherry-pick", "--abort"]);
+            await runGit(trainPath, ["merge", "--abort"]);
             return {
                 trainId,
                 trainBranch,

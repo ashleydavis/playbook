@@ -20,7 +20,7 @@
 // same branch out in two worktrees, and the project repo already has its branch
 // checked out, so the worktree cannot share it; a per-ticket branch off the
 // current commit avoids the collision and keeps the ticket's commits on a named
-// ref. merge-ticket.ts cherry-picks that branch's commits onto the merge train
+// ref. merge-ticket.ts merges that branch onto the merge train
 // at merge time and deletes the branch once the train lands.
 
 import { mkdir, stat } from "node:fs/promises";

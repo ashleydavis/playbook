@@ -31,7 +31,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 
 - Resetting the failure count is deliberate. A block is a parked problem, not a verdict that the work is wrong; once a human decides it is worth another go, it starts that retry with a clean slate (the same rule `pb:review` applies when a human rejection sends a ticket back to `todo/`).
 - This is the inverse of the sixth-failure block, not part of the autonomous loop. `pb:next` will never re-admit a blocked ticket itself; that gate is intentional, so nothing re-enters the loop without this explicit action.
-- A blocked ticket may still own a stale worktree under `project/worktrees/<id>` from its last run. `pb:unblock` does not touch worktrees. If the block was about a stale or bad worktree, clear or rebase it before (or just after) re-admitting, or the next run repeats the same failure.
+- A blocked ticket may still own a stale worktree under `project/worktrees/<id>` from its last run. `pb:unblock` does not touch worktrees. If the block was about a stale or bad worktree, clear it or merge main into it before (or just after) re-admitting, or the next run repeats the same failure.
 
 ## Example
 
@@ -39,7 +39,7 @@ See the `pick-many` blocked example in [docs/ticket-selection.md](../../../docs/
 
 ```
 unblocked: treemap-tooltip-1, failures reset to 0, moved blocked/ → todo/
-Run pb:next to pick it up. (Note: it blocked on a merge-commit shape, rebase its worktree to a single commit first, or it will block again.)
+Run pb:next to pick it up. (Note: it blocked on a stale worktree, clear it or merge main into it first, or it will block again.)
 ```
 
 ## Next

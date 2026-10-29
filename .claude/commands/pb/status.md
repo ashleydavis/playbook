@@ -22,7 +22,7 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
    - **Awaiting review:** every ticket in `human-review/` (ID + one-line description). These need the developer to run `pb:review`.
    - **Blocked:** every ticket in `blocked/` (these hit 6 failures and need you), plus anything stuck on an unmet dependency. For each blocked ticket, read its History note for the reason. Blocked tickets are parked and will not move until you act.
    - **Backlog:** when `backlog/` is non-empty, count + one line per ticket (informational). Suggest `pb:promote` to pull work forward or `pb:rank` to reorder `todo/`.
-   - **In flight:** tickets still moving on their own (`in-progress/`, `agent-review/`, `merge-queue/`, `conflicts/`) and the stage each sits at. Informational; nothing needed. A ticket in `conflicts/` is one the developer already approved that missed a merge train because main moved under it; `pb:next` rebases it and returns it to `merge-queue/` without a re-review, so it needs nothing from the developer.
+   - **In flight:** tickets still moving on their own (`in-progress/`, `agent-review/`, `merge-queue/`, `conflicts/`) and the stage each sits at. Informational; nothing needed. A ticket in `conflicts/` is one the developer already approved that missed a merge train because main moved under it; `pb:next` merges main into it and returns it to `merge-queue/` without a re-review, so it needs nothing from the developer.
    - **Completed since last session:** the most recent tickets in `done/`. Informational.
 
    Keep the action items short and plain so they cannot be missed. If there are no action items, say so in one line ("Nothing needs you; the loop is healthy") before the informational summary.

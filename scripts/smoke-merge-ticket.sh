@@ -3,13 +3,15 @@
 #
 # Builds a throwaway repo layout, sets up several tickets with commits in their
 # worktrees, then exercises the train end to end against real git:
-#   - build:   stack two tickets' commits onto one fresh train worktree, with a
-#              noop ticket (no commits) recorded as a noop, not cherry-picked.
+#   - build:   merge two tickets' branches onto one fresh train worktree, with a
+#              noop ticket (no commits) recorded as a noop, not merged.
 #   - land:    fast-forward main to the train; every ticket's change is on main,
 #              each ticket directory has moved merge-queue/ -> done/, and the train
 #              + ticket worktrees and branches are gone.
 #   - conflict: a ticket that edits the same line an already-landed ticket touched
 #              is reported as a conflict (exit 2), not landed.
+#   - resolve: once main is merged into that ticket's branch and the conflict
+#              resolved, it builds and lands with its original commit intact.
 #   - discard: a built train is torn down, leaving the ticket worktree in place.
 # Then cleans up and prints PASS or FAIL.
 
@@ -125,6 +127,22 @@ echo "$CONFLICT_JSON" | grep -q '"status":"conflict"' || fail "conflict not repo
 echo "$CONFLICT_JSON" | grep -q '"ticket":"conflict-1"' || fail "wrong conflict ticket: $CONFLICT_JSON"
 CONFLICT_TRAIN="$(echo "$CONFLICT_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
 run_merge discard "$CONFLICT_TRAIN" > /dev/null 2>&1 || fail "discard of conflicted train failed"
+
+# ---- resolve: merge main into conflict-1 as the conflicts/ step does, then land it ----
+CONFLICT_WT="$ROOT/project/worktrees/conflict-1"
+CONFLICT_SHA="$(git -C "$CONFLICT_WT" rev-parse HEAD)"
+git -C "$CONFLICT_WT" merge -q main > /dev/null 2>&1
+printf '%s' "from conflict-1" > "$CONFLICT_WT/a.txt"
+git -C "$CONFLICT_WT" add -A
+git -C "$CONFLICT_WT" commit -qm "conflict-1 merged main" || fail "could not commit the resolved merge"
+RESOLVED_JSON="$(run_merge build conflict-1)"
+rc=$?
+[[ "$rc" -eq 0 ]] || fail "build of resolved conflict-1 expected exit 0, got $rc: $RESOLVED_JSON"
+RESOLVED_TRAIN="$(echo "$RESOLVED_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
+run_merge land "$RESOLVED_TRAIN" conflict-1 > /dev/null || fail "land of resolved conflict-1 failed"
+[[ "$(cat "$ROOT/project/a.txt")" == "from conflict-1" ]] || fail "resolved conflict-1 change not on main"
+git -C "$ROOT/project" merge-base --is-ancestor "$CONFLICT_SHA" main \
+    || fail "conflict-1's original commit is not on main"
 
 # ---- discard: build a clean train, tear it down, ticket worktree survives ----
 DBUILD="$(run_merge build discard-1)"

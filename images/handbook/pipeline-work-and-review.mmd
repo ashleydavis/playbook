@@ -18,7 +18,7 @@ flowchart LR
     IMPL -->|Pass| AR[("Agent Review Queue")]
     AR --> CHK
     CHK -->|"Fail (retry)"| WQ
-    CHK -->|"3rd failure"| BLK[("Blocked: needs human")]
+    CHK -->|"6th failure"| BLK[("Blocked: needs human")]
     CHK -->|Pass| HR[("Human Review Queue")]
     IMPL -->|"Fail (retry)"| WQ
     BLK -->|"developer re-admits"| WQ

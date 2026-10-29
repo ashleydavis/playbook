@@ -1,6 +1,6 @@
 ---
 name: pb:next:preview
-description: "Invoke to see what pb:next would do, without doing any of it. Reads the same report pb:next acts on and says, queue by queue in pb:next's processing order, which tickets it would rebase, merge, review, admit and implement. Changes nothing: no moves, no worktrees, no sub-agents, no commits. Keywords: preview, dry run, what would next do, next preview, simulate, plan the run, before running next."
+description: "Invoke to see what pb:next would do, without doing any of it. Reads the same report pb:next acts on and says, queue by queue in pb:next's processing order, which tickets it would merge main into, merge, review, admit and implement. Changes nothing: no moves, no worktrees, no sub-agents, no commits. Keywords: preview, dry run, what would next do, next preview, simulate, plan the run, before running next."
 ---
 
 # pb:next:preview
@@ -23,7 +23,7 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
 
 1. Run the report once.
 2. Describe what the first turn of `pb:next` would do, in its processing order (**`conflicts` → `merge-queue` → `agent-review` → `todo` → `in-progress`**):
-   - `conflicts`: each ID would be rebased onto main in its worktree, re-verified, and returned to `merge-queue/`.
+   - `conflicts`: each ID would have main merged into it in its worktree, re-verified, and returned to `merge-queue/`.
    - `merge-queue`: the IDs would be merged as one train by a single merge sub-agent, with the post-merge checks run once on the result.
    - `agent-review`: each ID would get an agent-review sub-agent, ending in `human-review/` on a pass or `todo/` on a fail.
    - `todo`: each ID would be admitted with `setup-ticket.ts` (moved to `in-progress/`, worktree created), then implemented.

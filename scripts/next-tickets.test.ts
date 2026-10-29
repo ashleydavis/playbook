@@ -77,7 +77,7 @@ describe("nextTickets()", () => {
         await makeTicket("merge-queue", "auth-5");
 
         // The key order is the order pb:next processes the queues: an approved
-        // ticket waiting to be rebased is nearer to done than the train itself.
+        // ticket waiting to have main merged in is nearer to done than the train itself.
         expect(Object.keys(await nextTickets(ticketsDir))).toEqual([
             "conflicts",
             "merge-queue",
@@ -142,7 +142,7 @@ describe("nextTickets()", () => {
     });
 
     test("conflicts share the in-flight budget with todo and in-progress", async () => {
-        // Rebasing a conflict ticket is implementation work in its own
+        // Merging main into a conflict ticket is implementation work in its own
         // worktree, so it spends the same budget a todo admission would.
         await makeTicket("conflicts", "c-1");
         await makeTicket("todo", "a-1");

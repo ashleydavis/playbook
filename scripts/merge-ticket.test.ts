@@ -3,7 +3,7 @@
 // Run with: npm test (Jest via ts-jest, ESM).
 //
 // Git is faked with a scripted GitRunner that answers each (cwd, args) call from
-// a queue of canned outputs, so the cherry-pick / conflict / noop / ff branches
+// a queue of canned outputs, so the merge / conflict / noop / ff branches
 // are exercised without a real repo. The state-repo moves (merge-queue/ -> done/)
 // run for real against temp dirs; the commit is left to the CLI (smoke test).
 
@@ -60,16 +60,16 @@ afterEach(async () => {
 });
 
 describe("buildTrain()", () => {
-    test("cherry-picks every ticket cleanly onto a fresh train", async () => {
+    test("merges every ticket cleanly onto a fresh train", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse --abbrev-ref HEAD
             ok(), // worktree add
             ok("baseA"), // merge-base for feat-1
             ok("2"), // rev-list --count -> 2 commits
-            ok(), // cherry-pick feat-1
+            ok(), // merge feat-1
             ok("baseB"), // merge-base for feat-2
             ok("1"), // rev-list --count -> 1 commit
-            ok(), // cherry-pick feat-2
+            ok(), // merge feat-2
         ]);
 
         const result = await buildTrain(
@@ -91,15 +91,19 @@ describe("buildTrain()", () => {
             "worktrees/merge-test",
         ]);
         expect(calls[1].args.at(-1)).toBe("main");
-        expect(calls.filter((c) => c.args[0] === "cherry-pick")).toHaveLength(2);
+        const merges = calls.filter((c) => c.args[0] === "merge");
+        expect(merges.map((c) => c.args)).toEqual([
+            ["merge", "--no-ff", "-m", "Merged feat-1", "worktrees/feat-1"],
+            ["merge", "--no-ff", "-m", "Merged feat-2", "worktrees/feat-2"],
+        ]);
     });
 
-    test("records a ticket with no commits as a noop, skips the cherry-pick", async () => {
+    test("records a ticket with no commits as a noop, skips the merge", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse
             ok(), // worktree add
             ok("baseA"), // merge-base
-            ok("0"), // rev-list --count -> nothing to pick
+            ok("0"), // rev-list --count -> nothing to merge
         ]);
 
         const result = await buildTrain(
@@ -112,21 +116,21 @@ describe("buildTrain()", () => {
         expect(result.status).toBe("built");
         expect(result.included).toEqual([]);
         expect(result.noops).toEqual(["feat-1"]);
-        expect(calls.some((c) => c.args[0] === "cherry-pick")).toBe(false);
+        expect(calls.some((c) => c.args[0] === "merge")).toBe(false);
     });
 
-    test("reports a conflict, aborts the pick, and stops at the offending ticket", async () => {
+    test("reports a conflict, aborts the merge, and stops at the offending ticket", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse
             ok(), // worktree add
             ok("baseA"), // merge-base feat-1
             ok("1"), // count feat-1
-            ok(), // cherry-pick feat-1 (clean)
+            ok(), // merge feat-1 (clean)
             ok("baseB"), // merge-base feat-2
             ok("1"), // count feat-2
-            fail("CONFLICT"), // cherry-pick feat-2 (conflict)
+            fail("CONFLICT"), // merge feat-2 (conflict)
             ok("src/x.ts\nsrc/y.ts"), // diff --diff-filter=U
-            ok(), // cherry-pick --abort
+            ok(), // merge --abort
         ]);
 
         const result = await buildTrain(
@@ -142,7 +146,7 @@ describe("buildTrain()", () => {
             ticket: "feat-2",
             conflicts: ["src/x.ts", "src/y.ts"],
         });
-        expect(calls.at(-1)?.args).toEqual(["cherry-pick", "--abort"]);
+        expect(calls.at(-1)?.args).toEqual(["merge", "--abort"]);
         expect(calls.filter((c) => c.args[0] === "merge-base")).toHaveLength(2);
     });
 

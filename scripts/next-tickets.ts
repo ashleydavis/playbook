@@ -15,8 +15,8 @@
 //         together never exceed LIMIT tickets in flight.
 //
 // conflicts/ is drained first: it holds tickets the developer already approved
-// that failed to cherry-pick onto main, so they are the work nearest to done.
-// Each is rebased and re-verified in place and rejoins merge-queue/ on success.
+// that failed to merge cleanly onto main, so they are the work nearest to done.
+// Each has main merged in and is re-verified in place and rejoins merge-queue/ on success.
 //
 // A todo ticket locked to platforms (a `**Platforms:**` line) is actionable only
 // on one of those platforms (process.platform), so it enters in-progress/ only
@@ -29,8 +29,8 @@
 // to resolve dependencies; it is not reported. human-review/ and backlog/ are
 // neither driven nor read.
 //
-// The todo cap shares one budget with in-progress and conflicts: rebasing a
-// conflict ticket is implementation work in its own worktree, so the three
+// The todo cap shares one budget with in-progress and conflicts: merging main
+// into a conflict ticket is implementation work in its own worktree, so the three
 // together are what the implementation stage runs at once. todo is trimmed to
 // LIMIT minus however many are already in-progress or in conflicts (zero todo
 // once they fill it). Conflicts are drained first and count against the budget

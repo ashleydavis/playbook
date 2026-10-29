@@ -11,11 +11,11 @@ flowchart LR
     MA -->|Tests Fail| FIX["Fix Immediately on Main"]
     FIX --> MA
     MA -->|"Gives up"| WQ
-    MA -->|"Cherry-pick conflicts"| CQ[("Conflicts Queue")]
-    CQ --> CA["Conflict Agent<br/>rebase onto main, run tests"]
-    CA -->|"Rebased and green"| MQ
-    CA -->|"Fail (retry the rebase)"| CQ
-    CA -->|"3rd failure"| BLK[("Blocked: needs human")]
+    MA -->|"Merge conflicts"| CQ[("Conflicts Queue")]
+    CQ --> CA["Conflict Agent<br/>merge main in, run tests"]
+    CA -->|"Merged and green"| MQ
+    CA -->|"Fail (retry the merge)"| CQ
+    CA -->|"6th failure"| BLK[("Blocked: needs human")]
     classDef queue stroke:#58a6ff,stroke-width:4px
     class HR,WQ,MQ,CQ,BLK queue
     classDef human stroke:#3fb950,stroke-width:4px

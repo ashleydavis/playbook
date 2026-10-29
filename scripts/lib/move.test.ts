@@ -176,8 +176,8 @@ describe("move()", () => {
     });
 
     test("moves a ticket merge-queue ↔ conflicts round trip", async () => {
-        // The conflict path: an approved ticket that will not cherry-pick onto
-        // main parks in conflicts/, is rebased there, and rejoins merge-queue/
+        // The conflict path: an approved ticket that will not merge cleanly onto
+        // main parks in conflicts/, has main merged in there, and rejoins merge-queue/
         // without passing back through todo/ or human-review/.
         await makeTicket("merge-queue", "clash-1");
 
