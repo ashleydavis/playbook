@@ -5,7 +5,7 @@ description: "Invoke to re-admit one or more blocked tickets back into the loop.
 
 # pb:unblock
 
-Re-admit blocked tickets into the loop. `blocked/` is a side pen, not a pipeline stage: a ticket lands there after its third failure and `pb:next` never touches it again. Only a human re-admits it, and this is the skill that does so.
+Re-admit blocked tickets into the loop. `blocked/` is a side pen, not a pipeline stage: a ticket lands there after its sixth failure and `pb:next` never touches it again. Only a human re-admits it, and this is the skill that does so.
 
 Each selected ticket has its `**Failures:**` count reset to 0 (a fresh slate, not carrying the old count straight back toward the cap) and is moved to `todo/`, where the next `pb:next` run picks it up.
 
@@ -30,7 +30,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 ## Notes
 
 - Resetting the failure count is deliberate. A block is a parked problem, not a verdict that the work is wrong; once a human decides it is worth another go, it starts that retry with a clean slate (the same rule `pb:review` applies when a human rejection sends a ticket back to `todo/`).
-- This is the inverse of the third-failure block, not part of the autonomous loop. `pb:next` will never re-admit a blocked ticket itself; that gate is intentional, so nothing re-enters the loop without this explicit action.
+- This is the inverse of the sixth-failure block, not part of the autonomous loop. `pb:next` will never re-admit a blocked ticket itself; that gate is intentional, so nothing re-enters the loop without this explicit action.
 - A blocked ticket may still own a stale worktree under `project/worktrees/<id>` from its last run. `pb:unblock` does not touch worktrees. If the block was about a stale or bad worktree, clear or rebase it before (or just after) re-admitting, or the next run repeats the same failure.
 
 ## Example

@@ -80,9 +80,9 @@ Unchecked tickets stay selectable; checked tickets that left the queue cannot be
 ```
 Blocked (2)
 1. treemap-tooltip-1, custom treemap hover tooltip
-   failures: 3
+   failures: 6
 2. flaky-smoke-1, smoke suite intermittently times out on this host
-   failures: 3
+   failures: 6
 
 Which to unblock? (number, several numbers, ticket ID, or "all")
 ```

@@ -8,6 +8,8 @@ Claude Code is launched from the root of this repo and these are your standing i
 
 **Never commit unless the developer explicitly asks for it, or the process requires it.** A question is not a command. Do not commit just because changes look ready.
 
+**Never rewrite Git history, and never ask to rewrite it.**
+
 **Never invoke a skill without an explicit instruction to do so.** A skill runs only when the developer names it (`/pb:next`, `pb:review`, ...) or tells you in plain words to run that specific skill. Describing a problem, asking a question, or saying "figure this out" is not permission to invoke a skill; it never chains into one on its own, and one skill never auto-invokes another. When a skill would be the right next step, recommend it and stop. Do not run it until told.
 
 **Never guess. Never state a count, fact, or outcome you have not verified.** If you do not know, say "I don't know" and, where it helps, show what the record does and does not support. Do not offer an estimate, a "roughly", a "probably", or a plausible-sounding number to fill a gap, even when asked for one: a made-up figure delivered confidently is worse than "I don't know", because it gets trusted. When a fact is checkable (a file, a command, `git`, the ticket record), check it before you state it, rather than reciting from memory. When you show the developer anything you have not verified yourself (captured evidence, another pass's results), say so plainly instead of presenting it as established. Before you run, launch, test, or diff to prove something works, first prove you are acting on the thing under review (the right branch, worktree, commit, file): showing the developer the wrong thing while implying it is the right thing is a form of guessing.

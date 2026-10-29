@@ -135,7 +135,7 @@ _These diagrams are designed to be viewed in dark mode._
 
 The diagram sources are the `.mmd` files beside the images in `images/handbook/`. After editing one, re-render it with `bash scripts/render-diagrams.sh images/handbook/<name>.mmd` (see [scripts/render-diagrams.md](scripts/render-diagrams.md)).
 
-Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the third. See [Handling Failures](#handling-failures).
+Any failure, from any stage or source, routes by the ticket's failure count: back to the work queue to retry, or to `blocked/` on the sixth. See [Handling Failures](#handling-failures).
 
 The one arrow that skips the developer is `conflicts/` → `merge-queue/`. A cherry-pick conflict means main moved, not that the work is wrong, so the ticket is rebased and re-verified and rejoins the train on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
 
@@ -149,7 +149,7 @@ A failure is any setback, whatever its source: a sub-agent times out or exhausts
 
 **Every failure is recorded.** Whichever agent hits the failure runs `fail-ticket.ts <id>` to increment the ticket's `**Failures:**` count in its `index.md`, and writes a History entry in the ticket's `detail.md` describing what failed and where the evidence is. The count is deterministic (a number in the file, not an agent re-counting), and the History gives the developer the full story of everything that went wrong with the ticket.
 
-**Three strikes parks the ticket.** Below three failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the third it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action. A ticket failing its rebase in `conflicts/` is the one exception to where it lands: under the cap it stays in `conflicts/` to have the rebase retried (it is already approved, so there is nothing to re-implement from `todo/`), and on the third failure it parks in `blocked/` like anything else.
+**Six strikes parks the ticket.** Below six failures the ticket returns to `todo/` and the loop retries it from the start on a later pass. On the sixth it moves to `blocked/`, a side pen that is not a pipeline stage: `/pb:next` never retries a blocked ticket, and only a human re-admits it by moving it back to `todo/` (`move.ts <id> todo`) once the cause is addressed. Nothing re-enters the autonomous loop without that explicit action. A ticket failing its rebase in `conflicts/` is the one exception to where it lands: under the cap it stays in `conflicts/` to have the rebase retried (it is already approved, so there is nothing to re-implement from `todo/`), and on the sixth failure it parks in `blocked/` like anything else.
 
 **One failure never stops the run; an environmental one does.** A single failed ticket is parked or retried and the development loop carries on with the others. Two or more tickets failing the same check with the same error in one run is an **environmental failure**, which stops the run (see [Environmental failure](#environmental-failure) below).
 
@@ -600,7 +600,7 @@ For each review pass N it:
 1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
 2. **Runs the judgement checks:** reads every rule in `project/docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/`.
 3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the ticket, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
-4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-ticket.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the third failure). It never fixes the work it judges.
+4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note, runs `fail-ticket.ts`, and routes per the failure rules (back to `todo/` for the implement stage to redo, or `blocked/` at the sixth failure). It never fixes the work it judges.
 
 Debug and Fix tickets vary step 4 (see `/pb:debug`).
 
@@ -683,7 +683,7 @@ The development loop relies on this in three places:
 
 - `/pb:next`'s own top-level loop condition terminates the loop when forward progress is exhausted (`merge-queue/` empty, `agent-review/` empty, every unblocked `todo/` ticket moved downstream).
 - Each per-ticket sub-agent (merge, implement, agent-review) has its own completion criteria scoped to that ticket, with its own timeout.
-- A sub-agent that cannot meet its completion criteria records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the third), the queue move being the record. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
+- A sub-agent that cannot meet its completion criteria records the failure and the ticket routes by its count (retry via `todo/`, or `blocked/` on the sixth), the queue move being the record. The loop never re-drives a ticket or falls back to serial, and an environmental failure stops it. See [Handling Failures](#handling-failures).
 
 The full criteria text used at each stage is in [.claude/commands/pb/next.md](.claude/commands/pb/next.md). To interrupt early, stop the run; `/pb:status` shows the live state from the queues.
 

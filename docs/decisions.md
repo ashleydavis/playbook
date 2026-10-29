@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-10-29: pb:next never stops while there is work, and the failure cap is six
+
+**What changed:** `pb:next` prints a `/goal` for the developer to paste and stops; the loop runs under that goal. It never stops to ask a question or for a decision, and a sub-agent that asks or says it is blocked is sent back to decide or unblock itself, recording the decision in the ticket's History and its commit message. The 50 turn limit on the loop is gone. A ticket now moves to `blocked/` at six failures, not three.
+
+**Why:** a run stopped to ask the developer whether to reword commits, which left work undone. Three failures parked tickets that review rejected for faults earlier reviews had missed.
+
 ## 2026-10-29: Environmental failure needs the same error, and implement checks the rules
 
 **What changed:** an environmental failure is now two or more tickets failing the same check with the same error in one run, not the same stage or check. The implement sub-agent of `pb:next` checks every line of its diff against every rule file that applies, and fixes every breach, before it commits. The commit template no longer asks for an imperative subject or a body wrapped at 72 columns.
