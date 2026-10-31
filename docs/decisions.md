@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-01: Implement records its rules check, and review rejects a ticket without one
+
+**What changed:** the implement sub-agent of `pb:next` runs the same judgement checks as agent review on its diff and commit message before it commits, fixes every breach and writes `rules-check.md` to `evidence/implementation-N/`: every rule file it checked and whether the code complied. Agent review writes its own `rules-check.md` to `evidence/review-N/` and rejects a ticket whose latest implement pass has no `rules-check.md`, leaves out a rule file that applies or records a breach left unfixed.
+
+**Why:** `layout-1` failed its first agent review on four rule breaches although the implement sub-agent was told to check the rules, and its evidence held no rules check, so there was no way to tell whether the check ran.
+
 ## 2026-10-29: Conflicts are resolved by merging main, and the train merges branches
 
 **What changed:** the `conflicts/` step merges the current main into the ticket's branch and commits the resolved merge, instead of rebasing the branch onto main. `merge-ticket.ts build` merges each ticket's branch onto the train with a merge commit (`git merge --no-ff`), instead of cherry-picking the ticket's commits, and aborts a conflicting merge with `git merge --abort`. Landing is still a fast-forward of main to the train, so main now holds one merge commit per ticket.
