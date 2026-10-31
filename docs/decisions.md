@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-01: Implement records an acceptance check, and review never judges the commit message
+
+**What changed:** the implement sub-agent of `pb:next` writes `acceptance-check.md` to `evidence/implementation-N/`: every acceptance criterion, whether the code meets it and the evidence that proves it. Agent review first checks the latest implement pass holds every piece of evidence it needs and rejects the ticket at once when any is missing, and the implement sub-agent is told so. Agent review no longer checks or judges the commit title or description. The implement sub-agent checks them against the rules before it commits and records that in `rules-check.md`.
+
+**Why:** the implement sub-agent recorded no evidence of checking its work against the acceptance criteria. A commit cannot be amended or its history rewritten, so rejecting a ticket for its commit message asked for a fix that cannot be made.
+
 ## 2026-11-01: Implement records its rules check, and review rejects a ticket without one
 
 **What changed:** the implement sub-agent of `pb:next` runs the same judgement checks as agent review on its diff and commit message before it commits, fixes every breach and writes `rules-check.md` to `evidence/implementation-N/`: every rule file it checked and whether the code complied. Agent review writes its own `rules-check.md` to `evidence/review-N/` and rejects a ticket whose latest implement pass has no `rules-check.md`, leaves out a rule file that applies or records a breach left unfixed.
