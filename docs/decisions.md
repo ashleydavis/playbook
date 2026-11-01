@@ -2,6 +2,30 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-01: A pass after a rejection only fixes the issues review raised
+
+**What changed:** when the implement sub-agent of `pb:next` reworks a rejected ticket, its code changes are only those that fix the unticked issues in `## Issues`. It still re-captures the full evidence set for the code at HEAD.
+
+**Why:** `git-interface-1` was rejected four times, each time on new faults. Changes beyond the raised issues give each review new code to find faults in.
+
+## 2026-11-01: Implement and agent review share one review standard
+
+**What changed:** `pb:next` has a new section, The review standard: what is judged, the evidence check, the checks and every reason a ticket fails review, including the Fix ticket conditions. Agent review judges against it and rejects a ticket only on its points. The implement sub-agent reads it before it starts, delivers work that meets it and judges its own branch against it in the same order before handing over. What is judged is the code at the worktree's HEAD, as one diff from the point the branch left main, so a problem fixed in a later commit counts as fixed.
+
+**Why:** the implementer's instructions and the reviewer's were written separately and had drifted: the implementer was not told the Fix ticket conditions, was asked only for the Test Plan tests, compile and lint where review runs every check the project defines, and neither said whether review judges the latest pass or the whole branch.
+
+## 2026-11-01: pb:next sub-agents have no turn limit
+
+**What changed:** no `pb:next` sub-agent has a turn limit any more. The implement, conflicts and merge train sub-agents stopped after 20 turns and the agent review sub-agent after 10. Each now works until its job is done, and running out of turns is no longer a failure.
+
+**Why:** the implement sub-agent now runs the full agent review on its own work and repeats it until a run finds nothing, which the 20 turns did not allow for. Agent review now checks every rule one by one, which 10 turns did not allow for. Running out of turns counted as a failure against the ticket.
+
+## 2026-11-01: Implement follows the agent review steps exactly before handing over
+
+**What changed:** the implement sub-agent of `pb:next` runs the agent review steps exactly on its own committed branch: the evidence check, the deterministic checks, the judgement checks, the diff review against the acceptance criteria and every rejection condition. It fixes each fault in a new commit and runs the review again until a run finds nothing, and only then moves the ticket to `agent-review/`. `rules-check.md`, for both agents, lists every rule in every rule file that applies, one by one, with a verdict and its basis. A verdict for a whole file is missing evidence. The commit title and description stay the one difference: the implementer checks them before each commit and agent review never judges them.
+
+**Why:** `git-interface-1` failed agent review four times, each time on rule faults the implementer's own rules check had passed. Running a lighter check than the reviewer let faults through that the reviewer then found. Its `rules-check.md` gave one verdict per rule file, calling `zig.md` and `typescript.md` compliant while the code broke a rule in each.
+
 ## 2026-11-01: Implement records an acceptance check, and review never judges the commit message
 
 **What changed:** the implement sub-agent of `pb:next` writes `acceptance-check.md` to `evidence/implementation-N/`: every acceptance criterion, whether the code meets it and the evidence that proves it. Agent review first checks the latest implement pass holds every piece of evidence it needs and rejects the ticket at once when any is missing, and the implement sub-agent is told so. Agent review no longer checks or judges the commit title or description. The implement sub-agent checks them against the rules before it commits and records that in `rules-check.md`.
