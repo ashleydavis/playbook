@@ -11,8 +11,8 @@
 //
 // It does NOT merge: any commits or uncommitted changes in a worktree are
 // discarded. Use it to recover from a crashed/abandoned pb:next run, or to throw
-// away in-flight work, never to land work. Failure counts are left untouched: an
-// ticket returns to todo/ exactly as it was so the loop can pick it up again.
+// away in-flight work, never to land work. The ticket returns to todo/ exactly
+// as it was so the loop can pick it up again.
 
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";

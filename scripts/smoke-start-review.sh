@@ -31,7 +31,7 @@ make_ticket() {
     local id="$1" desc="$2" priority="$3"
     local tdir="$FIXTURE/tickets/human-review/$id"
     mkdir -p "$tdir"
-    printf '# %s: a title\n\n**ID:** %s\n**Priority:** %s\n**Failures:** 0\n\n%s\n' \
+    printf '# %s: a title\n\n**ID:** %s\n**Priority:** %s\n\n%s\n' \
         "$id" "$id" "$priority" "$desc" > "$tdir/index.md"
     printf '# %s\n\n## Test Plan\nUnit.\n\n## History\n- made\n' "$id" > "$tdir/detail.md"
 }

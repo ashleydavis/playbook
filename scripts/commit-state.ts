@@ -5,7 +5,7 @@
 //   bun ../scripts/commit-state.ts "<message>" [pathspec...]
 //
 // The state repo records how each ticket moved through the pipeline. The
-// mutation scripts (move, setup-ticket, fail-ticket, reset-failures) call
+// mutation scripts (move, setup-ticket) call
 // commitState() from their CLI main() to commit their own change automatically;
 // agents call this CLI directly for free-form edits (e.g. a newly created
 // ticket) that no script performs.

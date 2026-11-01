@@ -8,6 +8,7 @@ A compact orientation map: what lives where across the playbook and a project's 
 - [docs/process.md](docs/process.md): concise version Claude reads at session start.
 - [docs/output-format.md](docs/output-format.md): how skills present output to the developer.
 - [docs/ticket-selection.md](docs/ticket-selection.md): shared ticket selection menu format.
+- [docs/ticket-types/](docs/ticket-types/): the in-progress stages for each ticket type and each stage's instructions.
 - [docs/plans/](docs/plans/): implementation plans.
 - [docs/decisions.md](docs/decisions.md): chronological log of decisions about the process (what changed and why), newest first.
 - [CLAUDE.md](CLAUDE.md): standing instructions, loaded when Claude Code launches from the playbook repo root.
@@ -31,7 +32,7 @@ Paths below are under `project/` when working from the playbook root (e.g. `proj
 - `CLAUDE.md` at the root: project-specific instructions (stack, how to run, comms style), if present. Knows nothing about the playbook; the rules enforced by agents live in `docs/rules/`, not in `CLAUDE.md`.
 - `docs/spec/`: source of truth. `docs/spec/index.md` is the feature index; each `<feature>/index.md` declares an ID; `<feature>/detail.md` is the full spec.
 - `docs/testing-manual/`: mirrors `docs/spec/`. `detail.md` for full steps.
-- `docs/rules/`: the enforced rule set (coding-style, testing, documentation, and any others). The review agent reads it in full. Tuned with `pb:customize`.
+- `docs/rules/`: the enforced rule set (coding-style, testing, documentation, and any others). The rules check stage reads it in full. Tuned with `pb:customize`.
 - `docs/roadmap.md`: forward-looking ideas.
 - Code, tests, derived docs: project-specific layout. See the project repo's CLAUDE.md.
 
@@ -39,7 +40,7 @@ Paths below are under `project/` when working from the playbook root (e.g. `proj
 
 Paths below are under `state/` when working from the playbook root (e.g. `state/tickets/todo/`).
 
-- `tickets/{todo,backlog,in-progress,agent-review,human-review,merge-queue,done}/`: the pipeline queues plus `backlog/` (captured work, not picked by `pb:next` until promoted). Each holds one directory per ticket (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs. `todo/` admission order for `pb:next` is by `**Priority:**` then ID.
+- `tickets/{todo,backlog,in-progress,human-review,merge-queue,done}/`: the pipeline queues plus `backlog/` (captured work, not picked by `pb:next` until promoted). Each holds one directory per ticket (`<id>/` with `index.md` (brief) + `detail.md` (full) plus an optional `evidence/`); listing a queue enumerates IDs. `todo/` admission order for `pb:next` is by `**Priority:**` then ID.
 
 ## Conventions
 - A ticket's ID is `{feature-id}-{n}`, declared in its `index.md` `**ID:**` field and mirrored by the ticket's directory name.

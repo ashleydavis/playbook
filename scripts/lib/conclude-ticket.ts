@@ -2,7 +2,7 @@
 // the ticket directory to done/ AND closes its worktree (removes the worktree,
 // deletes its branch, prunes), in one place, so every path that concludes a ticket
 // does both. Two callers share it:
-//   - conclude-debug.ts: a Debug ticket, which agent-review sends straight to done/
+//   - conclude-debug.ts: a Debug ticket, which its last stage sends straight to done/
 //     without ever going through the merge train.
 //   - merge-ticket.ts (landTrain): each ticket a merge lands.
 //

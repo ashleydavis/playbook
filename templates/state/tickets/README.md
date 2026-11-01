@@ -15,8 +15,7 @@ The queues are flat: ticket directories sit directly under the queue with no nes
 
 - `todo/`: Pending tickets ready for `pb:next` to pick up.
 - `backlog/`: Captured work not yet a contender for implementation. `pb:next` never reads this queue; promote tickets to `todo/` via `pb:promote` or `move.ts` when ready.
-- `in-progress/`: Tickets currently being implemented.
-- `agent-review/`: Tickets awaiting automated review.
+- `in-progress/`: Tickets currently being implemented (dev, test, rules check, commit).
 - `human-review/`: Tickets awaiting developer review.
 - `merge-queue/`: Approved tickets waiting to merge.
 - `done/`: Completed tickets (immutable history).
@@ -25,10 +24,9 @@ The queues are flat: ticket directories sit directly under the queue with no nes
 
 - `conflicts/`: An approved ticket whose branch would not merge cleanly onto main, because main moved under it. `pb:next` drains this **first**, merges main into the ticket's branch in its existing worktree, re-verifies it, and returns it straight to `merge-queue/`. A merge conflict is **not a failure** (it says nothing about the ticket's work), so the ticket never goes back to `todo/` and never returns to `human-review/`: the developer's approval still stands.
 
-Three side pens sit outside the pipeline, and a human moves tickets out of each:
+Two side pens sit outside the pipeline, and a human moves tickets out of each:
 
 - `backlog/`: Work captured for later. Not picked by `pb:next` until promoted to `todo/`.
-- `blocked/`: Parked after a hard or repeated failure; a human re-admits it to `todo/` once the cause is fixed.
 - `aborted/`: Killed by the developer during `pb:review`; the work is abandoned (terminal, immutable history).
 
 ## Upgrading

@@ -11,12 +11,12 @@ Applies to skills that ask the developer to choose ticket(s) before acting. Does
 
 ## Data source
 
-Build the menu from each ticket's `index.md` only: ID, one-line description, `**Depends on:**`, `**Failures:**`, and `**Priority:**` when present. Never read `detail.md` before a ticket is selected.
+Build the menu from each ticket's `index.md` only: ID, one-line description, `**Depends on:**` and `**Priority:**` when present. Never read `detail.md` before a ticket is selected.
 
 **The menu shown to the developer must be the verbatim stdout of the script, run fresh every time you display it.** Hand-typing the list is never legal: do not reconstruct it from memory, paraphrase it, retype it, or re-use the output of an earlier turn. The queues change between turns (a ticket may be approved, rejected, skipped, or moved by another session), so any list you produce yourself silently misrepresents the live state, if you typed it, it is wrong by construction. Run the script, then copy it verbatim: paste exactly what it printed, character for character, and nothing else. Verbatim means no reformatting, do not wrap the lines in bullets, bold, or headers, do not swap the commas, do not renumber or re-mark the lines, and do not tidy the spacing. Adding any markdown can make the renderer relabel the list (for example 1/2/3 shown as a/b/c).
 
 ```bash
-(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")')
+(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue backlog --fields priority --prompt 'Which to promote? (number, several numbers, ticket ID, or "all")')
 ```
 
 There is no hand-formatting fallback. If the script genuinely cannot represent a case, fix the script; never work around it by typing the menu by hand.
@@ -25,7 +25,7 @@ There is no hand-formatting fallback. If the script genuinely cannot represent a
 
 | Mode | Use when | Developer picks | Loop |
 |---|---|---|---|
-| `pick-many` | One-shot action on one or more tickets (`pb:unblock`, `pb:promote`, `pb:rank`, `pb:platforms`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No, act once, then report |
+| `pick-many` | One-shot action on one or more tickets (`pb:promote`, `pb:rank`, `pb:platforms`) | One number, several numbers (space- or comma-separated), a ticket ID, or `all` | No, act once, then report |
 | `pick-one-loop` | Repeated single-ticket work until done or stop (`pb:review`) | One number or ticket ID per turn; `q` / `quit` / `stop` ends the loop | Yes, reprint menu after each ticket is processed |
 
 ## Numbering rules (both modes)
@@ -36,8 +36,7 @@ There is no hand-formatting fallback. If the script genuinely cannot represent a
 - Optional fields appear **indented on the line below** the ticket line:
   - `depends on: <ids>` when non-empty
   - `priority: <n>` when the skill cares about priority
-  - `failures: <n>` when showing blocked tickets
-- Section header when one queue: `<Queue label> (<count>)` e.g. `Blocked (2)`.
+- Section header when one queue: `<Queue label> (<count>)` e.g. `Backlog (2)`.
 - Section header when several queues: repeat per queue with its own count.
 - Empty source: print `No tickets in <Queue label>.` (single queue) or section headers with `(0)` (multi-queue), and **stop the skill** without asking a question.
 
@@ -45,7 +44,7 @@ There is no hand-formatting fallback. If the script genuinely cannot represent a
 
 Immediately after the menu, one question line naming the mode's accepted input:
 
-- `pick-many`: `Which to unblock? (number, several numbers, ticket ID, or "all")`
+- `pick-many`: `Which to promote? (number, several numbers, ticket ID, or "all")`
 - `pick-one-loop`: `Which ticket do you want to review? (number, ticket ID, or stop)`
 
 ## `pick-one-loop` checklist variant (`pb:review` only)
@@ -74,18 +73,6 @@ Unchecked tickets stay selectable; checked tickets that left the queue cannot be
 - Invalid input: say what was wrong in one line and reprint the menu; do not guess.
 
 ## Worked examples
-
-### `pick-many`, blocked (`pb:unblock`)
-
-```
-Blocked (2)
-1. treemap-tooltip-1, custom treemap hover tooltip
-   failures: 6
-2. flaky-smoke-1, smoke suite intermittently times out on this host
-   failures: 6
-
-Which to unblock? (number, several numbers, ticket ID, or "all")
-```
 
 ### `pick-many`, backlog promote (`pb:promote`)
 

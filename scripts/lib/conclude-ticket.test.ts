@@ -32,7 +32,7 @@ let stateDir: string;
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "conclude-ticket-test-"));
     stateDir = join(root, "state");
-    await mkdir(join(stateDir, "tickets", "agent-review", "dbg-1"), {
+    await mkdir(join(stateDir, "tickets", "in-progress", "dbg-1"), {
         recursive: true,
     });
     await mkdir(join(stateDir, "tickets", "done"), { recursive: true });
@@ -60,7 +60,7 @@ describe("concludeTicket()", () => {
             true,
         );
         expect(
-            await isDir(join(stateDir, "tickets", "agent-review", "dbg-1")),
+            await isDir(join(stateDir, "tickets", "in-progress", "dbg-1")),
         ).toBe(false);
         expect(result.worktreeRemoved).toBe(
             join(root, "project", "worktrees", "dbg-1"),

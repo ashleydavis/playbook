@@ -21,7 +21,7 @@ async function makeTicket(
         opts.priority !== undefined ? `**Priority:** ${opts.priority}\n` : "";
     await writeFile(
         join(tdir, "index.md"),
-        `# ${id}: a title\n\n**ID:** ${id}\n${priority}**Failures:** 0\n\n${body}\n`,
+        `# ${id}: a title\n\n**ID:** ${id}\n${priority}\n${body}\n`,
     );
     await writeFile(
         join(tdir, "detail.md"),

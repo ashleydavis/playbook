@@ -30,7 +30,7 @@ make_ticket() {
     {
         printf '# %s: a title\n\n**ID:** %s\n' "$id" "$id"
         [[ -n "$deps" ]] && printf '**Depends on:** %s\n' "$deps"
-        printf '**Failures:** 0\n\n%s\n' "$desc"
+        printf '\n%s\n' "$desc"
     } > "$FIXTURE/tickets/$queue/$id/index.md"
 }
 

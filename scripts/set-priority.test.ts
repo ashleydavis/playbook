@@ -29,24 +29,23 @@ afterEach(async () => {
 });
 
 describe("setPriority()", () => {
-    test("inserts **Priority:** after **Failures:** when missing", () => {
-        const md = "# id\n\n**ID:** id\n**Failures:** 0\n\nDo it.\n";
+    test("inserts **Priority:** after **Type:** when missing", () => {
+        const md = "# id\n\n**ID:** id\n**Type:** Tweak\n\nDo it.\n";
         expect(setPriority(md, 20)).toBe(
-            "# id\n\n**ID:** id\n**Failures:** 0\n**Priority:** 20\n\nDo it.\n",
+            "# id\n\n**ID:** id\n**Type:** Tweak\n**Priority:** 20\n\nDo it.\n",
         );
     });
 
     test("replaces an existing **Priority:** line", () => {
-        const md = "**Failures:** 0\n**Priority:** 100\n\nDo it.\n";
-        expect(setPriority(md, 5)).toBe("**Failures:** 0\n**Priority:** 5\n\nDo it.\n");
+        const md = "**ID:** id\n**Priority:** 100\n\nDo it.\n";
+        expect(setPriority(md, 5)).toBe("**ID:** id\n**Priority:** 5\n\nDo it.\n");
     });
 
     test("leaves other fields intact", () => {
         const md =
-            "# feat-1\n\n**ID:** feat-1\n**Type:** Tweak\n**Depends on:** feat-0\n**Failures:** 1\n\nBuild it.\n";
+            "# feat-1\n\n**ID:** feat-1\n**Type:** Tweak\n**Depends on:** feat-0\n\nBuild it.\n";
         const out = setPriority(md, 30);
         expect(out).toContain("**Depends on:** feat-0");
-        expect(out).toContain("**Failures:** 1");
         expect(out).toContain("**Priority:** 30");
         expect(out).toContain("Build it.");
     });
@@ -54,7 +53,7 @@ describe("setPriority()", () => {
 
 describe("updatePriority()", () => {
     test("updates a ticket in todo/", async () => {
-        await makeTicket("todo", "feat-1", "**Failures:** 0\n\nDo it.\n");
+        await makeTicket("todo", "feat-1", "**Type:** Tweak\n\nDo it.\n");
         const result = await updatePriority("feat-1", 15, ticketsDir);
         expect(result.queue).toBe("todo");
         expect(result.priority).toBe(15);
@@ -63,7 +62,7 @@ describe("updatePriority()", () => {
     });
 
     test("updates a ticket in backlog/", async () => {
-        await makeTicket("backlog", "infra-1", "**Failures:** 0\n\nLater.\n");
+        await makeTicket("backlog", "infra-1", "**Type:** Tweak\n\nLater.\n");
         await updatePriority("infra-1", 5, ticketsDir);
         const md = await readFile(
             join(ticketsDir, "backlog", "infra-1", "index.md"),

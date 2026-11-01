@@ -13,16 +13,16 @@ import {
     type SelectionTicket,
 } from "./format-ticket-selection";
 
-const blockedTickets: SelectionTicket[] = [
+const backlogTickets: SelectionTicket[] = [
     {
         id: "treemap-tooltip-1",
         description: "custom treemap hover tooltip",
-        failures: 3,
+        priority: 30,
     },
     {
         id: "flaky-smoke-1",
         description: "smoke suite intermittently times out on this host",
-        failures: 3,
+        priority: 30,
     },
 ];
 
@@ -30,16 +30,16 @@ describe("formatTicketSelection() pick-many", () => {
     test("renders headers, numbers, optional fields, and prompt", () => {
         const out = formatTicketSelection({
             mode: "pick-many",
-            sections: [{ label: "Blocked", tickets: blockedTickets }],
+            sections: [{ label: "Backlog", tickets: backlogTickets }],
             prompt:
-                'Which to unblock? (number, several numbers, ticket ID, or "all")',
-            fields: new Set(["failures"]),
+                'Which to promote? (number, several numbers, ticket ID, or "all")',
+            fields: new Set(["priority"]),
         });
-        expect(out).toContain("Blocked (2)");
+        expect(out).toContain("Backlog (2)");
         expect(out).toContain("1. treemap-tooltip-1, custom treemap hover tooltip");
-        expect(out).toContain("   failures: 3");
+        expect(out).toContain("   priority: 30");
         expect(out).toContain(
-            'Which to unblock? (number, several numbers, ticket ID, or "all")',
+            'Which to promote? (number, several numbers, ticket ID, or "all")',
         );
     });
 
@@ -80,10 +80,10 @@ describe("formatTicketSelection() pick-many", () => {
     test("empty single queue omits prompt", () => {
         const out = formatTicketSelection({
             mode: "pick-many",
-            sections: [{ label: "Blocked", tickets: [] }],
-            prompt: "Which to unblock?",
+            sections: [{ label: "Backlog", tickets: [] }],
+            prompt: "Which to promote?",
         });
-        expect(out).toBe("No tickets in Blocked.");
+        expect(out).toBe("No tickets in Backlog.");
     });
 });
 
@@ -136,7 +136,7 @@ describe("formatTicketSelection() pick-one-loop", () => {
 });
 
 describe("resolveSelection() pick-many", () => {
-    const tickets = blockedTickets;
+    const tickets = backlogTickets;
 
     test("single number", () => {
         expect(resolveSelection("1", tickets, "pick-many")).toEqual({
@@ -270,7 +270,7 @@ describe("loadQueueTickets()", () => {
         await mkdir(dir, { recursive: true });
         await writeFile(
             join(dir, "index.md"),
-            `# ${id}\n\n**ID:** ${id}\n**Failures:** 0\n**Priority:** ${priority}\n\n${id} desc\n`,
+            `# ${id}\n\n**ID:** ${id}\n**Priority:** ${priority}\n\n${id} desc\n`,
         );
     }
 
@@ -294,7 +294,6 @@ describe("loadQueueTickets()", () => {
         const out = await loadQueueTickets(ticketsDir, "todo", new Set(["priority"]));
         expect(out.map((t) => t.id)).toEqual(["a-1", "b-1"]);
         expect(out[0].priority).toBe(10);
-        expect(out[0].failures).toBeUndefined();
         expect(out[0].dependsOn).toBeUndefined();
     });
 });

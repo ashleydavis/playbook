@@ -25,7 +25,7 @@ async function makeTicket(
         opts.platforms !== undefined ? `**Platforms:** ${opts.platforms}\n` : "";
     await writeFile(
         join(tdir, "index.md"),
-        `# ${id}: a title\n\n**ID:** ${id}\n**Failures:** 0\n${platformsLine}\n${body}\n`,
+        `# ${id}: a title\n\n**ID:** ${id}\n${platformsLine}\n${body}\n`,
     );
     await writeFile(
         join(tdir, "detail.md"),

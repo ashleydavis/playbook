@@ -2,8 +2,8 @@
 // Format a numbered ticket selection menu and resolve developer input.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun ../scripts/format-ticket-selection.ts --mode pick-many --queue blocked \
-//     --fields failures --prompt 'Which to unblock? (number, several numbers, ticket ID, or "all")'
+//   bun ../scripts/format-ticket-selection.ts --mode pick-many --queue backlog \
+//     --fields priority --prompt 'Which to promote? (number, several numbers, ticket ID, or "all")'
 //
 //   bun ../scripts/format-ticket-selection.ts --resolve "1, 3" --mode pick-many --state state.json
 //
@@ -43,7 +43,6 @@ export interface SelectionTicket {
     description: string;
     dependsOn?: string[];
     priority?: number;
-    failures?: number;
     queue?: string;
     checked?: boolean;
     outcome?: string;
@@ -64,11 +63,9 @@ export type ResolveResult =
 const STOP_WORDS = new Set(["q", "quit", "stop"]);
 
 const QUEUE_LABELS: Record<string, string> = {
-    blocked: "Blocked",
     todo: "Todo",
     backlog: "Backlog",
     "in-progress": "In progress",
-    "agent-review": "Agent review",
     "human-review": "Human review",
     "merge-queue": "Merge queue",
     done: "Done",
@@ -98,9 +95,6 @@ function boardToSelection(
     if (ticket.dependsOn.length > 0) {
         sel.dependsOn = ticket.dependsOn;
     }
-    if (ticket.failures !== undefined && ticket.failures > 0) {
-        sel.failures = ticket.failures;
-    }
     return sel;
 }
 
@@ -123,9 +117,6 @@ function formatOptionalFields(
     }
     if (fields.has("priority") && ticket.priority !== undefined) {
         lines.push(`   priority: ${ticket.priority}`);
-    }
-    if (fields.has("failures") && ticket.failures !== undefined) {
-        lines.push(`   failures: ${ticket.failures}`);
     }
     return lines;
 }
@@ -266,9 +257,6 @@ export async function loadQueueTickets(
         }
         if (!fields.has("priority")) {
             delete sel.priority;
-        }
-        if (!fields.has("failures")) {
-            delete sel.failures;
         }
         tickets.push(sel);
     }
@@ -487,7 +475,7 @@ async function main(): Promise<void> {
     if (!args.mode || args.queues.length === 0 || !args.prompt) {
         console.error(
             "usage: format-ticket-selection.ts --mode <pick-many|pick-one-loop> " +
-                "--queue <name> [--queue ...] [--fields dependsOn,priority,failures] " +
+                "--queue <name> [--queue ...] [--fields dependsOn,priority] " +
                 "--prompt <text> [--checklist <json>]",
         );
         process.exit(1);

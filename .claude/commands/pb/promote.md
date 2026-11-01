@@ -16,7 +16,7 @@ Follow the project's [output format](../../../docs/output-format.md) and [ticket
 ## Steps
 
 1. Run `(cd state && bun ../scripts/format-ticket-selection.ts --mode pick-many --queue backlog --fields priority,dependsOn --prompt 'Which to pull into todo? (number, several numbers, ticket ID, or "all")')`. If the output is `No tickets in Backlog.` (or shows zero tickets), say so and stop.
-2. Print the script output verbatim and wait for the developer's pick. Resolve the selection per [docs/ticket-selection.md](../../../docs/ticket-selection.md) (same rules as `pb:unblock`).
+2. Print the script output verbatim and wait for the developer's pick. Resolve the selection per [docs/ticket-selection.md](../../../docs/ticket-selection.md).
 3. Optionally ask whether to change priority on promotion (default: keep existing). If the developer gives a new priority, run `(cd state && bun ../scripts/set-priority.ts <id> <n>)` before or after the move.
 4. For each selected ID, run `(cd state && bun ../scripts/move.ts <id> todo)`.
 5. Report what was promoted: each ticket's new queue and priority if changed. Suggest `pb:next` or `pb:rank` as appropriate.

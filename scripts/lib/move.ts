@@ -1,31 +1,27 @@
 // Shared queue-move logic: validate, locate a ticket across queues, and move its
 // directory. Extracted here because move() and QUEUES are imported by several
-// callers (merge-ticket, reset-loop, setup-ticket, fail-ticket, set-priority);
+// callers (merge-ticket, reset-loop, setup-ticket, set-priority);
 // the CLI wrapper lives in ../move.ts.
 
 import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-// The valid queues. The first six are the pipeline, in order. `conflicts` is a
+// The valid queues. The first five are the pipeline, in order. `conflicts` is a
 // re-entry pen off `merge-queue`: an approved ticket whose branch will not
 // merge cleanly onto the current main waits there to have main merged in and be re-verified,
 // then rejoins `merge-queue` directly. Unlike the side pens below, the loop
-// drains it itself and needs no human. `backlog`, `blocked`, and `aborted` are
+// drains it itself and needs no human. `backlog` and `aborted` are
 // side pens, not pipeline stages. `backlog` holds tickets captured for later;
-// only a human promotes them to `todo/`. `blocked` is where a stage parks a
-// problem ticket that needs human attention; only a human re-admits it
-// (blocked -> todo). `aborted` is where the developer kills a ticket during
+// only a human promotes them to `todo/`. `aborted` is where the developer kills a ticket during
 // pb:review: the work is abandoned and the directory is its terminal record.
 export const QUEUES = [
     "todo",
     "in-progress",
-    "agent-review",
     "human-review",
     "merge-queue",
     "done",
     "conflicts",
     "backlog",
-    "blocked",
     "aborted",
 ] as const;
 

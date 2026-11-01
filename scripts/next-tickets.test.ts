@@ -47,28 +47,24 @@ afterEach(async () => {
 });
 
 describe("nextTickets()", () => {
-    test("returns all five queues as empty arrays for an empty tickets/", async () => {
+    test("returns all four queues as empty arrays for an empty tickets/", async () => {
         expect(await nextTickets(ticketsDir)).toEqual({
             conflicts: [],
             "merge-queue": [],
             todo: [],
             "in-progress": [],
-            "agent-review": [],
         });
     });
 
-    test("lists conflicts, merge-queue, in-progress and agent-review in full, sorted", async () => {
+    test("lists conflicts, merge-queue and in-progress in full, sorted", async () => {
         await makeTicket("conflicts", "auth-7");
         await makeTicket("merge-queue", "auth-5");
         await makeTicket("in-progress", "infra-2");
-        await makeTicket("agent-review", "search-5");
-        await makeTicket("agent-review", "search-4");
 
         const report = await nextTickets(ticketsDir);
         expect(report.conflicts).toEqual(["auth-7"]);
         expect(report["merge-queue"]).toEqual(["auth-5"]);
         expect(report["in-progress"]).toEqual(["infra-2"]);
-        expect(report["agent-review"]).toEqual(["search-4", "search-5"]);
         expect(report.todo).toEqual([]);
     });
 
@@ -81,7 +77,6 @@ describe("nextTickets()", () => {
         expect(Object.keys(await nextTickets(ticketsDir))).toEqual([
             "conflicts",
             "merge-queue",
-            "agent-review",
             "todo",
             "in-progress",
         ]);
@@ -129,7 +124,7 @@ describe("nextTickets()", () => {
         expect((await nextTickets(ticketsDir)).todo).toEqual([]);
     });
 
-    test("the limit caps todo but not merge-queue or agent-review", async () => {
+    test("the limit caps todo but not merge-queue", async () => {
         await makeTicket("todo", "a-1");
         await makeTicket("todo", "b-1");
         await makeTicket("todo", "c-1");

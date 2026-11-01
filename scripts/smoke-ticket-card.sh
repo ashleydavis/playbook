@@ -29,7 +29,7 @@ TDIR="$FIXTURE/tickets/human-review/a-1"
 mkdir -p "$TDIR/evidence/review-1"
 mkdir -p "$TDIR/evidence/implementation-1/screenshots"
 
-printf '# a-1: a title\n\n**ID:** a-1\n**Failures:** 0\n\nfirst ticket\n' > "$TDIR/index.md"
+printf '# a-1: a title\n\n**ID:** a-1\n\nfirst ticket\n' > "$TDIR/index.md"
 printf '# a-1: a real title\n\n## Test Plan\nUnit and e2e.\n\n## History\n- made\n' > "$TDIR/detail.md"
 printf 'running\nEXIT=0\n' > "$TDIR/evidence/review-1/unit.txt"
 printf 'png' > "$TDIR/evidence/implementation-1/screenshots/light.png"

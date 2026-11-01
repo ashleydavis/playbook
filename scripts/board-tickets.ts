@@ -7,19 +7,19 @@
 //
 // Prints a JSON object keyed by queue (in board order), each value an object:
 //
-//   { count, truncated, tickets: [{ id, description, dependsOn, failures, priority }] }
+//   { count, truncated, tickets: [{ id, description, dependsOn, priority }] }
 //
 //   count      total tickets in the queue (the real size, never capped).
 //   truncated  true when count exceeds DISPLAY_LIMIT, so the board should show a
 //              "..." marker to indicate there are more tickets than displayed.
 //   tickets    up to DISPLAY_LIMIT tickets, each with its ID, one-line
-//              description, dependency IDs, failure count, and priority.
+//              description, dependency IDs and priority.
 //
 // Every queue is capped at DISPLAY_LIMIT tickets for display so a huge backlog
 // never floods the board; the count field still reports the true total. Queues
 // are listed in pipeline order with backlog (upcoming work) after todo, then
 // conflicts (approved tickets waiting to have main merged in, shown next to the
-// merge-queue they rejoin), then the side pen (blocked), then done. Aborted
+// merge-queue they rejoin), then done. Aborted
 // tickets are a dead end, so the board does not show them.
 // done/ is ordered most-recent-first (by directory mtime); todo/ and backlog/
 // are ordered by priority then ID; every other queue is ordered by ticket ID.
@@ -41,11 +41,9 @@ export const QUEUES = [
     "todo",
     "backlog",
     "in-progress",
-    "agent-review",
     "human-review",
     "merge-queue",
     "conflicts",
-    "blocked",
     "done",
 ] as const;
 

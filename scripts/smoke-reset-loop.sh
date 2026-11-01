@@ -18,7 +18,7 @@ SETUP="$SCRIPT_DIR/setup-ticket.ts"
 RESET="$SCRIPT_DIR/reset-loop.ts"
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smoke-reset.XXXXXX")"
-QUEUES=(todo in-progress agent-review human-review merge-queue done blocked)
+QUEUES=(todo in-progress human-review merge-queue done)
 
 failures=0
 fail() {

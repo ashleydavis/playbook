@@ -4,12 +4,12 @@
 // Usage (run with the state repo as the current working directory):
 //   bun playbook/scripts/next-tickets.ts
 //
-// Prints a JSON object keyed by the five queues pb:next drives, each value the
+// Prints a JSON object keyed by the four queues pb:next drives, each value the
 // list of ticket IDs to act on in that queue. The keys are in the order pb:next
-// processes them each turn (conflicts, then merge-queue, then agent-review, then
-// todo, then in-progress: finish work nearest to done before starting new work):
+// processes them each turn (conflicts, then merge-queue, then todo, then
+// in-progress: finish work nearest to done before starting new work):
 //
-//   conflicts, merge-queue, agent-review, in-progress: every ticket in the queue.
+//   conflicts, merge-queue, in-progress: every ticket in the queue.
 //   todo: only the actionable tickets (dependencies resolved), sorted by
 //         **Priority:** ascending then ID, capped so that todo + in-progress
 //         together never exceed LIMIT tickets in flight.
@@ -24,7 +24,7 @@
 //
 // A todo ticket is actionable only when every one of its dependencies is in done/
 // (merged): tickets cannot start until their dependencies are merged. A dependency
-// sitting anywhere else (todo, in-progress, agent-review, human-review,
+// sitting anywhere else (todo, in-progress, human-review,
 // merge-queue) or missing entirely leaves the ticket blocked. done/ is read only
 // to resolve dependencies; it is not reported. human-review/ and backlog/ are
 // neither driven nor read.
@@ -53,7 +53,6 @@ import {
 export const QUEUES = [
     "conflicts",
     "merge-queue",
-    "agent-review",
     "todo",
     "in-progress",
 ] as const;
@@ -126,7 +125,6 @@ export async function nextTickets(
     return {
         conflicts,
         "merge-queue": await listQueue(join(ticketsDir, "merge-queue")),
-        "agent-review": await listQueue(join(ticketsDir, "agent-review")),
         todo: todoReady,
         "in-progress": inProgress,
     };

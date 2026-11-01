@@ -30,12 +30,10 @@ import { join } from "node:path";
 export const ID_QUEUES = [
     "todo",
     "in-progress",
-    "agent-review",
     "human-review",
     "merge-queue",
     "done",
     "backlog",
-    "blocked",
     "aborted",
 ] as const;
 

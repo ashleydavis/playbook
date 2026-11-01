@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// Conclude a Debug ticket: move it from agent-review/ to done/ and close its
-// worktree. A Debug ticket is a throwaway investigation that agent-review sends
+// Conclude a Debug ticket: move it from in-progress/ to done/ and close its
+// worktree. A Debug ticket is a throwaway investigation that its last stage sends
 // straight to done/ (it spawns a Fix ticket separately), so unlike a merged
 // ticket it never goes through the merge train that would otherwise tear its
 // worktree down. This is that missing teardown, run at the point the Debug ticket

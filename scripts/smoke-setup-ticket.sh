@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETUP="$SCRIPT_DIR/setup-ticket.ts"
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smoke-setup.XXXXXX")"
-QUEUES=(todo in-progress agent-review human-review merge-queue done)
+QUEUES=(todo in-progress human-review merge-queue done)
 
 failures=0
 fail() {

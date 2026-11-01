@@ -7,7 +7,6 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { parseDependsOn, parsePriority } from "./ticket-meta";
-import { parseFailures } from "../fail-ticket";
 
 // Longest description kept, so each fits on one line of its own under the ticket
 // ID. Longer descriptions are cut to this many characters and end with an
@@ -47,7 +46,6 @@ export interface BoardTicket {
     id: string;
     description: string;
     dependsOn: string[];
-    failures: number;
     priority: number;
 }
 
@@ -67,7 +65,6 @@ export async function readTicket(
         id,
         description: truncateDescription(parseDescription(indexMd)),
         dependsOn: parseDependsOn(indexMd),
-        failures: parseFailures(indexMd),
         priority: parsePriority(indexMd),
     };
 }

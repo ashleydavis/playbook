@@ -1,6 +1,6 @@
 // Shared state-repo commit logic: stage and commit a change so the state repo's
 // git history is an audit log. Extracted here because six callers import
-// commitState() (move, fail-ticket, reset-failures, set-priority, setup-ticket,
+// commitState() (move, set-priority, setup-ticket,
 // merge-ticket); the CLI wrapper lives in ../commit-state.ts.
 //
 // Two properties make this safe for the pb:next loop, which runs up to 10

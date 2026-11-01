@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-02: Agent review, failures and blocked/ removed; each ticket type has its own stages
+
+**What changed:** the `agent-review/` and `blocked/` queues are gone, and so are their sub-agent, `pb:unblock`, the `**Failures:**` count, `fail-ticket.ts` and `reset-failures.ts`. A ticket in `in-progress/` goes through the stages for its type, in order, each run by its own sub-agent. Each type's stages and their instructions are in a file in `docs/ticket-types/`, and Work is the default type: Fix and any type with no file use `work.md`, whose stages are dev, test, rules check and commit, with commit moving the ticket to `human-review/`. Debug tickets run investigate then prove root cause. A ticket never fails: no stage sends it back, a stage that does not finish runs again, a ticket whose checks fail on a merge train goes to `conflicts/`, and only an environment problem or a broken main stops the run. The review standard, `review-N/` evidence and `rules-check.md` are no longer written. `pb:review` loses its block action.
+
+**Why:** a reviewer that rejected back to `todo/` made tickets go back and forth between implement and review, through `blocked/` at times, with no way to tell how many rounds a ticket would take to reach human review. Each stage now fixes what it finds itself, so there is no loop between stages, and different kinds of work get stages that suit them.
+
 ## 2026-11-01: Unit test coverage is measured over every changed file and smoke tests never count
 
 **What changed:** The review standard in `pb:next` rejects a ticket when a changed file has less than 100% unit test coverage. A rules check verdict on a coverage rule must cite the unit test coverage of every changed file. A smoke test never counts towards unit test coverage and never excuses a missing unit test.

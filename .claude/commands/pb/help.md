@@ -34,19 +34,17 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 **The queues (pipeline order).** A ticket is a directory that travels as a unit:
 
 ```
-todo/ -> in-progress/ -> agent-review/ -> human-review/ -> merge-queue/ -> done/
+todo/ -> in-progress/ -> human-review/ -> merge-queue/ -> done/
 ```
 
 - `todo/`: pending, ready for `pb:next` (ordered by `**Priority:**` then ID among actionable tickets).
 - `backlog/`: side pen for captured work not yet a contender; `pb:next` never reads it. Pull to `todo/` with `pb:promote`.
-- `in-progress/`: an implement sub-agent is building it in a worktree.
-- `agent-review/`: automated review against `project/docs/rules/`.
+- `in-progress/`: built in a worktree by four sub-agents in turn: dev, test, rules check (against `project/docs/rules/`) and commit.
 - `human-review/`: waiting on you (`pb:review`).
 - `merge-queue/`: approved, waiting for the merge agent to land it on main.
 - `done/`: merged, with its evidence archived alongside.
-- `blocked/`: side pen (not a pipeline stage). A ticket that hits a hard problem (sub-agent timeout, unresolvable conflict, or a sixth failure) is parked here for you, with a History note. `pb:next` never retries it; you re-admit it with `bun ../scripts/move.ts <id> todo` once resolved.
 
-Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through the rest. Cheap setbacks retry via `todo/` (a human rejection in `pb:review`, a not-proven Debug, a failed Fix review); a hard or repeated failure parks the ticket in `blocked/`, where nothing re-enters the loop without you moving it back to `todo/`.
+Only `human-review/` needs you. `pb:next` moves tickets through the rest. A ticket never fails: each stage fixes what it finds, and a human rejection in `pb:review` is the only way a ticket goes back to `todo/`.
 
 ## Skills
 
@@ -64,7 +62,6 @@ Only `human-review/` and `blocked/` need you. `pb:next` moves tickets through th
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel through to human review |
 | `pb:next:preview` | Say what `pb:next` would do, without doing it |
 | `pb:review` | Walk you through `human-review/` |
-| `pb:unblock` | Re-admit blocked tickets (reset failures, move to `todo/`) |
 | `pb:debug` | File a Debug ticket to prove a root cause, then spawn a Fix ticket |
 | `pb:customize` | Tune the project's enforced rules in `project/docs/rules/` |
 | `pb:bootstrap:new` | Set up a greenfield project (run once) |
@@ -87,8 +84,8 @@ This process runs on a work queue plus a set of skills. To start a project:
 
 Then the daily loop is: pb:status (see where things stand) -> pb:plan:break/todo:break/add
 (fill todo/) -> pb:next (it builds everything it can) -> pb:review (you
-approve). Tickets flow todo -> in-progress -> agent-review -> human-review ->
-merge-queue -> done; only human-review needs you.
+approve). Tickets flow todo -> in-progress -> human-review -> merge-queue ->
+done; only human-review needs you.
 
 Want the full tour, or help with a specific step?
 ```

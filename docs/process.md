@@ -52,19 +52,17 @@ Three repos, each a separate concern:
 
 ## Queues
 
-`state/tickets/` has six pipeline queue directories, in order, plus `conflicts/` and three side pens:
+`state/tickets/` has five pipeline queue directories, in order, plus `conflicts/` and two side pens:
 
-`todo/` → `in-progress/` → `agent-review/` → `human-review/` → `merge-queue/` → `done/`
+`todo/` → `in-progress/` → `human-review/` → `merge-queue/` → `done/`
 
-`conflicts/` is a re-entry pen hanging off `merge-queue/`, for an approved ticket whose branch will not merge cleanly onto the current main because main moved under it. It is not a side pen: **`pb:next` drains it itself, first, ahead of every other queue**, and no human is involved. Main is merged into the ticket's branch in its existing worktree, the ticket is re-verified and rejoins `merge-queue/` directly. It never goes to `todo/` (nothing is wrong with the work, so there is nothing to re-implement) and it never returns to `human-review/` (the developer already approved it; merging main needs re-verification, not a re-decision). A merge conflict is **not a failure** and does not count toward the six-failure cap: main moving says nothing about the ticket. Only a merge conflict that cannot be resolved, or a check that then fails on the new main, is a failure, and that keeps the ticket in `conflicts/` until the cap parks it in `blocked/`. See **Failures**.
+`conflicts/` is a re-entry pen hanging off `merge-queue/`, for an approved ticket whose branch will not merge cleanly onto the current main because main moved under it. It is not a side pen: **`pb:next` drains it itself, first, ahead of every other queue**, and no human is involved. Main is merged into the ticket's branch in its existing worktree, the ticket is re-verified and rejoins `merge-queue/` directly. It never goes to `todo/` (nothing is wrong with the work, so there is nothing to re-implement) and it never returns to `human-review/` (the developer already approved it; merging main needs re-verification, not a re-decision). A ticket whose checks fail on a merge train also goes to `conflicts/`, where its checks are fixed.
 
 `backlog/` is a side pen for work captured but not yet a contender for implementation. It is **not** a pipeline stage: `pb:next` never reads it. Pull tickets to `todo/` explicitly via `pb:promote` or `move.ts` when ready to build.
 
-`blocked/` is a side pen. It is **not** a pipeline stage: it is where a ticket lands after its sixth failure (see **Failures**). A blocked ticket is parked, not retried: `pb:next` never picks it up. Only a human re-admits it by moving it back to `todo/` (`bun ../scripts/move.ts <id> todo` from `state/`), so nothing re-enters the autonomous loop without that explicit action.
+`aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. An aborted ticket is a deliberate, terminal decision: the `aborted/` directory is its only record, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
 
-`aborted/` is the other side pen, and is also **not** a pipeline stage. It is where the developer kills a ticket during `pb:review` (the `ab`/`abort` action): the work is abandoned and will not be done. Moving the ticket to `aborted/` sets its state to aborted (the queue it sits in is its status). The developer may add an optional reason note to the ticket's History first. Unlike a blocked ticket, an aborted ticket is a deliberate, terminal decision: the `aborted/` directory is its only record, its `**Failures:**` count is left untouched, and `pb:next` never touches it. Like `done/`, treat it as immutable history.
-
-The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `conflicts/` → `merge-queue/` → `agent-review/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: merge main into the approved tickets that missed the last train, land approved tickets on main, then clear every review already in flight, and only then admit and implement new `todo/` work, so tickets keep flowing through to `human-review/` instead of piling up behind a backlog of unreviewed work. `conflicts/` is first because its tickets are nearest of all to done, and because every turn main drifts further from them makes merging main into them worse. Full procedure in the [pb:next](../.claude/commands/pb/next.md) skill.
+The arrow above is a ticket's **lifecycle** (the queues it travels through), not the order `pb:next` works them. Each turn `pb:next` processes the queues it drives in this **priority order**: `conflicts/` → `merge-queue/` → `todo/` → `in-progress/` (`human-review/` is left for the developer). The principle is *finish work nearest to done before starting anything new*: merge main into the approved tickets that missed the last train, land approved tickets on main, and only then admit and implement new `todo/` work. `conflicts/` is first because its tickets are nearest of all to done, and because every turn main drifts further from them makes merging main into them worse. Full procedure in the [pb:next](../.claude/commands/pb/next.md) skill.
 
 `human-review/` is worked by `pb:review` as a **review loop**: it lists the reviewable tickets numbered from 1 and asks which to review, the developer selects one by number or name, is walked through it and resolves it (approve, reject, skip, abort), then the numbered list and question return for the next selection. On selecting a ticket, Claude prints a list of any **prior human rejections** (each with a very brief note on how it was subsequently rectified), then the ticket's **summary card** (its name, description, changed-file and screenshot counts, evidence pass, test results, and inspect menu), so the developer sees what the ticket is and how it has already been sent back before inspecting the work. The card is a short summary; the full detail (every changed file, every screenshot) is behind the inspect menu, opened on demand, so the developer is not buried in it up front. The loop repeats until the developer stops or the queue is empty, so they choose the order and can stop any time. Walking through the currently selected ticket is itself an inner loop, the **inspect loop**: a numbered menu of ways to examine the work (show the screenshots, run it by hand, start the app for them, run the automated tests, show or read the doc changes, show or view the code diff), which Claude either shows the developer how to do or does for them (describing what it will do first), repeating until they resolve the ticket. So the review loop (select a ticket) contains the inspect loop (examine that ticket). Full procedure in the [pb:review](../.claude/commands/pb/review.md) skill.
 
@@ -72,8 +70,8 @@ The arrow above is a ticket's **lifecycle** (the queues it travels through), not
 - The ticket directory (`index.md`, `detail.md`, and an `evidence/` subdir) moves between queues as a unit, so the ticket and its evidence stay together end to end and land in `done/<id>/`.
 - List a queue with `ls state/tickets/<queue>/` (e.g. `ls state/tickets/todo/`); the directory names are the IDs, so this shows queue contents without opening files.
 - Move tickets with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). The agent decides when; the script only moves the directory, and the queue is the record.
-- The queues are the source of truth for process state. There is no separate maintained summary file: `pb:status` summarises the live queues on demand (progress, what's in flight, what's blocked) and `pb:board` lists them.
-- The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`, `fail-ticket`, `reset-failures`) commit automatically (ticket-scoped, lock-safe). For a hand edit (e.g. a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
+- The queues are the source of truth for process state. There is no separate maintained summary file: `pb:status` summarises the live queues on demand (progress and what's in flight) and `pb:board` lists them.
+- The state repo is a git repo and every significant change is committed, so its history is an audit log of how each ticket moved through the pipeline. The mutation scripts (`move`, `setup-ticket`) commit automatically (ticket-scoped, lock-safe). For a hand edit (e.g. a newly created ticket) the agent commits it immediately with `bun ../scripts/commit-state.ts "<message>" <pathspec>`. Because script commits are ticket-scoped, evidence and History notes written before a `move.ts` are captured by that move's commit, so they need no separate commit. (A state repo created before this existed is not yet a git repo; `commit-state.ts` skips with a warning until the developer runs `git init` in `state/`.)
 - **When the state repo has a remote, push after committing.** Check with `git -C state remote`; if it names a remote, follow every state commit with `git -C state push`. The state repo is gitignored by the playbook and is not carried by any other clone, so until it is pushed the queues, the evidence and the audit trail exist on one machine only, and nothing else in the process backs them up. Push after the commit that ends a piece of work (a ticket moved, a ticket created, a review recorded), not after each script-level commit inside a run. A push that is refused (no network, no upstream, a non-fast-forward) is reported to the developer and left alone; never force it, and never reset or rewrite state history to make it go through. When `git -C state remote` names nothing there is nowhere to push, so committing is the whole duty; suggest the developer create a remote if they want the state to survive the machine.
 
 ## Docs
@@ -88,7 +86,7 @@ In the project repo (`project/`):
 
 ## Tickets
 
-- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, `**Failures:**` (the failure count; see **Failures**), optional `**Priority:**` (lower = sooner; default `100` when absent; tie-break by ID among actionable `todo/` tickets), optional `**Platforms:**` (`linux`, `darwin`, `win32`; a locked ticket enters `in-progress/` only on one of those platforms; absent means any), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
+- `index.md` (brief) holds: `**ID:**`, `**Type:**`, `**Depends on:**`, optional `**Priority:**` (lower = sooner; default `100` when absent; tie-break by ID among actionable `todo/` tickets), optional `**Platforms:**` (`linux`, `darwin`, `win32`; a locked ticket enters `in-progress/` only on one of those platforms; absent means any), and a one-line description (the queue it sits in is its status). `detail.md` (full) holds: Description, Acceptance Criteria, Test Plan, Implementation Notes, Testing Notes, Notes, History. Shape: [templates/ticket-template/](../templates/ticket-template/).
 - ID form: `{feature-id}-{n}`, where `n` increments per feature. Tickets not tied to a feature use a `misc`/`infra` prefix. The `**ID:**` field is the source of truth; the directory name mirrors it.
 - Where possible, number `n` in order of execution: a dependent ticket gets a higher number than the tickets it depends on. The number is a reading-order hint only; `**Depends on:**` gates execution and `**Priority:**` orders actionable `todo/` tickets for `pb:next`.
 - Before writing any new ticket directory, the creating skill **always** asks where it should land (no default):
@@ -101,48 +99,29 @@ In the project repo (`project/`):
 - Refuse to implement a ticket with no acceptance criteria.
 - A Test Plan is required. For tickets with no testable behaviour, use `N/A: <reason>` with a Manual Verification section. Nothing reaches `merge-queue/` without a check.
 - Dependent tickets cannot start until their dependencies are merged.
-- A human rejection is not a failure: notes are appended to History and the ticket returns to `todo/` for rework with its `**Failures:**` count reset to 0 (`reset-failures.ts`).
-- `Debug` and `Fix` are special types that change agent-review behaviour (see `pb:debug`).
+- A human rejection: notes are appended to History and the ticket returns to `todo/` for rework.
+- A ticket's `**Type:**` picks its in-progress stages (see **In-progress stages**).
 
-## Failures
+## When something goes wrong
 
-A failure is any setback, whatever its source: a sub-agent times out, a check fails, a merge conflict in `conflicts/` can't be resolved, a Debug root cause is not proven, a Fix doesn't solve its problem, or post-merge checks fail on main. Two things are not failures and are never handled as one:
+A ticket never fails. It never counts setbacks, never moves backwards on its own and is never parked.
 
-- An **interruption**: a session or rate limit, the developer stopping the run, or the machine dying cuts the run off from outside and tells you nothing about the ticket, so it is recorded nowhere, counts toward no cap, and blocks no ticket (see [Interruption and resume](#interruption-and-resume)).
-- A **merge-train conflict**: main moving under an approved ticket is not a defect in that ticket. It is recorded nowhere and counts toward no cap; the ticket goes to `conflicts/` to have main merged into it (see [Queues](#queues)).
-
-Every failure is handled the same way:
-
-1. **Record it.** Run `bun ../scripts/fail-ticket.ts <id>` (from `state/`) to increment the ticket's `**Failures:**` count, and add a History entry to its `detail.md` saying what failed and where the evidence is. Both, every time, so the ticket carries a complete deterministic record of everything that went wrong.
-2. **Route by count.** Below six, the ticket returns to `todo/` and the loop retries it on a later pass. At six it moves to `blocked/`. A ticket failing in `conflicts/` is the exception: under the cap it stays in `conflicts/` (merging main is retried, never re-implemented from `todo/`), and at six it moves to `blocked/` like any other.
-3. **Surface it.** Every block, environmental failure, and broken main is surfaced in chat in the run report, naming the ticket and the one-line reason. `/pb:status` regenerates the same picture from the live queues on demand.
-4. **Reconcile before the turn ends (invariant).** When a `pb:next` turn ends, `in-progress/` is empty: every ticket the parent admitted sits in a terminal queue (`agent-review/` on success, `todo/` or `blocked/` on failure). A sub-agent records and routes its own failure when it is alive to do so, but one that times out, dies, or returns a bare failure verdict cannot, so recording can never depend on it. The parent therefore re-runs `next-tickets.ts` as the final act of every turn: any ticket the report still shows in `in-progress/` (no sub-agent is working it now) is by definition an un-recorded failure, so the parent runs `fail-ticket.ts`, writes the History note, and routes it by count. The same applies to anything stranded in `agent-review/` by a dead review agent. A ticket is never left mid-stage.
-
-A single failure never aborts the loop; the run continues with the other tickets. Two or more tickets failing the same check with the same error in one run is an **environmental failure** and stops the run (see [Environmental failure](#environmental-failure)). Never work around a failure by switching parallel→serial or re-driving a ticket by hand.
-
-**Exception (broken main):** if a merge lands but its post-merge checks then fail, the ticket goes to `todo/` (not `blocked/`) so the fix stays actionable, and the run stops because every later ticket builds on main.
-
-**Exception (setup failure → straight to `blocked/`):** if a ticket's worktree setup or dependency installation fails, the environment cannot be prepared, so the toolchain or dependencies will not install, that is a **setup failure**, and it is handled differently from a normal failure. **Attempt no workaround of any kind:** no "magic", no alternative install path, no substitute toolchain, no borrowing or copying another worktree's state, no hand-patching the environment. A broken environment is the developer's to fix, not the agent's to route around. Capture the full error output as evidence, record the failure, and move the ticket **straight to `blocked/`** (bypass the retry ladder, retrying will not repair a broken environment). Surface it in chat with the error message(s) and the evidence path, so the developer sees exactly what failed. The ticket stays blocked until a human fixes the environment and re-admits it.
-
-## Environmental failure
-
-An **environmental failure** is two or more tickets failing the same check with the same error in one run. The shared cause is the environment, not the tickets (shared test fixtures, a contended resource, a broken tool), so retrying the tickets will not help: the run must stop and hand back. A session or rate limit is **not** an environmental failure even though it can stop several sub-agents at once: nothing about the environment-under-test broke, the run simply ran out of capacity, and the tickets are unharmed (see [Interruption and resume](#interruption-and-resume)).
-
-Handle it in this order:
-
-1. **Reconcile every failed ticket first** (record and route each by count, per **Failures** point 4). Handing back never means leaving a ticket mid-stage.
-2. **Stop launching new work and hand back** to the developer. Never work around it by switching parallel→serial or re-driving tickets by hand.
-3. **Record the cause** in chat as a `Run halted: environmental failure` report naming the shared check and error, the tickets involved, the suspected cause, and the evidence path. The tickets it hit usually return to `todo/` and leave no per-ticket trace, so this chat report is the only record of why the run stopped; the queues remain the durable state and `pb:status` shows the in-flight state.
+- A stage keeps working until its instructions are met. A failing check is work for it to fix.
+- A sub-agent that returns without finishing (it timed out, died or gave up) is spawned again for the same stage, starting from the worktree as it is.
+- A ticket whose checks fail on a merge train goes to `conflicts/`, where main is merged into it and its checks are fixed.
+- **Environment problem.** When a worktree setup or dependency install fails, or two or more tickets hit the same error from a cause outside the tickets (shared test fixtures, a contended resource, a broken tool), the run stops and hands back. **Attempt no workaround of any kind:** no alternative install path, no substitute toolchain, no borrowing another worktree's state, no patching the environment. Every ticket stays where it sits. The chat report `Run halted: environment problem` names the check and error, the tickets, the suspected cause and the evidence path. The developer fixes the environment and re-runs `pb:next`.
+- **Broken main.** If a merge lands and a check on main then fails, the landed tickets stay done and the run stops, because every later ticket builds on main. Fixing main is a new ticket.
+- Never work around a problem by switching parallel to serial or re-driving a ticket outside these rules.
 
 ## Interruption and resume
 
-An **interruption** is the run being cut off from outside, not a ticket failing: a session or rate limit, the developer stopping the run, or the agent or machine dying. The work was fine; it just stopped. An interruption is never an environmental, systemic, or systematic failure.
+An **interruption** is the run being cut off from outside: a session or rate limit, the developer stopping the run, or the agent or machine dying. The work was fine; it just stopped. An interruption is never an environment problem.
 
 Handle it like this:
 
-1. **Don't record it.** Never run `fail-ticket.ts` for an interrupted ticket, never increment its `**Failures:**`, never route it to `blocked/`, and never write a `Run halted: environmental failure` entry. An interruption leaves no failure trace, because treating one as a failure would wrongly march an untouched ticket toward the block cap.
-2. **Stop cleanly and leave the queues as they are.** The instant a session or rate limit is hit (the parent's own or a sub-agent's), stop launching new work and hand back. A ticket left mid-stage stays exactly where it is; do not reconcile it as a failure. It states in chat that the run was interrupted and to resume with `pb:next`; the queues themselves are the durable record and `pb:status` shows the in-flight state.
-3. **Resume by re-running `pb:next`** when the developer says to. The queues are the durable state and every script is idempotent, so resuming is simply invoking `pb:next` again: it reads `next-tickets.ts` and continues from the live queue state. A ticket the interruption left mid-stage (in `in-progress/` or `agent-review/`) is **re-driven from where it sits, not failed**: the implement or review sub-agent just redoes that stage into a fresh `evidence/implementation-N/` or `review-N/`. This is the one case where a stranded ticket is re-driven rather than recorded as a failure (contrast the within-turn reconciliation in **Failures** point 4, which only fails strandings left by a sub-agent that returned alive this turn).
+1. **Don't treat it as an environment problem.** Never write a `Run halted: environment problem` entry for it.
+2. **Stop cleanly and leave the queues as they are.** The instant a session or rate limit is hit (the parent's own or a sub-agent's), stop launching new work and hand back. A ticket left mid-stage stays exactly where it is. It states in chat that the run was interrupted and to resume with `pb:next`; the queues themselves are the durable record and `pb:status` shows the in-flight state.
+3. **Resume by re-running `pb:next`** when the developer says to. The queues are the durable state and every script is idempotent, so resuming is simply invoking `pb:next` again: it reads `next-tickets.ts` and continues from the live queue state. A ticket the interruption left mid-stage (in `in-progress/`) is **re-driven from where it sits**: it starts again at the first stage for its type, which picks up the work already in the worktree, into a fresh `evidence/implementation-N/`.
 
 The "don't run `pb:next` again until the developer unblocks something" rule is about a **clean** finish, where forward progress is genuinely exhausted. After an interruption the opposite holds: re-running `pb:next` is exactly how the developer resumes.
 
@@ -172,7 +151,6 @@ Rhythm: run `/pb:status`, run a skill, repeat. The developer drives that rhythm:
 | `pb:next` | Pick up to 10 unblocked tickets, implement in parallel |
 | `pb:next:preview` | Say what `pb:next` would do, without doing it |
 | `pb:review` | Walk the developer through `human-review/` |
-| `pb:unblock` | Re-admit blocked tickets: reset their failures and move them back to `todo/` |
 | `pb:promote` | Pull tickets from `backlog/` to `todo/` |
 | `pb:rank` | Set or change `**Priority:**` on tickets in `todo/` or `backlog/` |
 | `pb:platforms` | Set or clear `**Platforms:**` on tickets in `todo/` or `backlog/` |
@@ -184,11 +162,11 @@ Rhythm: run `/pb:status`, run a skill, repeat. The developer drives that rhythm:
 
 ## Ticket completion criteria
 
-Each stage carries **ticket completion criteria**: the observable state that marks it done (files in the right queues, checks green, evidence on disk, commits made). The criteria also include an **abort condition** (a turn count or a repeated-failure signal). The criteria are plain text in the agent's prompt, not a separate enforcement mechanism; what actually gates a stage is the end-of-turn reconciliation in `pb:next` (re-run `next-tickets.ts`, and `in-progress/` must be empty), backed by the evidence the criteria demand being on disk.
+Each stage carries **ticket completion criteria**: the observable state that marks it done (files in the right queues, checks green, evidence on disk, commits made). The criteria are plain text in the agent's prompt, not a separate enforcement mechanism; a stage that returns without meeting them is run again, and the evidence the criteria demand must be on disk.
 
-`pb:next` uses ticket completion criteria in three places: its top-level loop condition (stops when forward progress is exhausted) and a per-ticket sub-agent's criteria for each of merge / implement / agent-review, each run in the ticket's worktree. Exact text lives in the [pb:next](../.claude/commands/pb/next.md) skill. To interrupt, stop the run; `pb:status` shows the live state from the queues.
+`pb:next` uses ticket completion criteria in three places: its top-level loop condition (stops when forward progress is exhausted) and a per-ticket sub-agent's criteria for each of merge / implement, each run in the ticket's worktree. Exact text lives in the [pb:next](../.claude/commands/pb/next.md) skill. To interrupt, stop the run; `pb:status` shows the live state from the queues.
 
-When a sub-agent cannot meet its completion criteria, the ticket is recorded and routed per **Failures** above, the loop never works around a failure, and an environmental failure stops the whole loop (see [Environmental failure](#environmental-failure)).
+When a sub-agent does not meet its completion criteria, its stage runs again; an environment problem stops the whole loop (see [When something goes wrong](#when-something-goes-wrong)).
 
 ## Checks
 
@@ -201,8 +179,7 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 
 **Who evaluates, and when.** Checks run inside the `pb:next` sub-agents, in the ticket's worktree:
 
-- Implement and merge stages run the deterministic checks (compile, lint, tests).
-- Agent-review is **review-only** and re-verifies independently; the **Agent review** section covers exactly what it does.
+- Implement and merge stages run the deterministic checks (compile, lint, tests). The rules check stage runs the judgement checks.
 - A ticket's completion criteria require the evidence on disk before the ticket moves on; the developer sees the same evidence in `pb:review`.
 
 **Every check result records the same fields**, whatever its kind:
@@ -213,20 +190,20 @@ The two are interchangeable in the pipeline. What differs is the evidence: a det
 - **Basis**: why, the output read or the reasoning that decided it.
 - **Fix notes**: on fail, what to change.
 
-## Agent review
+## In-progress stages
 
-Agent-review is the automated gate before human review. It is **review-only**: the sub-agent makes no code edits, commits nothing, and its sole writes are to the ticket's own state (move the ticket directory, capture check output to its `evidence/`, and on rejection a History note plus a Failures increment). Its only writes are to the ticket's own state; the parent reports the outcome in chat after the turn.
+A ticket in `in-progress/` goes through the stages listed for its type in [ticket-types/](ticket-types/), in order, each run by its own sub-agent in the ticket's worktree. The file is the one named after the ticket's `**Type:**`, or [work.md](ticket-types/work.md) when the type has none: Work is the default type, and Fix uses it too. The Work stages are:
 
-For each review pass N it:
+`dev` → `test` → `rules check` → `commit`
 
-1. **Re-runs the deterministic checks** fresh in the worktree (lint, format, unit tests, smoke tests, and any other project checks), each in the foreground, capturing full output to `evidence/review-N/`. It trusts no earlier run: a sub-agent's report is not a verified result.
-2. **Runs the judgement checks:** reads every rule in `project/docs/rules/`, the root and any scoped `CLAUDE.md` for directories touched, and the docs required by `documentation.md`, and writes a pass/fail assessment (rule named, verdict, reasoning) to `evidence/review-N/rules-check.md`. It checks the committed diff only: it never checks or judges the commit title or description, because a commit cannot be amended or rewritten. Before any check it confirms the latest `implementation-N/` holds all the evidence it needs, including `rules-check.md` (every rule in every rule file that applies, listed one by one with a verdict and its basis, no breach left unfixed) and `acceptance-check.md` (every acceptance criterion, its verdict and the evidence proving it), and rejects the ticket at once when any is missing. The implement sub-agent follows these agent review steps exactly on its uncommitted changes before its first commit, fixes every fault in the working tree and runs them again until a run finds nothing, then commits once and moves the ticket to `agent-review/`. It also checks its commit title and description against the rules before each commit. It records its last run in `evidence/implementation-N/`.
-3. **Reviews the committed diff hunk by hunk** against the acceptance criteria, confirming every change is required to implement the ticket, and captures that assessment to `evidence/review-N/`. Any change that is not required, whatever its nature (committed evidence-collection code being the leading example), fails the review.
-4. **Resolves**, writing only to the ticket's state: on **pass** (every check passes and every change is justified) it moves the ticket from `agent-review/` to `human-review/`; on **fail** (any check fails or any change is unjustified) it records a History note in `detail.md`, runs `bun ../scripts/fail-ticket.ts <id>` (from `state/`), and routes per **Failures** (back to `todo/` for the implement stage to redo, or `blocked/` at the sixth failure). It never fixes the work it judges.
+- **Dev** writes the code, tests (unit tests for 100% coverage, plus smoke tests, e2e tests or both) and docs, following the rules, until every test passes.
+- **Test** runs every check and fixes any failure properly, until every check passes.
+- **Rules check** checks every rule that applies, fixes every breach, and runs the tests until they pass.
+- **Commit** runs every check one final time, fixes any failure, commits and moves the ticket to `human-review/`.
 
-**UI changes always need screenshots (a hard rejection).** Any change with an observable effect on the UI **fails review** unless the evidence includes screenshots of every affected state, in light **and** dark when the app has a light/dark mode setting. An app with no such setting is screenshotted once, in the mode it shows by default, and that is not a missing screenshot. This explicitly includes a **removal**: deleting or hiding a view, page, component, or nav entry is a UI change, and its affected state is the *resulting* UI (e.g. the navigation without the deleted entry, the surviving pages still working). "There is nothing to capture because it was deleted" is not an acceptable reason, capture the after-state. A UI-affecting change with no such screenshots is rejected even when every deterministic check passes; the reviewer never waves it through. The screenshots must live in the **latest** `implementation-N/` and be **captured fresh from that pass's code**: a re-implementation re-captures every required screenshot against its own commit, and copying or carrying them forward from an earlier pass is never allowed, even when the pass "alters no pixel" (see "Each pass is self-proving"). Evidence from a previous version of the code does not prove the current code.
+A Debug ticket instead runs `investigate` → `prove root cause` ([debug.md](ticket-types/debug.md)) and ends in `done/` with a new Fix ticket. No stage sends the ticket back, so a ticket never goes round a loop between stages.
 
-Debug and Fix tickets vary step 4 (see `pb:debug`).
+**UI changes always need screenshots.** Any change with an observable effect on the UI is never committed unless the evidence includes screenshots of every affected state, in light **and** dark when the app has a light/dark mode setting. An app with no such setting is screenshotted once, in the mode it shows by default, and that is not a missing screenshot. This explicitly includes a **removal**: deleting or hiding a view, page, component, or nav entry is a UI change, and its affected state is the *resulting* UI (e.g. the navigation without the deleted entry, the surviving pages still working). "There is nothing to capture because it was deleted" is not an acceptable reason, capture the after-state. The screenshots must live in the **latest** `implementation-N/` and be **captured fresh from that pass's code**: a re-implementation re-captures every required screenshot against its own commit, and copying or carrying them forward from an earlier pass is never allowed, even when the pass "alters no pixel" (see "Each pass is self-proving"). Evidence from a previous version of the code does not prove the current code.
 
 ## Verification and evidence
 
@@ -236,32 +213,30 @@ Never claim a check passes on confidence. Before claiming, every agent at every 
 2. **Run** it fresh (never reuse a prior or cached run).
 3. **Read** the full output, including exit code and failure count.
 4. **Confirm** the output supports the claim.
-5. **Capture** the output to the current pass's evidence subdir (`evidence/implementation-N/` while implementing, `evidence/review-N/` while reviewing), then claim and point at it.
+5. **Capture** the output to the current pass's evidence subdir (`evidence/implementation-N/` while implementing), then claim and point at it.
 
 For a judgement check there is no command: the agent reads the rule and the code in place of steps 1-3, and captures its written assessment (rule named, verdict, reasoning) as the evidence.
 
 Confidence is not evidence: no claim of pass without a fresh run captured to `evidence/`. Passing earlier ≠ passing now; a sub-agent's report ≠ a verified result. Evidence (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, transcripts) travels in the ticket directory and is required by a ticket's completion criteria before a ticket moves on.
 
-**One evidence subdir per pass.** Each trip through implement and review captures into its own numbered subdir, so the full round-trip history is preserved rather than overwritten:
+**One evidence subdir per pass.** Each implement pass captures into its own numbered subdir, so the history of every pass is preserved rather than overwritten:
 
 ```
 <ticket>/
   evidence/
     implementation-1/   # first implement pass
-    review-1/           # first review pass
-    implementation-2/   # re-implemented after review-1 rejected it
-    review-2/           # second review pass
+    implementation-2/   # re-implemented after a human rejection
     ...
     merge/              # post-merge checks on main
 ```
 
-An agent allocates its subdir by taking one more than the highest existing number for its kind: the first implement pass writes `implementation-1/`, the next `implementation-2/`, and likewise for `review-N/`. The merge stage captures its post-merge checks to `evidence/merge/`. Within a subdir the files are as before (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, judgement write-ups, transcripts).
+An agent allocates its subdir by taking one more than the highest existing number for its kind: the first implement pass writes `implementation-1/`, the next `implementation-2/`. The merge stage captures its post-merge checks to `evidence/merge/`. Within a subdir the files are as before (`unit.txt`, `smoke.txt`, `e2e.txt`, `screenshots/`, judgement write-ups, transcripts).
 
-**Each pass is self-proving, and its evidence is captured fresh.** Older passes are kept as history, but they are never consulted to fill a gap in a newer one. The **latest** `implementation-N/` must hold **all** the evidence needed to prove the **entire** change on its own, not just the part that pass altered: human review and the ticket card read only the latest pass, so anything missing from it counts as missing from the ticket (there is deliberately no fallback to an earlier pass). And every artifact must be **captured fresh from the code as it stands in that pass's commit**: screenshots and other evidence may never be copied, carried forward, or reused from an earlier `implementation-N/`, because evidence taken from a previous version of the code does not prove the current code. A re-implementation re-captures the whole required set into its own subdir even when its diff is a single line or touches no UI. Agent review judges the latest pass alone and rejects it when its evidence is incomplete or was not freshly captured.
+**Each pass is self-proving, and its evidence is captured fresh.** Older passes are kept as history, but they are never consulted to fill a gap in a newer one. The **latest** `implementation-N/` must hold **all** the evidence needed to prove the **entire** change on its own, not just the part that pass altered: human review and the ticket card read only the latest pass, so anything missing from it counts as missing from the ticket (there is deliberately no fallback to an earlier pass). And every artifact must be **captured fresh from the code as it stands in that pass's commit**: screenshots and other evidence may never be copied, carried forward, or reused from an earlier `implementation-N/`, because evidence taken from a previous version of the code does not prove the current code. A re-implementation re-captures the whole required set into its own subdir even when its diff is a single line or touches no UI.
 
-**Evidence never enters `project/`.** Evidence is a process artefact: it lives only in the ticket's `evidence/` subdir in the state repo, never in the project repo. Collect it however works (ad-hoc scripts, throwaway specs, manual runs) so long as it needs **no committed change to `project/`**. Never produce a screenshot by committing a test, a helper, or env plumbing (e.g. a `*_EVIDENCE_DIR` switch) to the project tree, and never commit capture code. Any capture script you write lives outside the project tree (in the ticket's `evidence/` dir or a temp dir) and is discarded. A `project/` commit contains only the changes that implement the ticket; agent-review enforces this by diffing the commits (see **Checks**).
+**Evidence never enters `project/`.** Evidence is a process artefact: it lives only in the ticket's `evidence/` subdir in the state repo, never in the project repo. Collect it however works (ad-hoc scripts, throwaway specs, manual runs) so long as it needs **no committed change to `project/`**. Never produce a screenshot by committing a test, a helper, or env plumbing (e.g. a `*_EVIDENCE_DIR` switch) to the project tree, and never commit capture code. Any capture script you write lives outside the project tree (in the ticket's `evidence/` dir or a temp dir) and is discarded. A `project/` commit contains only the changes that implement the ticket; the rules check stage removes any other change before the commit.
 
-**Run checks in the foreground.** A sub-agent runs each check in the foreground and blocks until it returns an exit code. Never launch a check (especially a long one like e2e) in the background and end the turn waiting to be woken: that stalls silently and makes no progress. Either the check completes this turn, or the agent hits its turn limit and the ticket is blocked. A stall must become a visible failure, not an idle wait.
+**Run checks in the foreground.** A sub-agent runs each check in the foreground and blocks until it returns an exit code. Never launch a check (especially a long one like e2e) in the background and end the turn waiting to be woken: that stalls silently and makes no progress. A stall must become a visible problem, not an idle wait.
 
 ## Commits
 

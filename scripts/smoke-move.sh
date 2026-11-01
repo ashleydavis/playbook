@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOVE="$SCRIPT_DIR/move.ts"
 
 FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/smoke-move.XXXXXX")"
-QUEUES=(todo in-progress agent-review human-review merge-queue done)
+QUEUES=(todo in-progress human-review merge-queue done)
 
 failures=0
 fail() {
@@ -60,8 +60,8 @@ run_move() {
     ( cd "$FIXTURE" && bun "$MOVE" "$@" )
 }
 
-# Happy path: walk demo-1 through three queues.
-for target in in-progress agent-review human-review; do
+# Happy path: walk demo-1 through two queues.
+for target in in-progress human-review; do
     if run_move demo-1 "$target" > /dev/null; then
         assert_only_in "$target"
     else
@@ -72,7 +72,7 @@ done
 # Each move auto-committed: the latest commit names the last transition and its
 # diff is scoped to the ticket's from/to paths (and nothing else).
 last_msg="$(git -C "$FIXTURE" log -1 --pretty=%s)"
-[[ "$last_msg" == "move demo-1 agent-review -> human-review" ]] \
+[[ "$last_msg" == "move demo-1 in-progress -> human-review" ]] \
     || fail "last commit message wrong: '$last_msg'"
 changed="$(git -C "$FIXTURE" show --name-only --pretty=format: HEAD | grep -v '^$')"
 echo "$changed" | grep -q "tickets/human-review/demo-1/" \

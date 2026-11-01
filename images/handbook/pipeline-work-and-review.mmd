@@ -11,21 +11,19 @@ flowchart LR
 
     WQ[("Work Queue")] --> IMPL
 
-    IMPL["Work Agent (up to 10 in parallel)<br/>implement tickets, write code, test code, update docs"]
+    subgraph INP["In Progress, Work stages (up to 10 tickets in parallel)"]
+        IMPL["Dev Agent<br/>write code, tests and docs, all tests pass"]
+        TEST["Test Agent<br/>run tests, fix failures properly"]
+        RULES["Rules Check Agent<br/>check rules, fix breaches, run tests"]
+        COMMIT["Commit Agent<br/>run tests, fix, commit"]
+        IMPL --> TEST --> RULES --> COMMIT
+    end
 
-    CHK["Review Agent<br/>review code, run tests, push back"]
-
-    IMPL -->|Pass| AR[("Agent Review Queue")]
-    AR --> CHK
-    CHK -->|"Fail (retry)"| WQ
-    CHK -->|"6th failure"| BLK[("Blocked: needs human")]
-    CHK -->|Pass| HR[("Human Review Queue")]
-    IMPL -->|"Fail (retry)"| WQ
-    BLK -->|"developer re-admits"| WQ
+    COMMIT -->|Committed| HR[("Human Review Queue")]
     classDef queue stroke:#58a6ff,stroke-width:4px
-    class WQ,AR,HR,BLK queue
+    class WQ,HR queue
     classDef human stroke:#3fb950,stroke-width:4px
     classDef agent stroke:#f0883e,stroke-width:4px
     class SESSION,PLAN,ADD_WI,DEBUG human
-    class IMPL,CHK agent
+    class IMPL,TEST,RULES,COMMIT agent
     linkStyle default stroke:#ffffff,stroke-width:2px

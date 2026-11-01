@@ -80,7 +80,7 @@ git clone git@github.com:ashleydavis/karse-state.git state
 
 Before you move, know what does not travel:
 
-- **Unmerged ticket work.** Ticket branches and their worktrees under `project/worktrees/` are local to the machine that ran `/pb:next`, and nothing in the process pushes them. Drain the queues to `done/` first, or run `/pb:reset` to requeue and discard them; anything left in `in-progress/`, `agent-review/` or `human-review/` arrives on the new machine as a ticket whose branch does not exist.
+- **Unmerged ticket work.** Ticket branches and their worktrees under `project/worktrees/` are local to the machine that ran `/pb:next`, and nothing in the process pushes them. Drain the queues to `done/` first, or run `/pb:reset` to requeue and discard them; anything left in `in-progress/` or `human-review/` arrives on the new machine as a ticket whose branch does not exist.
 - **Merges.** `/pb:next` merges approved tickets into the local `main` of `project/` and does not push. Push `project/` before you move, or the new clone is behind.
 - **Gitignored files.** Local Claude Code settings, build output, caches, logs. Recreate them on the new machine.
 

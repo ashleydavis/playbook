@@ -23,16 +23,11 @@ const EDITABLE_QUEUES = QUEUES.filter(
 export class PriorityError extends Error {}
 
 // Insert or replace `**Priority:** N` in an index.md body. When inserting,
-// place the line after `**Failures:**` when present.
+// place the line after `**Depends on:**`, else after `**Type:**`, when present.
 export function setPriority(indexMd: string, priority: number): string {
     const line = `**Priority:** ${priority}`;
     if (PRIORITY_FIELD.test(indexMd)) {
         return indexMd.replace(PRIORITY_FIELD, line);
-    }
-    const failuresMatch = /^\*\*Failures:\*\*.*$/m.exec(indexMd);
-    if (failuresMatch) {
-        const end = failuresMatch.index + failuresMatch[0].length;
-        return `${indexMd.slice(0, end)}\n${line}${indexMd.slice(end)}`;
     }
     const dependsMatch = /^\*\*Depends on:\*\*.*$/m.exec(indexMd);
     if (dependsMatch) {

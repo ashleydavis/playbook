@@ -21,9 +21,8 @@ Copied wholesale into a new project by `pb:bootstrap:*`.
 - [state/CLAUDE.md](state/CLAUDE.md): state repo root rules.
 - [state/tickets/CLAUDE.md](state/tickets/CLAUDE.md): queue and ticket rules.
 - [state/tickets/README.md](state/tickets/README.md): tickets orientation.
-- `state/tickets/{todo,in-progress,agent-review,human-review,merge-queue,done}/`: the six pipeline queue directories (empty, with `.gitkeep`).
+- `state/tickets/{todo,in-progress,human-review,merge-queue,done}/`: the five pipeline queue directories (empty, with `.gitkeep`).
 - `state/tickets/backlog/`: a side pen for tickets captured but not yet contenders for `pb:next` (empty, with `.gitkeep`).
-- `state/tickets/blocked/`: a side pen for tickets that hit a problem and need human attention (empty, with `.gitkeep`).
 - `state/tickets/aborted/`: a side pen for tickets the developer kills during `pb:review` (abandoned, terminal; empty, with `.gitkeep`).
 
 ## Ticket templates (references, not copied wholesale)

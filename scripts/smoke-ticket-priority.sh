@@ -25,13 +25,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$FIXTURE/tickets"/{todo,backlog,done,in-progress,merge-queue,agent-review,human-review,blocked,aborted}
+mkdir -p "$FIXTURE/tickets"/{todo,backlog,done,in-progress,merge-queue,human-review,aborted}
 
 make_ticket() {
     local queue="$1" id="$2" priority="$3"
     mkdir -p "$FIXTURE/tickets/$queue/$id"
     {
-        printf '# %s\n\n**ID:** %s\n**Failures:** 0\n**Priority:** %s\n\n%s\n' \
+        printf '# %s\n\n**ID:** %s\n**Priority:** %s\n\n%s\n' \
             "$id" "$id" "$priority" "ticket $id"
     } > "$FIXTURE/tickets/$queue/$id/index.md"
 }

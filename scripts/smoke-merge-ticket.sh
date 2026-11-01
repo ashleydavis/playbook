@@ -22,7 +22,7 @@ SETUP="$SCRIPT_DIR/setup-ticket.ts"
 MERGE="$SCRIPT_DIR/merge-ticket.ts"
 
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/smoke-merge-ticket.XXXXXX")"
-QUEUES=(todo in-progress agent-review human-review merge-queue done)
+QUEUES=(todo in-progress human-review merge-queue done)
 
 failures=0
 fail() {

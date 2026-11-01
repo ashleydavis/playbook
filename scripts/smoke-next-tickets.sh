@@ -40,7 +40,6 @@ make_ticket() {
 #   todo: auth-1 (ready), auth-2 (dep auth-1 only in todo -> blocked), auth-3 (dep
 #         auth-0 in done/ -> ready), search-1 (ready)
 #   in-progress: infra-2
-#   agent-review: search-4, search-5
 make_ticket merge-queue auth-5
 make_ticket done auth-0
 make_ticket todo auth-1
@@ -48,8 +47,6 @@ make_ticket todo auth-2 auth-1
 make_ticket todo auth-3 auth-0
 make_ticket todo search-1
 make_ticket in-progress infra-2
-make_ticket agent-review search-4
-make_ticket agent-review search-5
 make_ticket conflicts infra-9
 
 # Run the CLI with the fixture as the current working directory.
@@ -62,7 +59,7 @@ output="$(run_next)"
 if [[ $? -ne 0 ]]; then
     fail "next-tickets exited non-zero on a valid tickets/"
 fi
-expected='{"conflicts":["infra-9"],"merge-queue":["auth-5"],"agent-review":["search-4","search-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
+expected='{"conflicts":["infra-9"],"merge-queue":["auth-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
 if [[ "$output" != "$expected" ]]; then
     fail "expected $expected, got $output"
 fi
@@ -71,7 +68,7 @@ fi
 EMPTY="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-empty.XXXXXX")"
 mkdir -p "$EMPTY/tickets"
 empty_out="$( cd "$EMPTY" && bun "$NEXT" )"
-empty_expected='{"conflicts":[],"merge-queue":[],"agent-review":[],"todo":[],"in-progress":[]}'
+empty_expected='{"conflicts":[],"merge-queue":[],"todo":[],"in-progress":[]}'
 if [[ "$empty_out" != "$empty_expected" ]]; then
     fail "expected $empty_expected for empty queues, got $empty_out"
 fi

@@ -17,17 +17,16 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 
 ## Steps
 
-1. Inspect each queue in `state/tickets/`: `merge-queue/`, `conflicts/`, `human-review/`, `agent-review/`, `in-progress/`, `todo/`, `backlog/`, `blocked/`, and the most recent entries in `done/`. The live queues are the source of truth; build the whole summary (action items included) from them.
+1. Inspect each queue in `state/tickets/`: `merge-queue/`, `conflicts/`, `human-review/`, `in-progress/`, `todo/`, `backlog/`, and the most recent entries in `done/`. The live queues are the source of truth; build the whole summary (action items included) from them.
 2. Summarise, **action items first** (lead with what needs the developer, then the informational state):
    - **Awaiting review:** every ticket in `human-review/` (ID + one-line description). These need the developer to run `pb:review`.
-   - **Blocked:** every ticket in `blocked/` (these hit 6 failures and need you), plus anything stuck on an unmet dependency. For each blocked ticket, read its History note for the reason. Blocked tickets are parked and will not move until you act.
+   - **Waiting on a dependency:** any `todo/` ticket stuck on an unmet dependency.
    - **Backlog:** when `backlog/` is non-empty, count + one line per ticket (informational). Suggest `pb:promote` to pull work forward or `pb:rank` to reorder `todo/`.
-   - **In flight:** tickets still moving on their own (`in-progress/`, `agent-review/`, `merge-queue/`, `conflicts/`) and the stage each sits at. Informational; nothing needed. A ticket in `conflicts/` is one the developer already approved that missed a merge train because main moved under it; `pb:next` merges main into it and returns it to `merge-queue/` without a re-review, so it needs nothing from the developer.
+   - **In flight:** tickets still moving on their own (`in-progress/`, `merge-queue/`, `conflicts/`) and the stage each sits at. Informational; nothing needed. A ticket in `conflicts/` is one the developer already approved that missed a merge train because main moved under it; `pb:next` merges main into it and returns it to `merge-queue/` without a re-review, so it needs nothing from the developer.
    - **Completed since last session:** the most recent tickets in `done/`. Informational.
 
    Keep the action items short and plain so they cannot be missed. If there are no action items, say so in one line ("Nothing needs you; the loop is healthy") before the informational summary.
 3. Recommend a next step from the queue state:
-   - Tickets in `blocked/` -> tell the developer to resolve each (read the History note, fix the cause) and re-admit with `pb:unblock` or `move.ts`.
    - Non-empty `backlog/` with nothing urgent in `todo/` -> suggest `pb:promote` to pull contenders forward.
    - Reordering `todo/` -> suggest `pb:rank`.
    - Tickets in `human-review/` -> suggest `pb:review`.
@@ -43,10 +42,10 @@ Follow the project's [output format](../../../docs/output-format.md) (load it on
 ⚠ Needs you
 - auth-1, login endpoint, awaiting review
 - auth-2, session store, awaiting review
-- search-4, blocked, waits on search-3
+- search-4, waits on search-3
 
 In flight
-- search-3, agent-review (checks running)
+- search-3, in-progress (rules check stage)
 
 Done since last session
 - infra-2, CI pipeline

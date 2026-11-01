@@ -77,9 +77,9 @@ describe("move()", () => {
         await makeTicket("todo", "ticket-2");
 
         await move("ticket-2", "in-progress", ticketsDir);
-        await move("ticket-2", "agent-review", ticketsDir);
+        await move("ticket-2", "human-review", ticketsDir);
 
-        const dest = join(ticketsDir, "agent-review", "ticket-2");
+        const dest = join(ticketsDir, "human-review", "ticket-2");
         expect(await isDir(dest)).toBe(true);
         expect(await isFile(join(dest, "index.md"))).toBe(true);
         expect(await isFile(join(dest, "evidence", "unit.txt"))).toBe(true);
@@ -112,28 +112,12 @@ describe("move()", () => {
         await makeTicket("todo", "dup");
         await makeTicket("in-progress", "dup");
 
-        await expect(move("dup", "agent-review", ticketsDir)).rejects.toThrow(
+        await expect(move("dup", "human-review", ticketsDir)).rejects.toThrow(
             MoveError,
         );
-        await expect(move("dup", "agent-review", ticketsDir)).rejects.toThrow(
+        await expect(move("dup", "human-review", ticketsDir)).rejects.toThrow(
             /ambiguous/,
         );
-    });
-
-    test("moves a problem ticket to blocked and a human re-admits it to todo", async () => {
-        await makeTicket("in-progress", "stuck-1");
-
-        const blocked = await move("stuck-1", "blocked", ticketsDir);
-        expect(blocked.noop).toBe(false);
-        expect(blocked.to).toBe("blocked");
-        expect(await isDir(join(ticketsDir, "blocked", "stuck-1"))).toBe(true);
-        expect(await isDir(join(ticketsDir, "in-progress", "stuck-1"))).toBe(false);
-
-        const readmitted = await move("stuck-1", "todo", ticketsDir);
-        expect(readmitted.from).toBe("blocked");
-        expect(readmitted.to).toBe("todo");
-        expect(await isDir(join(ticketsDir, "todo", "stuck-1"))).toBe(true);
-        expect(await isDir(join(ticketsDir, "blocked", "stuck-1"))).toBe(false);
     });
 
     test("aborts a ticket from human-review to the aborted pen", async () => {
@@ -150,14 +134,14 @@ describe("move()", () => {
     });
 
     test("is a no-op when the ticket is already in the target queue", async () => {
-        await makeTicket("agent-review", "ticket-4");
+        await makeTicket("human-review", "ticket-4");
 
-        const result = await move("ticket-4", "agent-review", ticketsDir);
+        const result = await move("ticket-4", "human-review", ticketsDir);
 
         expect(result.noop).toBe(true);
-        expect(result.from).toBe("agent-review");
-        expect(result.to).toBe("agent-review");
-        expect(await isDir(join(ticketsDir, "agent-review", "ticket-4"))).toBe(true);
+        expect(result.from).toBe("human-review");
+        expect(result.to).toBe("human-review");
+        expect(await isDir(join(ticketsDir, "human-review", "ticket-4"))).toBe(true);
     });
 
     test("moves a ticket backlog ↔ todo round trip", async () => {

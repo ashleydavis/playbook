@@ -21,11 +21,9 @@ import {
 const QUEUES = [
     "todo",
     "in-progress",
-    "agent-review",
     "human-review",
     "merge-queue",
     "done",
-    "blocked",
     "aborted",
 ];
 

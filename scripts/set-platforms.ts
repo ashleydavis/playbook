@@ -54,7 +54,7 @@ export function parsePlatformsArg(arg: string): string[] {
 
 // Insert, replace, or remove `**Platforms:** ...` in an index.md body. An
 // empty list removes the line. When inserting, place the line after
-// `**Priority:**`, else after `**Failures:**`, when present.
+// `**Priority:**`, else after `**Depends on:**`, else after `**Type:**`, when present.
 export function setPlatforms(indexMd: string, platforms: string[]): string {
     if (platforms.length === 0) {
         return indexMd.replace(/^\*\*Platforms:\*\*.*\n?/m, "");
@@ -63,7 +63,7 @@ export function setPlatforms(indexMd: string, platforms: string[]): string {
     if (PLATFORMS_FIELD.test(indexMd)) {
         return indexMd.replace(PLATFORMS_FIELD, line);
     }
-    for (const field of [/^\*\*Priority:\*\*.*$/m, /^\*\*Failures:\*\*.*$/m]) {
+    for (const field of [/^\*\*Priority:\*\*.*$/m, /^\*\*Depends on:\*\*.*$/m, /^\*\*Type:\*\*.*$/m]) {
         const match = field.exec(indexMd);
         if (match) {
             const end = match.index + match[0].length;

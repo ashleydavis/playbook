@@ -34,7 +34,7 @@ async function makeTicket(
         priority !== undefined ? `**Priority:** ${priority}\n` : "";
     await writeFile(
         join(dir, "index.md"),
-        `# ${id}: a title\n\n**ID:** ${id}\n**Type:** Tweak\n${dependsLine}**Failures:** 0\n${priorityLine}\n${description}\n`,
+        `# ${id}: a title\n\n**ID:** ${id}\n**Type:** Tweak\n${dependsLine}${priorityLine}\n${description}\n`,
     );
 }
 
@@ -66,7 +66,6 @@ describe("board()", () => {
                 id: "feat-2",
                 description: "paginate results",
                 dependsOn: ["feat-1"],
-                failures: 0,
                 priority: 100,
             },
         ]);
@@ -124,13 +123,13 @@ describe("board()", () => {
     });
 
     test("respects an explicit lower limit", async () => {
-        await makeTicket("blocked", "infra-1");
-        await makeTicket("blocked", "infra-2");
-        await makeTicket("blocked", "infra-3");
+        await makeTicket("backlog", "infra-1");
+        await makeTicket("backlog", "infra-2");
+        await makeTicket("backlog", "infra-3");
         const result = await board(ticketsDir, 2);
-        expect(result.blocked.count).toBe(3);
-        expect(result.blocked.truncated).toBe(true);
-        expect(result.blocked.tickets).toHaveLength(2);
+        expect(result.backlog.count).toBe(3);
+        expect(result.backlog.truncated).toBe(true);
+        expect(result.backlog.tickets).toHaveLength(2);
     });
 
     test("orders done/ most-recent-first by mtime", async () => {
@@ -152,7 +151,7 @@ describe("board()", () => {
         await mkdir(join(ticketsDir, "todo", "broken-1"), { recursive: true });
         const result = await board(ticketsDir);
         expect(result.todo.tickets).toEqual([
-            { id: "broken-1", description: "", dependsOn: [], failures: 0, priority: 100 },
+            { id: "broken-1", description: "", dependsOn: [], priority: 100 },
         ]);
     });
 
@@ -164,16 +163,5 @@ describe("board()", () => {
             id: "later-1",
             priority: 40,
         });
-    });
-
-    test("parses failures from index.md", async () => {
-        const dir = join(ticketsDir, "blocked", "infra-1");
-        await mkdir(dir, { recursive: true });
-        await writeFile(
-            join(dir, "index.md"),
-            `# infra-1: a title\n\n**ID:** infra-1\n**Type:** Tweak\n**Failures:** 3\n\nflaky smoke test\n`,
-        );
-        const result = await board(ticketsDir);
-        expect(result.blocked.tickets[0].failures).toBe(3);
     });
 });
