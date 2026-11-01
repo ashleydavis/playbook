@@ -15,14 +15,14 @@ Every stage here also makes failing tests pass by fixing the code or the tests p
 - Updates the docs the change affects, ticking the matching acceptance criteria in the spec and testing manual where the project keeps them.
 - Captures the UI screenshots and writes `acceptance-check.md` (see Verification and Evidence).
 - Stops only when every test passes.
-- Does not commit.
+- Never runs `git`.
 
 ## Test
 
 - Runs every check the project defines (compile, lint, format, unit, smoke, e2e and any other).
 - Fixes every failure properly.
 - Stops only when every check legitimately passes.
-- Does not commit.
+- Never runs `git`.
 
 ## Rules check
 
@@ -31,13 +31,14 @@ Every stage here also makes failing tests pass by fixing the code or the tests p
 - Checks every change is needed by the ticket, and removes any that is not (committed evidence-collection code especially).
 - Fixes every breach.
 - Runs every test and stops only when all pass.
-- Does not commit.
+- Never runs `git`.
 
 ## Commit
 
 - Runs every check one final time.
 - If any fails, fixes it properly and runs every check again until all pass.
 - Checks the commit title and description against the commit template and the rules, because a commit is never amended or rewritten.
+- Runs `git` only to commit.
 - Commits only the changes that implement the ticket, in one commit. If the pre-commit hook refuses it, fixes the fault and commits again.
 - Leaves `git status --porcelain` in the worktree empty.
 - Moves the ticket from `in-progress/` to `human-review/`.

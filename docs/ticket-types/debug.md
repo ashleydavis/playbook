@@ -13,6 +13,7 @@ A Debug ticket is a throwaway investigation: it finds the root cause of a bug an
 - When three or more theories fail, records in History that the design is likely wrong rather than a single line, and keeps going.
 - Writes the root cause, the causal chain and the evidence paths into `detail.md`.
 - Writes no fix and makes no commit.
+- Never runs `git`.
 
 ## Prove root cause
 
@@ -22,3 +23,4 @@ A Debug ticket is a throwaway investigation: it finds the root cause of a bug an
 - Concludes the ticket with `bun ../scripts/conclude-debug.ts <id>` (from `state/`), which moves it to `done/` and closes its worktree. Never uses `move.ts` for this.
 - Creates a `Fix` ticket in `todo/` with an ID from `bun ../scripts/next-id.ts <prefix>` (from `state/`, without `--debug`). It carries the proven root cause and the failing reproduction, links back to the Debug ticket, copies its `**Platforms:**` line and has the acceptance criteria in The Fix ticket in the [pb:debug](../../.claude/commands/pb/debug.md) skill.
 - Commits the Fix ticket to the state repo with `bun ../scripts/commit-state.ts "add <fix-id>" tickets/todo/<fix-id>` (from `state/`).
+- Never runs `git`.

@@ -15,3 +15,4 @@ To give a type its own stages, add a file for it with one `## <stage>` heading p
 - Captures what it runs to the ticket's latest `evidence/implementation-N/`, and re-captures any earlier evidence its own changes make stale.
 - Records in the ticket's History each fault it fixed and each decision it made.
 - Leaves no process running (see Agent cleanup in the [pb:next](../../.claude/commands/pb/next.md) skill).
+- Never runs `git`. The one exception is a Commit stage, which runs `git` only to commit.
