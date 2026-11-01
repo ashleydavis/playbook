@@ -2,11 +2,23 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-01: Unit test coverage is measured over every changed file and smoke tests never count
+
+**What changed:** The review standard in `pb:next` rejects a ticket when a changed file has less than 100% unit test coverage. A rules check verdict on a coverage rule must cite the unit test coverage of every changed file. A smoke test never counts towards unit test coverage and never excuses a missing unit test.
+
+**Why:** an implementer left an entry file with no unit tests and marked the 100% coverage rule as met, saying the smoke test covered it. Its coverage report showed 100% only because the tool counted just the files a test imported.
+
+## 2026-11-01: The implement sub-agent checks before it commits
+
+**What changed:** the implement sub-agent of `pb:next` judges its uncommitted changes against The review standard before its first commit, fixes faults in the working tree until a check finds nothing, captures the evidence from that run and then commits once. Only a fault found after the commit gets a new commit.
+
+**Why:** it judged its committed branch and fixed each fault in a new commit. Each new commit made the evidence already captured stale, so every check and capture ran again. One ticket made three commits in its first pass and was still in implementation 43 minutes in.
+
 ## 2026-11-01: A pass after a rejection only fixes the issues review raised
 
 **What changed:** when the implement sub-agent of `pb:next` reworks a rejected ticket, its code changes are only those that fix the unticked issues in `## Issues`. It still re-captures the full evidence set for the code at HEAD.
 
-**Why:** `git-interface-1` was rejected four times, each time on new faults. Changes beyond the raised issues give each review new code to find faults in.
+**Why:** a ticket was rejected four times, each time on new faults. Changes beyond the raised issues give each review new code to find faults in.
 
 ## 2026-11-01: Implement and agent review share one review standard
 
@@ -24,7 +36,7 @@ A chronological log of decisions about the Playbook process: what changed and wh
 
 **What changed:** the implement sub-agent of `pb:next` runs the agent review steps exactly on its own committed branch: the evidence check, the deterministic checks, the judgement checks, the diff review against the acceptance criteria and every rejection condition. It fixes each fault in a new commit and runs the review again until a run finds nothing, and only then moves the ticket to `agent-review/`. `rules-check.md`, for both agents, lists every rule in every rule file that applies, one by one, with a verdict and its basis. A verdict for a whole file is missing evidence. The commit title and description stay the one difference: the implementer checks them before each commit and agent review never judges them.
 
-**Why:** `git-interface-1` failed agent review four times, each time on rule faults the implementer's own rules check had passed. Running a lighter check than the reviewer let faults through that the reviewer then found. Its `rules-check.md` gave one verdict per rule file, calling `zig.md` and `typescript.md` compliant while the code broke a rule in each.
+**Why:** a ticket failed agent review four times, each time on rule faults the implementer's own rules check had passed. Running a lighter check than the reviewer let faults through that the reviewer then found. Its `rules-check.md` gave one verdict per rule file, calling `zig.md` and `typescript.md` compliant while the code broke a rule in each.
 
 ## 2026-11-01: Implement records an acceptance check, and review never judges the commit message
 
@@ -36,7 +48,7 @@ A chronological log of decisions about the Playbook process: what changed and wh
 
 **What changed:** the implement sub-agent of `pb:next` runs the same judgement checks as agent review on its diff and commit message before it commits, fixes every breach and writes `rules-check.md` to `evidence/implementation-N/`: every rule file it checked and whether the code complied. Agent review writes its own `rules-check.md` to `evidence/review-N/` and rejects a ticket whose latest implement pass has no `rules-check.md`, leaves out a rule file that applies or records a breach left unfixed.
 
-**Why:** `layout-1` failed its first agent review on four rule breaches although the implement sub-agent was told to check the rules, and its evidence held no rules check, so there was no way to tell whether the check ran.
+**Why:** a ticket failed its first agent review on four rule breaches although the implement sub-agent was told to check the rules, and its evidence held no rules check, so there was no way to tell whether the check ran.
 
 ## 2026-10-29: Conflicts are resolved by merging main, and the train merges branches
 
