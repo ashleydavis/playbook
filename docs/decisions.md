@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-15: Every stage gets a new sub-agent
+
+**What changed:** `pb:next` starts a new sub-agent for each stage of a ticket and for each re-run of a stage, and never continues a sub-agent from an earlier stage or run. The handbook and the ticket types README say so.
+
+**Why:** the instructions said to spawn a sub-agent per stage but did not forbid continuing an earlier one, which carries that sub-agent's whole conversation into the next stage. Each stage is meant to start with no memory of the one before and work only from the worktree and the ticket's files.
+
 ## 2026-11-02: Agent review, failures and blocked/ removed; each ticket type has its own stages
 
 **What changed:** the `agent-review/` and `blocked/` queues are gone, and so are their sub-agent, `pb:unblock`, the `**Failures:**` count, `fail-ticket.ts` and `reset-failures.ts`. A ticket in `in-progress/` goes through the stages for its type, in order, each run by its own sub-agent. Each type's stages and their instructions are in a file in `docs/ticket-types/`, and Work is the default type: Fix and any type with no file use `work.md`, whose stages are dev, test, rules check and commit, with commit moving the ticket to `human-review/`. Debug tickets run investigate then prove root cause. A ticket never fails: no stage sends it back, a stage that does not finish runs again, a ticket whose checks fail on a merge train goes to `conflicts/`, and only an environment problem or a broken main stops the run. The review standard, `review-N/` evidence and `rules-check.md` are no longer written. `pb:review` loses its block action.

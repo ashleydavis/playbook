@@ -2,7 +2,7 @@
 
 Each file here lists the stages a ticket of one type goes through in `in-progress/`, in order, and the instructions for each stage. `pb:next` reads the file named after the ticket's `**Type:**` in lowercase with spaces as hyphens (`Debug` is `debug.md`, `Test coverage` is `test-coverage.md`). The default type is Work: a Fix ticket, and any other type with no file of its own, uses [work.md](work.md).
 
-- Each stage is run by its own sub-agent in the ticket's worktree.
+- Each stage is run by a new sub-agent in the ticket's worktree. A sub-agent is never reused for a later stage or a re-run of a stage.
 - A stage starts when the one before it returns.
 - No stage sends the ticket back to an earlier stage. Each fixes what it finds itself.
 - The last stage moves the ticket out of `in-progress/`.

@@ -133,11 +133,11 @@ The full pipeline a ticket travels through, from session start to merge:
 
 ### Building tickets in parallel
 
-`/pb:next` picks up to 10 tickets whose dependencies are done and builds them at the same time. Each ticket is built in its own git worktree, and each of its stages is run by its own sub-agent.
+`/pb:next` picks up to 10 tickets whose dependencies are done and builds them at the same time. Each ticket is built in its own git worktree, and each of its stages is run by a new sub-agent.
 
 - **Which tickets.** A ticket that depends on another waits in `todo/` until that one is merged.
 - **One worktree per ticket.** Each ticket's worktree is `project/worktrees/<id>`, on its own branch. The tickets never share a working copy, so they cannot overwrite each other's changes.
-- **One sub-agent per stage.** The parent agent does none of the work itself. For each ticket, at each stage (for Work: dev, test, rules check, commit), it starts a sub-agent whose working directory is that ticket's worktree, so it cannot touch the main project repo by accident.
+- **One sub-agent per stage.** The parent agent does none of the work itself. For each ticket, at each stage (for Work: dev, test, rules check, commit), it starts a new sub-agent whose working directory is that ticket's worktree, so it cannot touch the main project repo by accident. A sub-agent is never reused for a later stage or a re-run: each one starts with none of the earlier stages' conversation and works from what is on disk, the worktree and the ticket's files.
 - **No collisions.** Every sub-agent kills any server or watcher it starts before it returns, and the parent removes any it missed at the end of each turn. Changes to the state repo are committed per ticket, with a lock and retry, so parallel sub-agents do not mix up their commits.
 - **Merging.** Approved tickets are merged together as one train, so the post-merge checks run once on the combined result.
 
