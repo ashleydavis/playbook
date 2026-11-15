@@ -1,28 +1,45 @@
-%%{init: {'layout': 'dagre', 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 60}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; }'}}%%
-flowchart LR
-    WQ[("Work Queue")] -->|"<span style='font-family:monospace'>/pb:next</span> picks up to 10 tickets<br/>whose dependencies are done"| SPLIT{{"Run in parallel"}}
-    WAIT["Tickets whose dependencies<br/>are not done wait"] -.-> WQ
+%%{init: {'layout': 'dagre', 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 15}, 'themeVariables': {'lineColor': '#ffffff'}, 'themeCSS': '.edgeLabel p { padding: 4px 8px; } .node rect, .node polygon, .node path, .node circle, .node ellipse, .cluster rect { filter: none !important; }'}}%%
+flowchart TB
+    subgraph MAIN[" "]
+        direction LR
+        WQ[("Work Queue")] -->|"<span style='font-family:monospace'>/pb:next</span> picks<br/>up to 10 tickets<br/>whose dependencies<br/>are done"| SPLIT{{"Run in parallel"}}
+        WAIT["Tickets whose dependencies<br/>are not done wait"] -.-> WQ
 
-    SPLIT --> A1
-    SPLIT --> B1
-    SPLIT --> C1
+        SPLIT --> A1
+        SPLIT --> B1
+        SPLIT --> C1
 
-    subgraph TA["Ticket A, in its own worktree"]
-        A1["Dev Agent"] --> A2["Test Agent"] --> A3["Rules Check Agent"] --> A4["Commit Agent"]
-    end
-    subgraph TB["Ticket B, in its own worktree"]
-        B1["Dev Agent"] --> B2["Test Agent"] --> B3["Rules Check Agent"] --> B4["Commit Agent"]
-    end
-    subgraph TC["... up to 10 tickets, each in its own worktree"]
-        C1["Dev Agent"] --> C2["Test Agent"] --> C3["Rules Check Agent"] --> C4["Commit Agent"]
+        subgraph TA["Ticket A"]
+            A1["Dev Agent"] --> A2["Test Agent"] --> A3["Rules Check Agent"] --> A4["Commit Agent"]
+        end
+        subgraph TB["Ticket B"]
+            B1["Dev Agent"] --> B2["Test Agent"] --> B3["Rules Check Agent"] --> B4["Commit Agent"]
+        end
+        subgraph TC["... up to 10 tickets"]
+            C1["Dev Agent"] --> C2["Test Agent"] --> C3["Rules Check Agent"] --> C4["Commit Agent"]
+        end
+
+        A4 --> HR[("Human Review Queue")]
+        B4 --> HR
+        C4 --> HR
     end
 
-    A4 --> HR[("Human Review Queue")]
-    B4 --> HR
-    C4 --> HR
+    subgraph LEGEND[" "]
+        direction LR
+        L_AGENT["🟧&nbsp;A&nbsp;new&nbsp;sub‑agent"] ~~~ L_TICKET["🟩&nbsp;Each&nbsp;ticket&nbsp;is&nbsp;separated&nbsp;into&nbsp;its&nbsp;own&nbsp;Git&nbsp;worktree"] ~~~ L_QUEUE["🟦&nbsp;A&nbsp;queue"]
+    end
+    MAIN ~~~ LEGEND
 
     classDef queue stroke:#58a6ff,stroke-width:4px
     classDef agent stroke:#f0883e,stroke-width:4px
     class WQ,HR queue
     class A1,A2,A3,A4,B1,B2,B3,B4,C1,C2,C3,C4 agent
+    classDef legend fill:none,stroke:none,color:#ffffff
+    class L_AGENT,L_TICKET,L_QUEUE legend
+    style MAIN fill:none,stroke:none
+    style LEGEND fill:none,stroke:none
+    style TA fill:none,stroke:#56d364,stroke-width:2px
+    style TB fill:none,stroke:#56d364,stroke-width:2px
+    style TC fill:none,stroke:#56d364,stroke-width:2px
     linkStyle default stroke:#ffffff,stroke-width:2px
+    linkStyle 17,18,19 stroke-width:0px,opacity:0
