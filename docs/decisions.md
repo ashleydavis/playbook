@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-23: pb:todo:break follows stated dependencies and works out the rest
+
+**What changed:** `pb:todo:break` always sets `Depends on:` and `Priority:` from any dependency or order an item's text states, such as "do this first" or "all other tickets depend on this one". It then checks every ticket against every other in the code, adds a dependency where one creates, renames, moves or restructures something another uses or both change the same component or file, and gives the reason for each at sign-off.
+
+**Why:** the skill treated every item as independent unless it judged a dependency necessary, so a dependency written in the todo list was followed only when the agent happened to agree with it, and unstated ones were found only by chance.
+
 ## 2026-11-15: Every stage gets a new sub-agent
 
 **What changed:** `pb:next` starts a new sub-agent for each stage of a ticket and for each re-run of a stage, and never continues a sub-agent from an earlier stage or run. The handbook and the ticket types README say so.
