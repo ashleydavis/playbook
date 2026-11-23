@@ -10,7 +10,7 @@
 //   bun ../scripts/merge-ticket.ts discard <trainId>         -> tear the train down
 //
 // Why a train: merging N tickets one at a time runs the full check suite N times
-// in series. A train merges every ticket's branch onto a single scratch
+// in series. A train stacks every ticket's commits onto a single scratch
 // worktree, the agent runs the suite ONCE there, and on green the project branch
 // fast-forwards to the train in one step. On red the agent bisects (rebuilding
 // smaller trains) to find the breaking ticket. This script does the deterministic
@@ -26,12 +26,14 @@
 //   build:
 //     1. Read the project's current branch.
 //     2. Create the train worktree at that branch tip (new branch worktrees/<trainId>).
-//     3. For each ticket in order, merge its branch (worktrees/<id>) onto the train
-//        with a merge commit. A merge rewrites no history, and it takes a branch
-//        that has main merged into it, which is how a conflict is resolved.
+//     3. For each ticket in order, rebase its own commits (worktrees/<id> since it
+//        left the branch) onto the train tip and fast-forward the train to them, so
+//        main's history stays flat with no merge commits. The rebase runs on a
+//        detached copy of the ticket's commits in the train worktree, so the ticket's
+//        own branch is never moved and a discarded train leaves it as it was.
 //        - clean:    record it as included.
 //        - no commits of its own: record it as a noop (landed for free).
-//        - conflict: abort that merge (the train keeps the earlier, clean merges)
+//        - conflict: abort that rebase (the train keeps the earlier, clean tickets)
 //                    and report the offending ticket so the agent can drop it and
 //                    rebuild without it.
 //   land:
@@ -78,7 +80,7 @@ export interface BuildResult {
     trainPath: string;
     projectBranch: string;
     status: "built" | "conflict";
-    // Tickets whose branches were merged cleanly, in order.
+    // Tickets whose commits were rebased onto the train cleanly, in order.
     included: string[];
     // Tickets that had no commits of their own (landed for free).
     noops: string[];
@@ -137,7 +139,7 @@ async function conflictedPaths(
     return out.stdout.split("\n").filter((l) => l.length > 0);
 }
 
-// Create the train worktree and merge each ticket's branch onto it.
+// Create the train worktree and rebase each ticket's commits onto it.
 export async function buildTrain(
     stateDir: string,
     trainId: string,
@@ -220,19 +222,25 @@ export async function buildTrain(
             continue;
         }
 
-        const merge = await runGit(trainPath, [
-            "merge",
-            "--no-ff",
-            "-m",
-            `Merged ${id}`,
-            ticketBranch,
+        // Replay the ticket's own commits onto the train tip. `^0` hands rebase the
+        // ticket's tip as a bare commit, so it works detached and never checks out
+        // (or moves) the ticket's branch, which its own worktree has checked out.
+        // Merge commits on the branch are dropped, so the train stays linear.
+        const rebase = await runGit(trainPath, [
+            "rebase",
+            "--no-rebase-merges",
+            "--no-autosquash",
+            "--onto",
+            trainBranch,
+            baseOut.stdout,
+            `${ticketBranch}^0`,
         ]);
-        if (merge.code !== 0) {
+        if (rebase.code !== 0) {
             const conflicts = await conflictedPaths(trainPath, runGit);
-            // Abort this merge so the train is left clean (it still holds the
-            // earlier, cleanly merged tickets); the agent drops this ticket and
+            // Abort this rebase so the train is left clean (it still holds the
+            // earlier, cleanly rebased tickets); the agent drops this ticket and
             // rebuilds without it.
-            await runGit(trainPath, ["merge", "--abort"]);
+            await runGit(trainPath, ["rebase", "--abort"]);
             return {
                 trainId,
                 trainBranch,
@@ -243,6 +251,20 @@ export async function buildTrain(
                 noops,
                 conflict: { ticket: id, conflicts },
             };
+        }
+        // The rebase left the train worktree detached on the replayed commits,
+        // which sit on top of the train tip. Point the train branch at them, a
+        // fast-forward, and check it out again.
+        const advance = await runGit(trainPath, [
+            "checkout",
+            "-B",
+            trainBranch,
+            "HEAD",
+        ]);
+        if (advance.code !== 0) {
+            throw new MergeError(
+                `could not advance the train to ${id}: ${advance.stderr}`,
+            );
         }
         included.push(id);
     }

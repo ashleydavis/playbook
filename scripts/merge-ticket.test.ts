@@ -66,10 +66,12 @@ describe("buildTrain()", () => {
             ok(), // worktree add
             ok("baseA"), // merge-base for feat-1
             ok("2"), // rev-list --count -> 2 commits
-            ok(), // merge feat-1
+            ok(), // rebase feat-1
+            ok(), // checkout -B the train
             ok("baseB"), // merge-base for feat-2
             ok("1"), // rev-list --count -> 1 commit
-            ok(), // merge feat-2
+            ok(), // rebase feat-2
+            ok(), // checkout -B the train
         ]);
 
         const result = await buildTrain(
@@ -91,14 +93,20 @@ describe("buildTrain()", () => {
             "worktrees/merge-test",
         ]);
         expect(calls[1].args.at(-1)).toBe("main");
-        const merges = calls.filter((c) => c.args[0] === "merge");
-        expect(merges.map((c) => c.args)).toEqual([
-            ["merge", "--no-ff", "-m", "Merged feat-1", "worktrees/feat-1"],
-            ["merge", "--no-ff", "-m", "Merged feat-2", "worktrees/feat-2"],
+        expect(calls.some((c) => c.args[0] === "merge")).toBe(false);
+        const rebases = calls.filter((c) => c.args[0] === "rebase");
+        expect(rebases.map((c) => c.args)).toEqual([
+            ["rebase", "--no-rebase-merges", "--no-autosquash", "--onto", "worktrees/merge-test", "baseA", "worktrees/feat-1^0"],
+            ["rebase", "--no-rebase-merges", "--no-autosquash", "--onto", "worktrees/merge-test", "baseB", "worktrees/feat-2^0"],
+        ]);
+        const advances = calls.filter((c) => c.args[0] === "checkout");
+        expect(advances.map((c) => c.args)).toEqual([
+            ["checkout", "-B", "worktrees/merge-test", "HEAD"],
+            ["checkout", "-B", "worktrees/merge-test", "HEAD"],
         ]);
     });
 
-    test("records a ticket with no commits as a noop, skips the merge", async () => {
+    test("records a ticket with no commits as a noop, skips the rebase", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse
             ok(), // worktree add
@@ -116,21 +124,22 @@ describe("buildTrain()", () => {
         expect(result.status).toBe("built");
         expect(result.included).toEqual([]);
         expect(result.noops).toEqual(["feat-1"]);
-        expect(calls.some((c) => c.args[0] === "merge")).toBe(false);
+        expect(calls.some((c) => c.args[0] === "rebase")).toBe(false);
     });
 
-    test("reports a conflict, aborts the merge, and stops at the offending ticket", async () => {
+    test("reports a conflict, aborts the rebase, and stops at the offending ticket", async () => {
         const { runGit, calls } = scriptedGit([
             ok("main"), // rev-parse
             ok(), // worktree add
             ok("baseA"), // merge-base feat-1
             ok("1"), // count feat-1
-            ok(), // merge feat-1 (clean)
+            ok(), // rebase feat-1 (clean)
+            ok(), // checkout -B the train
             ok("baseB"), // merge-base feat-2
             ok("1"), // count feat-2
-            fail("CONFLICT"), // merge feat-2 (conflict)
+            fail("CONFLICT"), // rebase feat-2 (conflict)
             ok("src/x.ts\nsrc/y.ts"), // diff --diff-filter=U
-            ok(), // merge --abort
+            ok(), // rebase --abort
         ]);
 
         const result = await buildTrain(
@@ -146,7 +155,7 @@ describe("buildTrain()", () => {
             ticket: "feat-2",
             conflicts: ["src/x.ts", "src/y.ts"],
         });
-        expect(calls.at(-1)?.args).toEqual(["merge", "--abort"]);
+        expect(calls.at(-1)?.args).toEqual(["rebase", "--abort"]);
         expect(calls.filter((c) => c.args[0] === "merge-base")).toHaveLength(2);
     });
 

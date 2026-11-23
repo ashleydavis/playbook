@@ -23,7 +23,7 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
 
 1. Run the report once.
 2. Describe what the first turn of `pb:next` would do, in its processing order (**`conflicts` → `merge-queue` → `todo` → `in-progress`**):
-   - `conflicts`: each ID would have main merged into it in its worktree, re-verified, and returned to `merge-queue/`.
+   - `conflicts`: each ID would have its branch rebased onto main in its worktree, re-verified, and returned to `merge-queue/`.
    - `merge-queue`: the IDs would be merged as one train by a single merge sub-agent, with the post-merge checks run once on the result.
    - `todo`: each ID would be admitted with `setup-ticket.ts` (moved to `in-progress/`, worktree created), then implemented.
    - `in-progress`: each ID already there would be implemented (re-driven from where it sits).

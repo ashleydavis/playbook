@@ -149,7 +149,7 @@ The diagram sources are the `.mmd` files beside the images in `images/handbook/`
 
 A ticket never fails: each stage fixes what it finds, and a stage that does not finish runs again. See [When something goes wrong](#when-something-goes-wrong).
 
-The one arrow that skips the developer is `conflicts/` → `merge-queue/`. A merge conflict means main moved, not that the work is wrong, so main is merged into the ticket, it is re-verified and rejoins the train on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
+The one arrow that skips the developer is `conflicts/` → `merge-queue/`. A merge conflict means main moved, not that the work is wrong, so the ticket is rebased onto main, it is re-verified and rejoins the train on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
 
 Each stage is driven by a skill; see [Skills](#skills) for what each one does.
 
@@ -159,7 +159,7 @@ A ticket never fails. It never counts setbacks, never moves backwards on its own
 
 **A stage keeps going until it is done.** A failing check is work for the stage to fix, not a reason to stop. A sub-agent that returns without finishing (it timed out, died or gave up) is spawned again for the same stage, starting from the worktree as it is.
 
-**A merge-train problem goes to `conflicts/`.** When an approved ticket won't apply onto main because main moved under it, or its checks fail on the train, nothing about the developer's approval changes: it needs main merged into it and its checks fixed, not a rework. It goes to `conflicts/` (see [The queues](#the-state-repo)), where `/pb:next` merges main into it, fixes and re-runs its checks, and returns it straight to `merge-queue/` without troubling the developer.
+**A merge-train problem goes to `conflicts/`.** When an approved ticket won't apply onto main because main moved under it, or its checks fail on the train, nothing about the developer's approval changes: it needs rebasing onto main and its checks fixed, not a rework. It goes to `conflicts/` (see [The queues](#the-state-repo)), where `/pb:next` rebases it onto main, fixes and re-runs its checks, and returns it straight to `merge-queue/` without troubling the developer.
 
 **An environment problem stops the run.** When a worktree setup or dependency install fails, or two or more tickets hit the same error from a shared cause (test fixtures, a contended resource, a broken tool), the environment is broken and no stage can fix it. The loop attempts no workaround, stops launching new work and hands back, leaving every ticket where it sits. It reports `Run halted: environment problem` in chat, naming the check and error, the tickets involved, the suspected cause and the evidence path. The developer fixes the environment and re-runs `/pb:next`, which carries on from where the tickets sit.
 
@@ -256,7 +256,7 @@ state/
     human-review/     # Tickets awaiting developer review
     merge-queue/      # Approved tickets waiting to merge
     done/             # Completed tickets
-    conflicts/        # Approved tickets that missed a train because main moved; pb:next merges main into them and returns them to merge-queue/
+    conflicts/        # Approved tickets that missed a train because main moved; pb:next rebases them onto main and returns them to merge-queue/
     aborted/          # Killed by the developer during pb:review (abandoned, terminal; not a pipeline stage)
 ```
 

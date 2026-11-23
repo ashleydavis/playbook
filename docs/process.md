@@ -56,7 +56,7 @@ Three repos, each a separate concern:
 
 `todo/` → `in-progress/` → `human-review/` → `merge-queue/` → `done/`
 
-`conflicts/` is a re-entry pen hanging off `merge-queue/`, for an approved ticket whose branch will not merge cleanly onto the current main because main moved under it. It is not a side pen: **`pb:next` drains it itself, first, ahead of every other queue**, and no human is involved. Main is merged into the ticket's branch in its existing worktree, the ticket is re-verified and rejoins `merge-queue/` directly. It never goes to `todo/` (nothing is wrong with the work, so there is nothing to re-implement) and it never returns to `human-review/` (the developer already approved it; merging main needs re-verification, not a re-decision). A ticket whose checks fail on a merge train also goes to `conflicts/`, where its checks are fixed.
+`conflicts/` is a re-entry pen hanging off `merge-queue/`, for an approved ticket whose branch will not merge cleanly onto the current main because main moved under it. It is not a side pen: **`pb:next` drains it itself, first, ahead of every other queue**, and no human is involved. The ticket's branch is rebased onto main in its existing worktree, the ticket is re-verified and rejoins `merge-queue/` directly. It never goes to `todo/` (nothing is wrong with the work, so there is nothing to re-implement) and it never returns to `human-review/` (the developer already approved it; rebasing onto main needs re-verification, not a re-decision). A ticket whose checks fail on a merge train also goes to `conflicts/`, where its checks are fixed.
 
 `backlog/` is a side pen for work captured but not yet a contender for implementation. It is **not** a pipeline stage: `pb:next` never reads it. Pull tickets to `todo/` explicitly via `pb:promote` or `move.ts` when ready to build.
 
@@ -108,7 +108,7 @@ A ticket never fails. It never counts setbacks, never moves backwards on its own
 
 - A stage keeps working until its instructions are met. A failing check is work for it to fix.
 - A sub-agent that returns without finishing (it timed out, died or gave up) is spawned again for the same stage, starting from the worktree as it is.
-- A ticket whose checks fail on a merge train goes to `conflicts/`, where main is merged into it and its checks are fixed.
+- A ticket whose checks fail on a merge train goes to `conflicts/`, where its branch is rebased onto main and its checks are fixed.
 - **Environment problem.** When a worktree setup or dependency install fails, or two or more tickets hit the same error from a cause outside the tickets (shared test fixtures, a contended resource, a broken tool), the run stops and hands back. **Attempt no workaround of any kind:** no alternative install path, no substitute toolchain, no borrowing another worktree's state, no patching the environment. Every ticket stays where it sits. The chat report `Run halted: environment problem` names the check and error, the tickets, the suspected cause and the evidence path. The developer fixes the environment and re-runs `pb:next`.
 - **Broken main.** If a merge lands and a check on main then fails, the landed tickets stay done and the run stops, because every later ticket builds on main. Fixing main is a new ticket.
 - Never work around a problem by switching parallel to serial or re-driving a ticket outside these rules.

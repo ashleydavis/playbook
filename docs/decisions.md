@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-24: Tickets are rebased onto main, so main's history has no merge commits
+
+**What changed:** `merge-ticket.ts build` replays each ticket's own commits onto the train tip with a rebase and fast-forwards the train, instead of merging the ticket's branch with a merge commit. The rebase runs on a detached copy of the ticket's commits in the train worktree, so the ticket's branch is never moved and a discarded train leaves it as it was. The `conflicts/` step rebases the ticket's branch onto main in its worktree instead of merging main into it. `CLAUDE.md` makes rebasing a ticket's worktree branch the one exception to the ban on rewriting history; main is never rewritten.
+
+**Why:** merging gave main one merge commit per ticket plus one per conflict fix: a session that landed 25 tickets added 50 merge commits next to 39 others. The developer wants a flat history on main. A ticket's worktree branch is used only by that ticket's agents, so rebasing it rewrites nothing anyone else holds.
+
 ## 2026-11-23: Break commands add a dependency only with a written justification
 
 **What changed:** `pb:todo:break` and `pb:plan:break` add a dependency only when a ticket cannot be built or tested without something another ticket creates. Changing the same file or component is no longer a reason on its own. Each dependency's justification is written into the `## Notes` section of the dependent ticket's `detail.md`, and a dependency that cannot be justified there is not added. Dependencies stated in a todo item are still always followed.
