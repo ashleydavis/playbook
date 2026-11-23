@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-23: Break commands add a dependency only with a written justification
+
+**What changed:** `pb:todo:break` and `pb:plan:break` add a dependency only when a ticket cannot be built or tested without something another ticket creates. Changing the same file or component is no longer a reason on its own. Each dependency's justification is written into the `## Notes` section of the dependent ticket's `detail.md`, and a dependency that cannot be justified there is not added. Dependencies stated in a todo item are still always followed.
+
+**Why:** adding a dependency wherever two tickets changed the same file chained a run of tickets in one area, so they ran one per round instead of in parallel and a batch that could finish in an evening was going to run past midnight. Merge conflicts are resolved on the merge train and cost far less than lost parallelism.
+
 ## 2026-11-23: pb:todo:break follows stated dependencies and works out the rest
 
 **What changed:** `pb:todo:break` always sets `Depends on:` and `Priority:` from any dependency or order an item's text states, such as "do this first" or "all other tickets depend on this one". It then checks every ticket against every other in the code, adds a dependency where one creates, renames, moves or restructures something another uses or both change the same component or file, and gives the reason for each at sign-off.

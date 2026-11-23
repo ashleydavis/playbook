@@ -1,5 +1,6 @@
 # Todo
 
+- Update Playbook so that `pb:next`, while it waits on its sub-agents, periodically checks for tickets that can be moved (for example `todo/` to `in-progress/`, an approved ticket from `human-review/` to the merge queue). Today it does not notice or admit tickets that become available in `todo/` while it waits, which wastes capacity.
 - Fix the scripts to none of them the require the LLM to do a cd. It makes mistakes when it does that.
 - The history of a project (e.g. rejections) should be yaml. That way the ts code can read it and present it to the user without the LLM having to get it into context and filter/summarise it.
 - Be cool if there are different interviews for different types of projects.
