@@ -376,7 +376,7 @@ The developer drives both loops with these commands. Each has a short alias and 
 | Approve | `a`, `approve` | In a ticket | Approves the ticket; it moves to `merge-queue/`. |
 | Reject | `r`, `reject` | In a ticket | Rejects with notes (a note is required); it returns to `todo/`. |
 | Skip | `s`, `skip` | In a ticket | Leaves the ticket in `human-review/` for later; no note needed. |
-| Abort | `ab`, `abort` | In a ticket | Kills the ticket; it moves to `aborted/` (optional reason). |
+| Abort | `ab`, `abort` | In a ticket | Kills the ticket; deletes the ticket, its worktree and its branch. |
 | Stop | `q`, `quit`, `stop` | At the ticket list | Ends the review loop. |
 
 #### The review and inspect loops
@@ -392,7 +392,7 @@ flowchart TD
     MENU -->|"resolve"| RESOLVE{"Resolve"}
     RESOLVE -->|"approve"| MQ[("merge-queue/")]
     RESOLVE -->|"reject + notes"| TODO[("todo/")]
-    RESOLVE -->|"abort"| ABORT[("aborted/")]
+    RESOLVE -->|"abort"| ABORT(["Ticket, worktree and branch deleted"])
     RESOLVE -->|"next ticket (skip stays in human-review/)"| LIST
     linkStyle default stroke:#ffffff,stroke-width:2px
 ```

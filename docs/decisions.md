@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-25: Aborting a ticket deletes it and every dependency on it
+
+**What changed:** when `pb:review` aborts a ticket, it deletes the ticket's directory, its worktree and its branch, instead of moving the ticket to `aborted/`. It also takes the ticket's ID out of the `**Depends on:**` line of every ticket in `todo/` and `backlog/` and deletes the notes that give it as the reason for a dependency, and commits all of it as one state change. `pb:review` prints the ticket commands (`a`, `r: <text>`, `ab`) under the inspect menu every time it shows the menu.
+
+**Why:** the developer wants an aborted ticket gone, not kept. A ticket is actionable only when every dependency is in `done/`, and an aborted ticket never gets there: aborting a ticket that many others depended on left all of them, and every ticket that depended on those, blocked with nothing in the report to say why. The developer also did not know which commands resolve a ticket, because the menu did not show them.
+
 ## 2026-11-24: Tickets are rebased onto main, so main's history has no merge commits
 
 **What changed:** `merge-ticket.ts build` replays each ticket's own commits onto the train tip with a rebase and fast-forwards the train, instead of merging the ticket's branch with a merge commit. The rebase runs on a detached copy of the ticket's commits in the train worktree, so the ticket's branch is never moved and a discarded train leaves it as it was. The `conflicts/` step rebases the ticket's branch onto main in its worktree instead of merging main into it. `CLAUDE.md` makes rebasing a ticket's worktree branch the one exception to the ban on rewriting history; main is never rewritten.

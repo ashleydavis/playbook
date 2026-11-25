@@ -1,6 +1,6 @@
 ---
 name: pb:review
-description: "Invoke when there are tickets in human-review/ waiting for the developer to approve, reject, skip, abort, or defer. Walks the developer through each ticket (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, and moves the ticket to merge-queue/ on approval, back to todo/ on rejection, to aborted/ on abort, to backlog/ when deferred, or leaves it in human-review/ when skipped. Keywords: review, human review, approve, reject, abort, kill, abandon, drop, come back later, skip, backlog, defer, park, not ready, depends on, wait for, walk me through, sign off, check the work, review queue, code review, accept changes."
+description: "Invoke when there are tickets in human-review/ waiting for the developer to approve, reject, skip, abort, or defer. Walks the developer through each ticket (diff, captured evidence, tests, UI/CLI, docs), transcribes their notes to the right place, and moves the ticket to merge-queue/ on approval, back to todo/ on rejection, deletes it with its worktree and branch on abort, to backlog/ when deferred, or leaves it in human-review/ when skipped. Keywords: review, human review, approve, reject, abort, kill, abandon, drop, come back later, skip, backlog, defer, park, not ready, depends on, wait for, walk me through, sign off, check the work, review queue, code review, accept changes."
 ---
 
 # pb:review
@@ -37,10 +37,10 @@ The developer drives with these commands. Each has a single-letter (or short) al
 | Select | `<number>`, `<ticket name>` | At the ticket list | Selects the ticket to review (e.g. `1`, or `search-3`). |
 | Inspect | `<number>` | At the inspect menu | Runs that menu option (show screenshots, run by hand, start it for you, run the tests, read/show the docs, view/show the diff). You either show the developer how, or perform it (describing what you will do first), then reprint the menu. |
 | Approve | `a`, `approve` | In a ticket | Approves the ticket; moves it to `merge-queue/`. |
-| Reject | `r`, `reject` | In a ticket | Rejects with notes (a note is required); moves it back to `todo/`. |
+| Reject | `r: <text>`, `r`, `reject` | In a ticket | Rejects with notes (a note is required); moves it back to `todo/`. |
 | Skip | `s`, `skip` | In a ticket | Leaves it in `human-review/` for later; no note needed. |
 | Backlog | `bk`, `backlog` | In a ticket | Defers a sound ticket that is wanted but deprioritized for later; moves it to `backlog/` (optional reason). Re-admitted by `pb:promote`. |
-| Abort | `ab`, `abort` | In a ticket | Kills the ticket; moves it to `aborted/` (optional reason). |
+| Abort | `ab`, `abort` | In a ticket | Kills the ticket; deletes the ticket, its worktree and its branch. |
 | Stop | `q`, `quit`, `stop` | At the ticket list | Ends the review loop. |
 
 A **ticket command** (`a`/`r`/`s`/`bk`/`ab`) **exits the inspect loop for the current ticket** at any point (the developer does not have to try every menu option first) and returns to the numbered ticket list. See [Resolve](#3-resolve).
@@ -91,7 +91,7 @@ For the chosen ticket:
    The card is a **short summary**: the ticket's name and Description, its changed-file and screenshot **counts** (not the full lists), the latest evidence pass, test results, test plan, commit, the `detail.md`/`evidence/` paths, and its tailored inspect menu. Present these two things, in this order:
 
    1. **Human rejections.** Read the ticket's `## History` (in its `detail.md`, path in the card) and list **every prior human rejection** of this ticket, oldest first: one line each, saying **what the developer rejected** and **a very brief note on how it was subsequently rectified** (from the rework/implementation entries that followed the rejection; write "not yet reworked" if none followed). This is **human** rejections only, a developer's decision at this gate ("Human review: REJECTED" entries), never failures. If there have been none, print `Human rejections: none.`
-   2. **The summary card.** Print the card's output as the script produced it (its output goes to the tool result, which the developer may not see, so copy it into your reply). It is already concise: **do not expand the counts into full file or screenshot lists, and do not re-summarise or drop any of it.** The full detail lives behind the inspect menu (option 1 opens the screenshots, the diff options show the files), reached on demand. The card ends with the inspect menu, which is the developer's action prompt (Step 2); when there are screenshots you may add one line after it suggesting they start there.
+   2. **The summary card.** Print the card's output as the script produced it (its output goes to the tool result, which the developer may not see, so copy it into your reply). It is already concise: **do not expand the counts into full file or screenshot lists, and do not re-summarise or drop any of it.** The full detail lives behind the inspect menu (option 1 opens the screenshots, the diff options show the files), reached on demand. The card ends with the inspect menu, which is the developer's action prompt (Step 2). Print the ticket commands under it (see **Ticket commands** below). When there are screenshots you may add one line after it suggesting they start there.
 
    Only open `detail.md`/`evidence/` beyond the History read above when the developer asks for something they do not cover (the Issues, acceptance criteria, a specific transcript).
 
@@ -138,6 +138,14 @@ For the chosen ticket:
    7. **Show the code diff.** Run the diff for the ticket's commit (the card's `commit`). When the ticket has more than one commit, run `git -C project diff main...<commit>` instead, which is the ticket's whole change. Then **paste the diff content inline into your reply as a fenced ```diff block**, naming the files changed. Do not merely run `git show`/`git diff` and rely on terminal scrollback: the developer must see the actual diff in your message without asking again. Show the full diff: every changed file and every line of it. Never elide, truncate, collapse, or summarise any part, however large the diff.
    8. **View the code diff yourself.** Do not show the diff: give the developer the exact command(s) to find and view it themselves (e.g. `git -C project/worktrees/<id> show <commit>`, or `git -C project show <commit>` since the commit is reachable from the project repo too) or, when the ticket has more than one commit, `git -C project diff main...<commit>`, naming the files changed so they know what to look at.
 
+   **Ticket commands.** Every time the inspect menu is printed, print these lines under it:
+
+   ```
+   - a - approve
+   - r: <text> - reject
+   - ab - abort the ticket
+   ```
+
    The developer leaves the inspect loop by resolving the ticket (`a`/`r`/`s`/`bk`/`ab`), which takes you to [Resolve](#3-resolve).
 
 3. As they inspect, capture any **notes**. Notes can target whatever the developer is thinking about, not just the current ticket. Transcribe each note to the right place (confirming when it is not obvious):
@@ -149,12 +157,17 @@ For the chosen ticket:
 
 ### 3. Resolve
 
-Then the developer approves, rejects, skips, backlogs, or aborts. **Rejection requires a note.** Write the outcome into the ticket's `detail.md` (rejection, backlog, and abort notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`):
+Then the developer approves, rejects, skips, backlogs, or aborts. **Rejection requires a note.** Write the outcome into the ticket's `detail.md` (rejection and backlog notes go to its History section), then move the directory with `bun ../scripts/move.ts <id> <target-queue>` (run from `state/`). Abort deletes the ticket instead:
 - **Approve:** to `merge-queue/`.
 - **Reject with notes:** back to `todo/`, notes appended to History. **Record every issue the developer raises as a new unticked checkbox in the ticket's `## Issues` section** (create the section if absent), in addition to the History note, so `pb:next`'s dev stage must fix each one and tick it. It is the developer's explicit decision to rework the ticket: move it to `todo/`, and `pb:next` re-implements it with your notes. A person decides each round, so there is no cap.
 - **Skip:** leave it in `human-review/` to return to later. No move, no note required. Return to the list; the skipped ticket stays and reappears there.
 - **Backlog:** to `backlog/`. The developer is **deprioritizing a sound ticket for later**, it is still wanted but is not a contender for the current round (it is set aside). A reason note is **optional**; if they give one, append it to the ticket's History section before the move. Then move the directory to `backlog/`. `pb:next` never picks from `backlog/`, so the ticket waits there until `pb:promote` pulls it back to `todo/`. If the developer wants the current in-flight work **discarded** (so it is re-implemented from scratch on promotion), remove its worktree and delete its branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (force-prune first with `git -C project worktree prune` if the worktree is already gone). The `backlog/` queue is the record that it is parked, not in flight.
-- **Abort:** to `aborted/`. The developer is killing the ticket: the work is abandoned and will not be done. A reason note is **optional**; if they give one, append it to the ticket's History section as the abort reason before the move. Then move the directory to `aborted/`, which sets the ticket's state to aborted (the queue it sits in is its status). Unlike a rejection, an aborted ticket does not rejoin the loop; `pb:next` never touches `aborted/`. The `aborted/` directory is its only record. **Because the work is abandoned, always tear down its in-flight worktree and branch** (unlike backlog, this is not optional: an aborted ticket will never be re-implemented, so leaving the worktree and branch behind just orphans them). Remove the worktree and delete the branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (if the worktree is already gone, run `git -C project worktree prune` first, then delete the branch). Do this before the move to `aborted/`.
+- **Abort:** delete the ticket. The developer is killing it: the work is abandoned and will not be done, so nothing of the ticket is kept.
+  1. Remove its worktree and delete its branch: `git -C project worktree remove --force project/worktrees/<id>` then `git -C project branch -D worktrees/<id>` (if the worktree is already gone, run `git -C project worktree prune` first, then delete the branch).
+  2. Remove every dependency on it, because a ticket that depends on a deleted ticket can never start: in every ticket in `todo/` and `backlog/`, take the ID out of the `**Depends on:**` line in `index.md` (delete the line when it was the only dependency) and delete any note in `detail.md` that gives the aborted ticket as a reason for the dependency.
+  3. Delete the ticket's directory: `rm -rf tickets/human-review/<id>` (from `state/`).
+  4. Commit the deletion and the dependency edits together: `bun ../scripts/commit-state.ts "abort <id>" tickets/human-review/<id> tickets/todo tickets/backlog` (from `state/`).
+  5. Tell the developer which tickets lost the dependency.
 
 The `move.ts` calls above commit their own state change automatically, ticket-scoped, so the History note and `## Issues` edits you wrote into the ticket's `detail.md` before the move ride in that commit. For any **follow-up ticket** you queued in `todo/` from the notes, commit it separately: `bun ../scripts/commit-state.ts "add <id>" tickets/todo/<id>` (from `state/`).
 
@@ -227,7 +240,7 @@ Human rejections: none.
 
 [ticket-card.ts summary card for search-5: name, Description, counts, evidence, inspect menu]
 Developer: ab, not shipping it.
-- Abort reason -> search-5 History. Moved -> aborted/.
+- Removed search-5's worktree and branch, removed it from search-6's Depends on, deleted tickets/human-review/search-5.
 - Mark: --mark search-5 --outcome aborted (reprints the checklist).
 
 Developer: search-7
@@ -250,3 +263,4 @@ All tickets processed this pass; search-4 (skipped) remains in human-review for 
 
 Recommend the developer run:
 - `pb:next`: to land approved tickets and continue the loop.
+
