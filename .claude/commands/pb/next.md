@@ -15,6 +15,10 @@ When `pb:next` is invoked, do nothing else: print this goal for the developer to
 /goal Run the pb:next loop in .claude/commands/pb/next.md, skipping its "Start with the goal" section, until forward progress is exhausted: every ticket is in human-review/ or done/, or waits on an unmet dependency. Never stop to ask a question or for a decision and never stop because a sub-agent says it is blocked.
 ```
 
+## Never more than 10 agents at once
+
+- Never run more than 10 sub-agents at the same time, in any step and across all queues. Launch them in batches of at most 10 and start the next one only when a running one returns. Agents build and test in parallel, so more than that overloads the developer's computer.
+
 ## Never stop while there is work
 
 - Under the goal, the run never stops until forward progress is exhausted (Step 1). It never stops to ask the developer a question or for a decision.
@@ -104,7 +108,7 @@ A ticket in `in-progress/` goes through the stages listed for its type in `docs/
 
 2. Each turn, work the queues in processing order (**`conflicts` → `merge-queue` → `todo` → `in-progress`**; see Processing order above). **Begin every step by re-running `bun ../scripts/next-tickets.ts`**, because an earlier step may have moved tickets into this step's queue (the todo step feeds `in-progress`). It is cheap and deterministic, so always act on a freshly generated report, never a stale one:
 
-   1. **Run the report, then for each ID in its `conflicts` list,** spawn a sub-agent in parallel with these ticket completion criteria:
+   1. **Run the report, then for each ID in its `conflicts` list,** spawn a sub-agent for each, at most 10 running at once, with these ticket completion criteria:
 
       > <id> has its branch rebased onto the current main in its existing worktree, with every conflict resolved, with every check the Test Plan names re-run fresh and passing, the evidence required by Verification and Evidence captured to evidence/implementation-N/ (N one more than the highest existing implementation-N), and the ticket moved from conflicts/ to merge-queue/.
 
@@ -135,7 +139,7 @@ A ticket in `in-progress/` goes through the stages listed for its type in `docs/
 
    3. **Run the report, then admit each ID in its `todo` list.** These are the actionable tickets (dependencies are already resolved, and each runs on this platform); take them as-is without opening their files. For each ID, run `bun ../scripts/setup-ticket.ts <id>` from `state/`. That one command does the whole admission: it moves the directory from `todo/` to `in-progress/` and creates the ticket's worktree against the project repo at `project/worktrees/<id>`, on a new branch `worktrees/<id>` at the project's current commit. It resolves all the paths itself, so **never run `git worktree` by hand**. It is idempotent: re-running for an already-admitted ticket is a safe no-op.
 
-   4. **Run the report, then for each ID in its `in-progress` list** (the tickets just admitted from `todo/`, plus any left from an interrupted earlier run), read the ticket's `**Type:**` from its `index.md` and work it through the stages its file in `docs/ticket-types/` lists (see **In-progress stages**), with the tickets in parallel and each ticket's stages in order. For each stage spawn one new sub-agent and tell it to follow, for `<id>`, `docs/ticket-types/README.md` and that stage's section of the type's file. Start the next stage only when the one before returns. Each stage, and each re-run of a stage, gets a new sub-agent: never send a message to a sub-agent from an earlier stage or an earlier run to continue it. The ticket's completion criteria are:
+   4. **Run the report, then for each ID in its `in-progress` list** (the tickets just admitted from `todo/`, plus any left from an interrupted earlier run), read the ticket's `**Type:**` from its `index.md` and work it through the stages its file in `docs/ticket-types/` lists (see **In-progress stages**), with the tickets in parallel (at most 10 sub-agents running at once) and each ticket's stages in order. For each stage spawn one new sub-agent and tell it to follow, for `<id>`, `docs/ticket-types/README.md` and that stage's section of the type's file. Start the next stage only when the one before returns. Each stage, and each re-run of a stage, gets a new sub-agent: never send a message to a sub-agent from an earlier stage or an earlier run to continue it. The ticket's completion criteria are:
 
       > <id> has been through every stage its ticket type lists, in order, each stage's instructions are met, the evidence required by Verification and Evidence is in evidence/implementation-N/, and the last stage has moved the directory out of in-progress/.
 

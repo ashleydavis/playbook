@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-26: pb:next never runs more than 10 agents at once
+
+**What changed:** `pb:next` runs at most 10 sub-agents at the same time, across all queues, and starts the next only when one returns.
+
+**Why:** a run with every conflicted ticket in parallel started builds and tests for each at once and overloaded the developer's computer.
+
 ## 2026-11-26: pb:review says what to look for in the screenshots
 
 **What changed:** after `pb:review` opens a ticket's screenshots and lists their paths, it prints a short "What to look for" list from the ticket's acceptance criteria: what each screenshot should show, never a verdict. This is the one exception to showing an artifact with nothing after it.
