@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-26: pb:review says what to look for in the screenshots
+
+**What changed:** after `pb:review` opens a ticket's screenshots and lists their paths, it prints a short "What to look for" list from the ticket's acceptance criteria: what each screenshot should show, never a verdict. This is the one exception to showing an artifact with nothing after it.
+
+**Why:** the developer opened the screenshots with nothing to say what the change was meant to look like, and asked to be reminded each time.
+
 ## 2026-11-26: pb:review gives a What to test list when it starts the app
 
 **What changed:** when `pb:review` starts the app for the developer, it prints a numbered "What to test" list after confirming the app runs from the ticket's worktree: each step says what to do in the app and what the developer should see, covering every behaviour the ticket changed, from its acceptance criteria and the testing manual.
