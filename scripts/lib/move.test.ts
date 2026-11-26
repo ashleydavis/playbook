@@ -160,9 +160,8 @@ describe("move()", () => {
     });
 
     test("moves a ticket merge-queue ↔ conflicts round trip", async () => {
-        // The conflict path: an approved ticket that will not merge cleanly onto
-        // main parks in conflicts/, has main merged in there, and rejoins merge-queue/
-        // without passing back through todo/ or human-review/.
+        // The conflicts queue is no longer used by the process, but an old state
+        // repo may still hold a ticket there, so it must stay movable.
         await makeTicket("merge-queue", "clash-1");
 
         const parked = await move("clash-1", "conflicts", ticketsDir);

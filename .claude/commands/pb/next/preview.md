@@ -22,9 +22,8 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
 ## Steps
 
 1. Run the report once.
-2. Describe what the first turn of `pb:next` would do, in its processing order (**`conflicts` → `merge-queue` → `todo` → `in-progress`**):
-   - `conflicts`: each ID would have its branch rebased onto main in its worktree, re-verified, and returned to `merge-queue/`.
-   - `merge-queue`: the IDs would be merged as one train by a single merge sub-agent, with the post-merge checks run once on the result.
+2. Describe what the first turn of `pb:next` would do, in its processing order (**`merge-queue` → `todo` → `in-progress`**):
+   - `merge-queue`: the IDs would be merged as one chain by a single merge sub-agent, with any conflicts resolved where they come up and the post-merge checks run once on the result.
    - `todo`: each ID would be admitted with `setup-ticket.ts` (moved to `in-progress/`, worktree created), then implemented.
    - `in-progress`: each ID already there would be implemented (re-driven from where it sits).
 3. If every list is empty, say `pb:next` would find nothing to do.
@@ -34,7 +33,7 @@ Follow the project's [output format](../../../../docs/output-format.md) (load it
 
 ```
 Preview only: nothing was changed.
-merge-queue: search-1, search-2 would be merged as one train.
+merge-queue: search-1, search-2 would be merged as one chain.
 todo: search-3, infra-5 would be admitted and implemented.
 This is the first turn only; later turns depend on the results.
 ```

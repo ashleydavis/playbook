@@ -2,17 +2,21 @@
 # Smoke test for scripts/merge-ticket.ts driven through its CLI with REAL git.
 #
 # Builds a throwaway repo layout, sets up several tickets with commits in their
-# worktrees, then exercises the train end to end against real git:
-#   - build:   rebase two tickets' commits onto one fresh train worktree, with a
-#              noop ticket (no commits) recorded as a noop, not rebased.
-#   - land:    fast-forward main to the train; every ticket's change is on main,
-#              each ticket directory has moved merge-queue/ -> done/, and the train
-#              + ticket worktrees and branches are gone.
+# worktrees, then exercises the chain (main => ticket 1 => ticket 2 => ... => main)
+# end to end against real git:
+#   - stack:   each ticket's branch is rebased onto the one before it, in its own
+#              worktree, with a noop ticket (no commits) recorded as a noop. The
+#              last ticket's worktree holds every ticket's change, and no extra
+#              worktree or branch is created.
+#   - land:    fast-forward main to the last ticket's branch; every ticket's change
+#              is on main, each ticket directory has moved merge-queue/ -> done/, and
+#              the ticket worktrees and branches are gone.
 #   - conflict: a ticket that edits the same line an already-landed ticket touched
-#              is reported as a conflict (exit 2), not landed.
-#   - resolve: once that ticket's branch is rebased onto main and the conflict
-#              resolved, it builds and lands, and main has no merge commits.
-#   - discard: a built train is torn down, leaving the ticket worktree in place.
+#              is reported as a conflict (exit 2) with its rebase left IN PROGRESS in
+#              its own worktree, naming the ticket, its paths and the tickets after it.
+#   - resume:  `resume` with the conflict unresolved reports it again (exit 2); after
+#              the conflict is resolved, `resume` continues the rebase, the ticket
+#              after it is stacked too, both land, and main has no merge commits.
 # Then cleans up and prints PASS or FAIL.
 
 set -u
@@ -42,7 +46,7 @@ git -C "$ROOT/state" config user.name smoke
 for q in "${QUEUES[@]}"; do
     mkdir -p "$ROOT/state/tickets/$q"
 done
-for id in feat-1 feat-2 noop-1 conflict-1 discard-1; do
+for id in feat-1 feat-2 noop-1 conflict-1 after-1; do
     mkdir -p "$ROOT/state/tickets/todo/$id/evidence"
     echo "# $id" > "$ROOT/state/tickets/todo/$id/index.md"
 done
@@ -69,89 +73,85 @@ wt_commit() {
     git -C "$ROOT/project/worktrees/$id" commit -qm "$id work"
 }
 
-for id in feat-1 feat-2 noop-1 conflict-1 discard-1; do
+for id in feat-1 feat-2 noop-1 conflict-1 after-1; do
     run_setup "$id" > /dev/null || fail "setup $id failed"
 done
 wt_commit feat-1 a.txt "from feat-1"
 wt_commit feat-2 b.txt "from feat-2"
 wt_commit conflict-1 a.txt "from conflict-1"
-wt_commit discard-1 d.txt "from discard-1"
+wt_commit after-1 e.txt "from after-1"
 
 # setup-ticket moved these to in-progress/; the merge stage acts on merge-queue/,
-# so move the ones we will land into merge-queue/ via the real (committing) move,
-# matching how an approved ticket reaches merge-queue/ in the live process.
-for id in feat-1 feat-2 noop-1 conflict-1 discard-1; do
+# so move them there via the real (committing) move, matching how an approved
+# ticket reaches merge-queue/ in the live process.
+for id in feat-1 feat-2 noop-1 conflict-1 after-1; do
     run_move "$id" merge-queue > /dev/null || fail "move $id to merge-queue failed"
 done
 
-# ---- build: stack feat-1, feat-2 cleanly, noop-1 as a noop ----
-BUILD_JSON="$(run_merge build feat-1 feat-2 noop-1)"
-rc=$?
-[[ "$rc" -eq 0 ]] || fail "build expected exit 0, got $rc"
-echo "$BUILD_JSON" | grep -q '"status":"built"' || fail "build status not 'built': $BUILD_JSON"
-echo "$BUILD_JSON" | grep -q '"noops":\["noop-1"\]' || fail "noop-1 not recorded as a noop: $BUILD_JSON"
-TRAIN_ID="$(echo "$BUILD_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
-[[ -n "$TRAIN_ID" ]] || fail "no trainId in build output"
-[[ -d "$ROOT/project/worktrees/$TRAIN_ID" ]] || fail "train worktree not created"
-[[ -f "$ROOT/project/worktrees/$TRAIN_ID/a.txt" ]] || fail "feat-1 change missing from train"
-[[ -f "$ROOT/project/worktrees/$TRAIN_ID/b.txt" ]] || fail "feat-2 change missing from train"
-# Both of the train worktree's link files must be RELATIVE (git worktree add
-# --relative-paths, git >= 2.48) so it survives the repo being shared across
-# machines (NFS) at different mount points: its own .git and the admin back-link.
-grep -q '^gitdir: /' "$ROOT/project/worktrees/$TRAIN_ID/.git" \
-    && fail "train .git is absolute: $(cat "$ROOT/project/worktrees/$TRAIN_ID/.git")"
-grep -q '^/' "$ROOT/project/.git/worktrees/$TRAIN_ID/gitdir" \
-    && fail "train admin gitdir is absolute: $(cat "$ROOT/project/.git/worktrees/$TRAIN_ID/gitdir")"
-[[ ! -f "$ROOT/project/a.txt" ]] || fail "train leaked onto main before land"
+WORKTREES_BEFORE="$(git -C "$ROOT/project" worktree list | wc -l)"
+BRANCHES_BEFORE="$(git -C "$ROOT/project" branch --list | wc -l)"
 
-# ---- land: ff main, move tickets to done/, tear everything down ----
-run_merge land "$TRAIN_ID" feat-1 feat-2 noop-1 > /dev/null || fail "land failed"
+# ---- stack: feat-1, feat-2 cleanly, noop-1 as a noop ----
+STACK_JSON="$(run_merge stack feat-1 feat-2 noop-1)"
+rc=$?
+[[ "$rc" -eq 0 ]] || fail "stack expected exit 0, got $rc: $STACK_JSON"
+echo "$STACK_JSON" | grep -q '"status":"stacked"' || fail "stack status not 'stacked': $STACK_JSON"
+echo "$STACK_JSON" | grep -q '"noops":\["noop-1"\]' || fail "noop-1 not recorded as a noop: $STACK_JSON"
+echo "$STACK_JSON" | grep -q '"tip":"feat-2"' || fail "tip is not feat-2: $STACK_JSON"
+[[ -f "$ROOT/project/worktrees/feat-2/a.txt" ]] || fail "feat-1 change missing from feat-2's worktree"
+[[ -f "$ROOT/project/worktrees/feat-2/b.txt" ]] || fail "feat-2 change missing from feat-2's worktree"
+[[ ! -f "$ROOT/project/a.txt" ]] || fail "stack leaked onto main before land"
+[[ "$(git -C "$ROOT/project" worktree list | wc -l)" == "$WORKTREES_BEFORE" ]] || fail "stack created an extra worktree"
+[[ "$(git -C "$ROOT/project" branch --list | wc -l)" == "$BRANCHES_BEFORE" ]] || fail "stack created an extra branch"
+
+# ---- land: ff main, move tickets to done/, close the worktrees ----
+run_merge land feat-1 feat-2 noop-1 > /dev/null || fail "land failed"
 [[ -f "$ROOT/project/a.txt" ]] || fail "feat-1 change not on main after land"
 [[ -f "$ROOT/project/b.txt" ]] || fail "feat-2 change not on main after land"
 for id in feat-1 feat-2 noop-1; do
     [[ -d "$ROOT/state/tickets/done/$id" ]] || fail "$id not moved to done/ after land"
     [[ ! -e "$ROOT/state/tickets/merge-queue/$id" ]] || fail "$id still in merge-queue/ after land"
+    [[ ! -e "$ROOT/project/worktrees/$id" ]] || fail "$id worktree not removed after land"
 done
-# The done move was committed.
 git -C "$ROOT/state" log --oneline | grep -q "land" || fail "land did not commit the done move"
-[[ ! -e "$ROOT/project/worktrees/$TRAIN_ID" ]] || fail "train worktree not removed after land"
-[[ ! -e "$ROOT/project/worktrees/feat-1" ]] || fail "feat-1 worktree not removed after land"
-git -C "$ROOT/project" show-ref --verify --quiet "refs/heads/worktrees/$TRAIN_ID" \
-    && fail "train branch not deleted after land"
 
-# ---- conflict: conflict-1 edits a.txt, now on main via feat-1; report it ----
-CONFLICT_JSON="$(run_merge build conflict-1 2>/dev/null)"
+# ---- conflict: conflict-1 edits a.txt, now on main via feat-1; after-1 is behind it ----
+CONFLICT_JSON="$(run_merge stack conflict-1 after-1 2>/dev/null)"
 rc=$?
-[[ "$rc" -eq 2 ]] || fail "build conflict-1 expected exit 2, got $rc"
+[[ "$rc" -eq 2 ]] || fail "stack conflict-1 expected exit 2, got $rc"
 echo "$CONFLICT_JSON" | grep -q '"status":"conflict"' || fail "conflict not reported: $CONFLICT_JSON"
 echo "$CONFLICT_JSON" | grep -q '"ticket":"conflict-1"' || fail "wrong conflict ticket: $CONFLICT_JSON"
-CONFLICT_TRAIN="$(echo "$CONFLICT_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
-run_merge discard "$CONFLICT_TRAIN" > /dev/null 2>&1 || fail "discard of conflicted train failed"
-
-# ---- resolve: rebase conflict-1 onto main as the conflicts/ step does, then land it ----
+echo "$CONFLICT_JSON" | grep -q '"conflicts":\["a.txt"\]' || fail "conflicted path not reported: $CONFLICT_JSON"
+echo "$CONFLICT_JSON" | grep -q '"remaining":\["after-1"\]' || fail "remaining tickets not reported: $CONFLICT_JSON"
+echo "$CONFLICT_JSON" | grep -q '"worktree":"' || fail "worktree not reported: $CONFLICT_JSON"
 CONFLICT_WT="$ROOT/project/worktrees/conflict-1"
-git -C "$CONFLICT_WT" rebase main > /dev/null 2>&1
+GIT_REBASE_DIR="$(git -C "$CONFLICT_WT" rev-parse --git-path rebase-merge)"
+[[ -d "$GIT_REBASE_DIR" || -d "$CONFLICT_WT/$GIT_REBASE_DIR" ]] || fail "rebase was not left in progress in conflict-1's worktree"
+
+# ---- unresolved: resume before resolving reports the conflict, rebase still going ----
+UNRESOLVED_JSON="$(run_merge resume conflict-1 after-1 2>/dev/null)"
+rc=$?
+[[ "$rc" -eq 2 ]] || fail "resume with unresolved conflict expected exit 2, got $rc: $UNRESOLVED_JSON"
+echo "$UNRESOLVED_JSON" | grep -q '"conflicts":\["a.txt"\]' || fail "unresolved conflict not reported: $UNRESOLVED_JSON"
+
+# ---- resume: resolve in conflict-1's worktree, continue, stack after-1, land both ----
 printf '%s' "from conflict-1" > "$CONFLICT_WT/a.txt"
 git -C "$CONFLICT_WT" add -A
-GIT_EDITOR=true git -C "$CONFLICT_WT" rebase --continue > /dev/null 2>&1 || fail "could not continue the resolved rebase"
-RESOLVED_JSON="$(run_merge build conflict-1)"
+RESUME_JSON="$(run_merge resume conflict-1 after-1)"
 rc=$?
-[[ "$rc" -eq 0 ]] || fail "build of resolved conflict-1 expected exit 0, got $rc: $RESOLVED_JSON"
-RESOLVED_TRAIN="$(echo "$RESOLVED_JSON" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
-run_merge land "$RESOLVED_TRAIN" conflict-1 > /dev/null || fail "land of resolved conflict-1 failed"
+[[ "$rc" -eq 0 ]] || fail "resume expected exit 0, got $rc: $RESUME_JSON"
+echo "$RESUME_JSON" | grep -q '"status":"stacked"' || fail "resume status not 'stacked': $RESUME_JSON"
+echo "$RESUME_JSON" | grep -q '"included":\["conflict-1","after-1"\]' || fail "resume did not stack both tickets: $RESUME_JSON"
+[[ -f "$ROOT/project/worktrees/after-1/e.txt" ]] || fail "after-1 change missing after resume"
+[[ "$(cat "$ROOT/project/worktrees/after-1/a.txt")" == "from conflict-1" ]] || fail "conflict-1 change missing from after-1's worktree"
+run_merge land conflict-1 after-1 > /dev/null || fail "land after resume failed"
 [[ "$(cat "$ROOT/project/a.txt")" == "from conflict-1" ]] || fail "resolved conflict-1 change not on main"
+[[ -f "$ROOT/project/e.txt" ]] || fail "after-1 change not on main"
+for id in conflict-1 after-1; do
+    [[ -d "$ROOT/state/tickets/done/$id" ]] || fail "$id not moved to done/ after land"
+done
 [[ "$(git -C "$ROOT/project" rev-list --count --merges main)" == "0" ]] \
     || fail "main has merge commits after landing"
-
-# ---- discard: build a clean train, tear it down, ticket worktree survives ----
-DBUILD="$(run_merge build discard-1)"
-DTRAIN="$(echo "$DBUILD" | grep -o '"trainId":"[^"]*"' | head -1 | cut -d'"' -f4)"
-[[ -d "$ROOT/project/worktrees/$DTRAIN" ]] || fail "discard-test train not created"
-run_merge discard "$DTRAIN" > /dev/null || fail "discard failed"
-[[ ! -e "$ROOT/project/worktrees/$DTRAIN" ]] || fail "train worktree not removed after discard"
-[[ -d "$ROOT/project/worktrees/discard-1" ]] || fail "discard left ticket worktree should survive"
-git -C "$ROOT/project" show-ref --verify --quiet refs/heads/worktrees/discard-1 \
-    || fail "discard wrongly deleted the ticket branch"
 
 if [[ "$failures" -eq 0 ]]; then
     echo "PASS"

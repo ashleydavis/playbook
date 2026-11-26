@@ -139,9 +139,23 @@ The full pipeline a ticket travels through, from session start to merge:
 - **One worktree per ticket.** Each ticket's worktree is `project/worktrees/<id>`, on its own branch. The tickets never share a working copy, so they cannot overwrite each other's changes.
 - **One sub-agent per stage.** The parent agent does none of the work itself. For each ticket, at each stage (for Work: dev, test, rules check, commit), it starts a new sub-agent whose working directory is that ticket's worktree, so it cannot touch the main project repo by accident. A sub-agent is never reused for a later stage or a re-run: each one starts with none of the earlier stages' conversation and works from what is on disk, the worktree and the ticket's files.
 - **No collisions.** Every sub-agent kills any server or watcher it starts before it returns, and the parent removes any it missed at the end of each turn. Changes to the state repo are committed per ticket, with a lock and retry, so parallel sub-agents do not mix up their commits.
-- **Merging.** Approved tickets are merged together as one train, so the post-merge checks run once on the combined result.
+- **Merging.** Approved tickets are merged together as one chain, so the post-merge checks run once on the combined result.
 
 ![Building tickets in parallel](images/handbook/pipeline-parallel.png)
+
+### The merge train
+
+Approved tickets in `merge-queue/` are landed together as one merge train. It is a chain of the tickets' own branches: `main` => ticket 1's branch => ticket 2's branch => ... => ticket N's branch => `main`. There is no extra worktree or branch.
+
+- **Chaining.** Ticket 1's branch is rebased onto `main`, ticket 2's branch onto ticket 1's, and so on up to ticket N, each in its own worktree.
+- **Conflicts.** When a ticket conflicts, the Merge Agent resolves it right there in that ticket's worktree, keeping both sides' behaviour, then carries on. There is no separate queue for conflicts.
+- **Checks.** No check runs until the chain is finished. Then the checks run once, on ticket N's branch, which holds every ticket.
+- **Red.** The Merge Agent reads the failure, fixes it with a new commit on ticket N's branch and runs the checks again. It never tests the tickets one by one.
+- **Green.** `main` fast-forwards to ticket N's branch and the tickets move to `done/`.
+
+This replaces the earlier merge train, which was awkward and did not work well. That one sent conflicted tickets to a separate queue and ran checks on each ticket as well as on the train. The new scheme should mean less work and fewer checks, and a quicker merge.
+
+![The merge train](images/handbook/merge-train.png)
 
 _These diagrams are designed to be viewed in dark mode._
 
@@ -149,7 +163,7 @@ The diagram sources are the `.mmd` files beside the images in `images/handbook/`
 
 A ticket never fails: each stage fixes what it finds, and a stage that does not finish runs again. See [When something goes wrong](#when-something-goes-wrong).
 
-The one arrow that skips the developer is `conflicts/` → `merge-queue/`. A merge conflict means main moved, not that the work is wrong, so the ticket is rebased onto main, it is re-verified and rejoins the train on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
+No arrow skips the developer: a ticket leaves `human-review/` only by the developer's decision. A merge conflict means main moved, not that the work is wrong, so it is resolved while the merge train stacks it and the ticket stays in `merge-queue/` on the approval the developer already gave it. It never returns to the work queue (there is nothing to re-implement) and never returns to human review (there is nothing new to decide).
 
 Each stage is driven by a skill; see [Skills](#skills) for what each one does.
 
@@ -159,7 +173,7 @@ A ticket never fails. It never counts setbacks, never moves backwards on its own
 
 **A stage keeps going until it is done.** A failing check is work for the stage to fix, not a reason to stop. A sub-agent that returns without finishing (it timed out, died or gave up) is spawned again for the same stage, starting from the worktree as it is.
 
-**A merge-train problem goes to `conflicts/`.** When an approved ticket won't apply onto main because main moved under it, or its checks fail on the train, nothing about the developer's approval changes: it needs rebasing onto main and its checks fixed, not a rework. It goes to `conflicts/` (see [The queues](#the-state-repo)), where `/pb:next` rebases it onto main, fixes and re-runs its checks, and returns it straight to `merge-queue/` without troubling the developer.
+**A merge-train problem is fixed on the last ticket's branch.** The merge train chains the approved tickets one after another. When a ticket won't apply because main or an earlier ticket moved under it, `/pb:next` resolves the conflict right there, keeping both sides' behaviour. The checks run once, on the last ticket's branch, and if they fail the failure is fixed on that branch and the checks run again. Main moves only when they pass. Nothing about the developer's approval changes, and the developer is not troubled.
 
 **An environment problem stops the run.** When a worktree setup or dependency install fails, or two or more tickets hit the same error from a shared cause (test fixtures, a contended resource, a broken tool), the environment is broken and no stage can fix it. The loop attempts no workaround, stops launching new work and hands back, leaving every ticket where it sits. It reports `Run halted: environment problem` in chat, naming the check and error, the tickets involved, the suspected cause and the evidence path. The developer fixes the environment and re-runs `/pb:next`, which carries on from where the tickets sit.
 
@@ -256,7 +270,6 @@ state/
     human-review/     # Tickets awaiting developer review
     merge-queue/      # Approved tickets waiting to merge
     done/             # Completed tickets
-    conflicts/        # Approved tickets that missed a train because main moved; pb:next rebases them onto main and returns them to merge-queue/
     aborted/          # Killed by the developer during pb:review (abandoned, terminal; not a pipeline stage)
 ```
 
@@ -334,7 +347,7 @@ Sets or clears `**Platforms:**` on tickets in `todo/` or `backlog/`. A ticket lo
 
 ### pb:next
 
-Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `conflicts/` → `merge-queue/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges main into any approved ticket that missed the last train, merges approved tickets, then picks up to 10 unblocked `todo/` tickets into worktrees and runs each through the in-progress stages for its ticket type (for Work, the default: dev, test, rules check, commit), one sub-agent per stage, until the ticket reaches `human-review/`. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics and what happens when something goes wrong are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md); each ticket type's stages are in [docs/ticket-types/](docs/ticket-types/).
+Drains the queues as far as possible until human input is required. It keeps running turns until forward progress is exhausted, and each turn works the queues it drives in priority order: `merge-queue/` → `todo/` → `in-progress/`. The principle is *finish work nearest to done before starting anything new*: it merges approved tickets as one train (resolving any conflicts on the train and running the checks once on the result), then picks up to 10 unblocked `todo/` tickets into worktrees and runs each through the in-progress stages for its ticket type (for Work, the default: dev, test, rules check, commit), one sub-agent per stage, until the ticket reaches `human-review/`. Each sub-agent runs in the ticket's worktree and advances the ticket only when its ticket completion criteria are met, evidence on disk included. Run it once; it keeps going until forward progress is exhausted, and you don't run it again until the developer unblocks something (e.g. via `/pb:review`). The per-stage criteria text, worktree mechanics and what happens when something goes wrong are in [.claude/commands/pb/next.md](.claude/commands/pb/next.md); each ticket type's stages are in [docs/ticket-types/](docs/ticket-types/).
 
 ### pb:next:preview
 
@@ -698,5 +711,5 @@ What the VM contains is command execution: a reckless command hits the VM's own 
 
 This applies to both repos, by two distinct mechanisms:
 
-- **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `merge-ticket.ts` stacks the approved worktrees onto one train worktree and fast-forwards them onto the project branch together.
+- **Project repo.** Code changes happen in a per-ticket worktree and are committed there using the commit template (`templates/commit-template/`). `merge-ticket.ts` chains the approved worktrees, each rebased onto the one before, and fast-forwards the project branch to the last one.
 - **State repo.** The state repo is itself a git repo whose history is an audit log: every significant change (a stage transition, a ticket admitted, a ticket created) is committed as its own ticket-scoped commit. The mutation scripts (`move`, `setup-ticket`) commit automatically; agents commit free-form edits with `commit-state.ts`. Ticket-scoped pathspecs plus a lock-retry loop keep the up-to-10 parallel `pb:next` sub-agents from producing muddled or colliding commits. So `git -C state log --oneline` reads as a per-ticket trail of how each ticket moved through the pipeline, and any state change can be reverted. Give the state repo a remote and the agent pushes to it after the commit that ends a piece of work, which is the only thing that gets the queues and the evidence off the machine: the playbook gitignores `state/`, so a fresh playbook clone brings none of it. Without a remote the state exists in exactly one place. See [Moving to a new machine](README.md#moving-to-a-new-machine).

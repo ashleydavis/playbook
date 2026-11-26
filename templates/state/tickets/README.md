@@ -20,10 +20,6 @@ The queues are flat: ticket directories sit directly under the queue with no nes
 - `merge-queue/`: Approved tickets waiting to merge.
 - `done/`: Completed tickets (immutable history).
 
-`conflicts/` hangs off `merge-queue/` and is drained by the loop, not by a human:
-
-- `conflicts/`: An approved ticket whose branch would not merge cleanly onto main, because main moved under it. `pb:next` drains this **first**, rebases the ticket's branch onto main in its existing worktree, re-verifies it, and returns it straight to `merge-queue/`. A merge conflict is **not a failure** (it says nothing about the ticket's work), so the ticket never goes back to `todo/` and never returns to `human-review/`: the developer's approval still stands.
-
 Two side pens sit outside the pipeline, and a human moves tickets out of each:
 
 - `backlog/`: Work captured for later. Not picked by `pb:next` until promoted to `todo/`.
@@ -33,7 +29,7 @@ Two side pens sit outside the pipeline, and a human moves tickets out of each:
 
 If your state repo was bootstrapped before `backlog/` existed, create `state/tickets/backlog/` (with a `.gitkeep` if empty) and commit via `commit-state.ts`. Existing tickets need no `**Priority:**` line; they default to `100`.
 
-If it was bootstrapped before `conflicts/` existed, create `state/tickets/conflicts/` (with a `.gitkeep` if empty) and commit via `commit-state.ts`.
+An older state repo may still have a `conflicts/` directory. The process no longer uses it (merge conflicts are resolved on the merge train), and it can stay empty.
 
 ## ID rule
 

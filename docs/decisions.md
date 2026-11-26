@@ -2,11 +2,13 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
-## 2026-11-26: pb:next runs no checks when it rebases a conflicted ticket
+## 2026-11-26: The merge train is a chain of the tickets' own branches, and the checks run once
 
-**What changed:** the conflicts step only rebases the ticket onto main and resolves conflicts, then moves it to the merge queue. It runs no checks and captures no new evidence. The merge train's post-merge checks are the only ones.
+**What changed:** the merge train no longer uses an extra worktree or branch. It chains the approved tickets' own branches: main => ticket 1's branch => ticket 2's branch => ... => ticket N's branch => main. Ticket 1's branch is rebased onto main's tip in its own worktree, ticket 2's onto ticket 1's, and so on. When a ticket conflicts, `merge-ticket.ts stack` leaves the rebase in progress in that ticket's worktree and reports the ticket, its worktree, its conflicted paths and the tickets after it. The merge agent resolves the conflicts there, keeping both sides' behaviour, and runs `merge-ticket.ts resume`, which continues the rebase and stacks the rest. The post-merge checks run once, in ticket N's worktree, on the finished chain, and nothing runs a check before that. If they fail, the agent reads the failure, fixes it with a commit on ticket N's branch and runs them again; it never tests the tickets one by one. `merge-ticket.ts land` then fast-forwards main to ticket N's branch and moves every ticket to `done/`. The `conflicts/` queue and the `pb:next` conflicts step are removed from the process: `next-tickets.ts` and `pb:board` no longer report the queue, and `move.ts` still accepts the name only so an old state repo's leftover ticket can be moved out. `merge-ticket.ts` has three commands now (`stack`, `resume`, `land`); `build` and `discard` are gone.
 
-**Why:** the rebase agent's checks and the train's checks tested the same code twice, which doubled the time to land each conflicted ticket.
+**Why:** this replaces an awkward merge train that did not work well with a scheme that should mean less work, fewer checks and a quicker merge. Conflicted tickets used to be rebased separately onto the same main, so they conflicted with each other again when the train stacked them, and checks ran more than once. Resolving each conflict where the earlier tickets are already in place removes the second conflict and the extra checks, and with no train worktree or branch there is nothing extra to build, check and discard.
+
+**Deliberate difference from "merge then test":** main is fast-forwarded only after the checks pass on ticket N's branch, so main does not move before they do. Every other step follows the merge-then-test order.
 
 ## 2026-11-26: pb:next never runs more than 10 agents at once
 

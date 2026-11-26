@@ -6,14 +6,13 @@
 import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-// The valid queues. The first five are the pipeline, in order. `conflicts` is a
-// re-entry pen off `merge-queue`: an approved ticket whose branch will not
-// merge cleanly onto the current main waits there to have main merged in and be re-verified,
-// then rejoins `merge-queue` directly. Unlike the side pens below, the loop
-// drains it itself and needs no human. `backlog` and `aborted` are
-// side pens, not pipeline stages. `backlog` holds tickets captured for later;
-// only a human promotes them to `todo/`. `aborted` is where the developer kills a ticket during
-// pb:review: the work is abandoned and the directory is its terminal record.
+// The valid queues. The first five are the pipeline, in order. `backlog` and
+// `aborted` are side pens, not pipeline stages. `backlog` holds tickets captured
+// for later; only a human promotes them to `todo/`. `aborted` is where the developer
+// kills a ticket during pb:review: the work is abandoned and the directory is its
+// terminal record. `conflicts` is no longer used by the process (merge conflicts
+// are resolved while the merge train chains the tickets); it stays valid only so a ticket an old state
+// repo still holds there can be moved out.
 export const QUEUES = [
     "todo",
     "in-progress",

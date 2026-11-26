@@ -34,7 +34,7 @@ make_ticket() {
 }
 
 # Build a fixture spanning all reported queues, plus done/ for dependencies.
-#   conflicts: infra-9 (approved, waiting to have main merged in; reported first)
+#   conflicts: infra-9 (a leftover from an old state repo; not reported or read)
 #   merge-queue: auth-5
 #   done: auth-0 (a merged dependency; done/ is read, not reported)
 #   todo: auth-1 (ready), auth-2 (dep auth-1 only in todo -> blocked), auth-3 (dep
@@ -59,7 +59,7 @@ output="$(run_next)"
 if [[ $? -ne 0 ]]; then
     fail "next-tickets exited non-zero on a valid tickets/"
 fi
-expected='{"conflicts":["infra-9"],"merge-queue":["auth-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
+expected='{"merge-queue":["auth-5"],"todo":["auth-1","auth-3","search-1"],"in-progress":["infra-2"]}'
 if [[ "$output" != "$expected" ]]; then
     fail "expected $expected, got $output"
 fi
@@ -68,7 +68,7 @@ fi
 EMPTY="$(mktemp -d "${TMPDIR:-/tmp}/smoke-next-empty.XXXXXX")"
 mkdir -p "$EMPTY/tickets"
 empty_out="$( cd "$EMPTY" && bun "$NEXT" )"
-empty_expected='{"conflicts":[],"merge-queue":[],"todo":[],"in-progress":[]}'
+empty_expected='{"merge-queue":[],"todo":[],"in-progress":[]}'
 if [[ "$empty_out" != "$empty_expected" ]]; then
     fail "expected $empty_expected for empty queues, got $empty_out"
 fi

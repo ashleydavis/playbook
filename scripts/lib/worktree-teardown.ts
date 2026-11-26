@@ -1,6 +1,6 @@
 // The injectable git runner and the primitive that removes a worktree + deletes
 // its branch. Kept here because it is shared by the two places that retire a
-// ticket's worktree: merge-ticket.ts (via concludeTicket, plus the train worktree)
+// ticket's worktree: merge-ticket.ts (via concludeTicket)
 // and lib/conclude-ticket.ts. merge-ticket re-exports the types so its existing
 // test imports keep resolving.
 
@@ -18,7 +18,10 @@ export interface GitOutput {
 export type GitRunner = (cwd: string, args: string[]) => Promise<GitOutput>;
 
 export const realGit: GitRunner = async (cwd, args) => {
+    // GIT_EDITOR=true keeps every git call non-interactive (for example
+    // `rebase --continue` would otherwise open an editor for the commit message).
     const proc = Bun.spawn(["git", "-C", cwd, ...args], {
+        env: { ...process.env, GIT_EDITOR: "true" },
         stdout: "pipe",
         stderr: "pipe",
     });

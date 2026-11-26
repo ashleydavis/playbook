@@ -6,17 +6,14 @@ flowchart LR
 
     VIEW -->|Reject + Notes| WQ[("Work Queue")]
     VIEW -->|Approve| MQ[("Merge Queue")]
-    MQ --> MA["Merge Agent<br/>merge to main, run tests"]
+    MQ --> MA["Merge Agent<br/>stack tickets, fix conflicts, run tests once"]
     MA -->|Tests Pass| DONE(["Ticket Complete"])
-    MA -->|"Merge conflicts or tests fail"| CQ[("Conflicts Queue")]
-    CQ --> CA["Conflict Agent<br/>merge main in, fix, run tests"]
-    CA -->|"Merged and green"| MQ
     classDef queue stroke:#58a6ff,stroke-width:4px
-    class HR,WQ,MQ,CQ queue
+    class HR,WQ,MQ queue
     classDef human stroke:#3fb950,stroke-width:4px
     classDef agent stroke:#f0883e,stroke-width:4px
     class VIEW human
-    class MA,CA agent
+    class MA agent
     classDef done stroke:#a371f7,stroke-width:4px
     class DONE done
     linkStyle default stroke:#ffffff,stroke-width:2px

@@ -18,9 +18,7 @@
 // Every queue is capped at DISPLAY_LIMIT tickets for display so a huge backlog
 // never floods the board; the count field still reports the true total. Queues
 // are listed in pipeline order with backlog (upcoming work) after todo, then
-// conflicts (approved tickets waiting to have main merged in, shown next to the
-// merge-queue they rejoin), then done. Aborted
-// tickets are a dead end, so the board does not show them.
+// done. Aborted tickets are a dead end, so the board does not show them.
 // done/ is ordered most-recent-first (by directory mtime); todo/ and backlog/
 // are ordered by priority then ID; every other queue is ordered by ticket ID.
 //
@@ -34,8 +32,7 @@ import { type BoardTicket, readTicket } from "./lib/board-tickets";
 import { compareTickets } from "./lib/ticket-meta";
 
 // Every queue and side pen the board shows, in display order: the pipeline
-// queues first (with backlog after todo), then conflicts (sitting beside the
-// merge-queue it rejoins), then the side pen, then recently completed work.
+// queues first (with backlog after todo), then recently completed work.
 // Aborted tickets are a dead end and are deliberately left off the board.
 export const QUEUES = [
     "todo",
@@ -43,7 +40,6 @@ export const QUEUES = [
     "in-progress",
     "human-review",
     "merge-queue",
-    "conflicts",
     "done",
 ] as const;
 

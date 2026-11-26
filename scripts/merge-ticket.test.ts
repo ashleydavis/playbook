@@ -1,48 +1,73 @@
-// Unit tests for the build / land / cleanup / discard logic in merge-ticket.ts.
+// Unit tests for the stack / resume / land logic in merge-ticket.ts.
 //
 // Run with: npm test (Jest via ts-jest, ESM).
 //
-// Git is faked with a scripted GitRunner that answers each (cwd, args) call from
-// a queue of canned outputs, so the merge / conflict / noop / ff branches
-// are exercised without a real repo. The state-repo moves (merge-queue/ -> done/)
-// run for real against temp dirs; the commit is left to the CLI (smoke test).
+// These use REAL git against a throwaway project repo with one worktree per ticket,
+// so the chain (main => ticket 1 => ticket 2 => ... => main) is exercised for real.
+// The state repo is plain directories; the commit of the done/ moves is left to the
+// CLI (smoke test).
 
-import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { spawnSync } from "node:child_process";
+
+import type { GitRunner } from "./lib/worktree-teardown";
 import {
     MergeError,
-    buildTrain,
-    landTrain,
-    discardTrain,
-    type GitOutput,
-    type GitRunner,
+    landStack,
+    resumeStack,
+    stackTickets,
 } from "./merge-ticket";
+
+// Jest runs under Node, where the real runner's Bun.spawn is not available, so the
+// tests run real git through this Node runner and pass it in.
+const realGit: GitRunner = async (cwd, args) => {
+    const proc = spawnSync("git", ["-C", cwd, ...args], {
+        encoding: "utf8",
+        env: { ...process.env, GIT_EDITOR: "true" },
+    });
+    return {
+        code: proc.status ?? 1,
+        stdout: (proc.stdout ?? "").trim(),
+        stderr: (proc.stderr ?? "").trim(),
+    };
+};
 
 let root: string;
 let stateDir: string;
+let projectDir: string;
 
-function scriptedGit(outputs: GitOutput[]): {
-    runGit: GitRunner;
-    calls: Array<{ cwd: string; args: string[] }>;
-} {
-    const calls: Array<{ cwd: string; args: string[] }> = [];
-    let i = 0;
-    const runGit: GitRunner = async (cwd, args) => {
-        calls.push({ cwd, args });
-        const out = outputs[i++] ?? { code: 0, stdout: "", stderr: "" };
-        return out;
-    };
-    return { runGit, calls };
+async function git(cwd: string, ...args: string[]): Promise<string> {
+    const out = await realGit(cwd, args);
+    if (out.code !== 0) {
+        throw new Error(`git ${args.join(" ")} failed: ${out.stderr}`);
+    }
+    return out.stdout;
 }
 
-const ok = (stdout = ""): GitOutput => ({ code: 0, stdout, stderr: "" });
-const fail = (stderr = ""): GitOutput => ({ code: 1, stdout: "", stderr });
+// A ticket: a worktree on branch worktrees/<id> with a ticket directory in
+// merge-queue/, and optionally one commit that writes `content` to `file`.
+async function addTicket(
+    id: string,
+    commit?: { file: string; content: string },
+): Promise<void> {
+    await git(projectDir, "worktree", "add", "-q", "-b", `worktrees/${id}`, join(projectDir, "worktrees", id), "main");
+    await mkdir(join(stateDir, "tickets", "merge-queue", id), { recursive: true });
+    await writeFile(join(stateDir, "tickets", "merge-queue", id, "index.md"), `# ${id}\n`);
+    if (commit) {
+        const wt = join(projectDir, "worktrees", id);
+        await writeFile(join(wt, commit.file), commit.content);
+        await git(wt, "add", "-A");
+        await git(wt, "commit", "-q", "-m", `${id} work`);
+    }
+}
 
-async function isDir(path: string): Promise<boolean> {
+async function exists(path: string): Promise<boolean> {
     try {
-        return (await stat(path)).isDirectory();
+        await stat(path);
+        return true;
     } catch {
         return false;
     }
@@ -51,204 +76,157 @@ async function isDir(path: string): Promise<boolean> {
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "merge-ticket-test-"));
     stateDir = join(root, "state");
-    await mkdir(join(stateDir, "tickets"), { recursive: true });
-    await mkdir(join(root, "project", "worktrees"), { recursive: true });
+    projectDir = join(root, "project");
+    await mkdir(join(stateDir, "tickets", "merge-queue"), { recursive: true });
+    await mkdir(join(stateDir, "tickets", "done"), { recursive: true });
+    await mkdir(projectDir, { recursive: true });
+    await git(projectDir, "init", "-q", "-b", "main");
+    await git(projectDir, "config", "user.email", "test@test");
+    await git(projectDir, "config", "user.name", "test");
+    await writeFile(join(projectDir, ".gitignore"), "worktrees/\n");
+    await writeFile(join(projectDir, "shared.txt"), "base\n");
+    await git(projectDir, "add", "-A");
+    await git(projectDir, "commit", "-q", "-m", "base");
+    await mkdir(join(projectDir, "worktrees"), { recursive: true });
 });
 
 afterEach(async () => {
     await rm(root, { recursive: true, force: true });
 });
 
-describe("buildTrain()", () => {
-    test("merges every ticket cleanly onto a fresh train", async () => {
-        const { runGit, calls } = scriptedGit([
-            ok("main"), // rev-parse --abbrev-ref HEAD
-            ok(), // worktree add
-            ok("baseA"), // merge-base for feat-1
-            ok("2"), // rev-list --count -> 2 commits
-            ok(), // rebase feat-1
-            ok(), // checkout -B the train
-            ok("baseB"), // merge-base for feat-2
-            ok("1"), // rev-list --count -> 1 commit
-            ok(), // rebase feat-2
-            ok(), // checkout -B the train
-        ]);
+describe("stackTickets()", () => {
+    test("rebases each ticket onto the one before it, with no extra worktree or branch", async () => {
+        await addTicket("t1", { file: "a.txt", content: "a" });
+        await addTicket("t2", { file: "b.txt", content: "b" });
+        const before = await git(projectDir, "branch", "--list");
+        const worktreePaths = async () =>
+            (await git(projectDir, "worktree", "list", "--porcelain"))
+                .split("\n")
+                .filter((l) => l.startsWith("worktree "));
+        const worktreesBefore = await worktreePaths();
 
-        const result = await buildTrain(
-            stateDir,
-            "merge-test",
-            ["feat-1", "feat-2"],
-            runGit,
-        );
+        const result = await stackTickets(stateDir, ["t1", "t2"], realGit);
 
-        expect(result.status).toBe("built");
-        expect(result.included).toEqual(["feat-1", "feat-2"]);
-        expect(result.noops).toEqual([]);
-        expect(result.trainBranch).toBe("worktrees/merge-test");
-        expect(calls[1].args.slice(0, 5)).toEqual([
-            "worktree",
-            "add",
-            "--relative-paths",
-            "-b",
-            "worktrees/merge-test",
-        ]);
-        expect(calls[1].args.at(-1)).toBe("main");
-        expect(calls.some((c) => c.args[0] === "merge")).toBe(false);
-        const rebases = calls.filter((c) => c.args[0] === "rebase");
-        expect(rebases.map((c) => c.args)).toEqual([
-            ["rebase", "--no-rebase-merges", "--no-autosquash", "--onto", "worktrees/merge-test", "baseA", "worktrees/feat-1^0"],
-            ["rebase", "--no-rebase-merges", "--no-autosquash", "--onto", "worktrees/merge-test", "baseB", "worktrees/feat-2^0"],
-        ]);
-        const advances = calls.filter((c) => c.args[0] === "checkout");
-        expect(advances.map((c) => c.args)).toEqual([
-            ["checkout", "-B", "worktrees/merge-test", "HEAD"],
-            ["checkout", "-B", "worktrees/merge-test", "HEAD"],
-        ]);
+        expect(result.status).toBe("stacked");
+        expect(result.included).toEqual(["t1", "t2"]);
+        expect(result.tip).toBe("t2");
+        expect(await exists(join(projectDir, "worktrees", "t2", "a.txt"))).toBe(true);
+        expect(await exists(join(projectDir, "worktrees", "t2", "b.txt"))).toBe(true);
+        expect(await exists(join(projectDir, "a.txt"))).toBe(false);
+        expect(await git(projectDir, "branch", "--list")).toBe(before);
+        expect(await worktreePaths()).toEqual(worktreesBefore);
+        expect(await git(projectDir, "rev-list", "--count", "--merges", "refs/heads/worktrees/t2")).toBe("0");
     });
 
-    test("records a ticket with no commits as a noop, skips the rebase", async () => {
-        const { runGit, calls } = scriptedGit([
-            ok("main"), // rev-parse
-            ok(), // worktree add
-            ok("baseA"), // merge-base
-            ok("0"), // rev-list --count -> nothing to merge
-        ]);
+    test("records a ticket with no commits as a noop and stacks the next on the one before", async () => {
+        await addTicket("t1", { file: "a.txt", content: "a" });
+        await addTicket("empty");
+        await addTicket("t3", { file: "c.txt", content: "c" });
 
-        const result = await buildTrain(
-            stateDir,
-            "merge-test",
-            ["feat-1"],
-            runGit,
-        );
+        const result = await stackTickets(stateDir, ["t1", "empty", "t3"], realGit);
 
-        expect(result.status).toBe("built");
-        expect(result.included).toEqual([]);
-        expect(result.noops).toEqual(["feat-1"]);
-        expect(calls.some((c) => c.args[0] === "rebase")).toBe(false);
+        expect(result.status).toBe("stacked");
+        expect(result.included).toEqual(["t1", "t3"]);
+        expect(result.noops).toEqual(["empty"]);
+        expect(await exists(join(projectDir, "worktrees", "t3", "a.txt"))).toBe(true);
     });
 
-    test("reports a conflict, aborts the rebase, and stops at the offending ticket", async () => {
-        const { runGit, calls } = scriptedGit([
-            ok("main"), // rev-parse
-            ok(), // worktree add
-            ok("baseA"), // merge-base feat-1
-            ok("1"), // count feat-1
-            ok(), // rebase feat-1 (clean)
-            ok(), // checkout -B the train
-            ok("baseB"), // merge-base feat-2
-            ok("1"), // count feat-2
-            fail("CONFLICT"), // rebase feat-2 (conflict)
-            ok("src/x.ts\nsrc/y.ts"), // diff --diff-filter=U
-            ok(), // rebase --abort
-        ]);
+    test("leaves the rebase in progress on a conflict and reports it", async () => {
+        await addTicket("t1", { file: "shared.txt", content: "from t1\n" });
+        await addTicket("t2", { file: "shared.txt", content: "from t2\n" });
+        await addTicket("t3", { file: "c.txt", content: "c" });
 
-        const result = await buildTrain(
-            stateDir,
-            "merge-test",
-            ["feat-1", "feat-2", "feat-3"],
-            runGit,
-        );
+        const result = await stackTickets(stateDir, ["t1", "t2", "t3"], realGit);
 
         expect(result.status).toBe("conflict");
-        expect(result.included).toEqual(["feat-1"]);
-        expect(result.conflict).toEqual({
-            ticket: "feat-2",
-            conflicts: ["src/x.ts", "src/y.ts"],
-        });
-        expect(calls.at(-1)?.args).toEqual(["rebase", "--abort"]);
-        expect(calls.filter((c) => c.args[0] === "merge-base")).toHaveLength(2);
+        expect(result.included).toEqual(["t1"]);
+        expect(result.conflict?.ticket).toBe("t2");
+        expect(result.conflict?.conflicts).toEqual(["shared.txt"]);
+        expect(result.conflict?.remaining).toEqual(["t3"]);
+        expect(result.conflict?.worktree).toBe(join(projectDir, "worktrees", "t2"));
+        const rebaseDir = await git(join(projectDir, "worktrees", "t2"), "rev-parse", "--git-path", "rebase-merge");
+        const rebasePath = rebaseDir.startsWith("/")
+            ? rebaseDir
+            : join(projectDir, "worktrees", "t2", rebaseDir);
+        expect(await exists(rebasePath)).toBe(true);
     });
 
-    test("throws on an empty ticket list", async () => {
-        await expect(
-            buildTrain(stateDir, "merge-test", [], scriptedGit([]).runGit),
-        ).rejects.toThrow(MergeError);
-    });
-
-    test("throws when the project repo is missing", async () => {
-        await rm(join(root, "project"), { recursive: true, force: true });
-        await expect(
-            buildTrain(stateDir, "merge-test", ["feat-1"], scriptedGit([]).runGit),
-        ).rejects.toThrow(MergeError);
+    test("refuses an empty list and a missing worktree", async () => {
+        await expect(stackTickets(stateDir, [], realGit)).rejects.toThrow(MergeError);
+        await expect(stackTickets(stateDir, ["ghost"], realGit)).rejects.toThrow(/no worktree for ghost/);
     });
 });
 
-describe("landTrain()", () => {
-    test("fast-forwards, moves each ticket to done/, and closes its worktree", async () => {
-        await mkdir(join(stateDir, "tickets", "merge-queue", "feat-1"), {
-            recursive: true,
-        });
-        await mkdir(join(stateDir, "tickets", "done"), { recursive: true });
-        // The ticket's worktree exists on disk so concludeTicket's teardown runs.
-        await mkdir(join(root, "project", "worktrees", "feat-1"), {
-            recursive: true,
-        });
+describe("resumeStack()", () => {
+    async function conflicted(): Promise<void> {
+        await addTicket("t1", { file: "shared.txt", content: "from t1\n" });
+        await addTicket("t2", { file: "shared.txt", content: "from t2\n" });
+        await addTicket("t3", { file: "c.txt", content: "c" });
+        await stackTickets(stateDir, ["t1", "t2", "t3"], realGit);
+    }
 
-        const { runGit, calls } = scriptedGit([
-            ok("main"), // rev-parse
-            ok(), // merge --ff-only
-            ok(), // worktree remove --force feat-1
-            ok(), // show-ref feat-1 branch (present)
-            ok(), // branch -D feat-1
-            ok(), // worktree prune
-        ]);
+    test("reports the conflict again while it is unresolved", async () => {
+        await conflicted();
 
-        const result = await landTrain(
-            stateDir,
-            "merge-test",
-            ["feat-1"],
-            runGit,
-        );
+        const result = await resumeStack(stateDir, ["t1", "t2", "t3"], realGit);
 
-        expect(result.landed).toEqual(["feat-1"]);
-        expect(calls[1].args).toEqual([
-            "merge",
-            "--ff-only",
-            "worktrees/merge-test",
-        ]);
-        // The ticket really moved into done/ in the state repo.
-        expect(await isDir(join(stateDir, "tickets", "done", "feat-1"))).toBe(true);
-        expect(
-            await isDir(join(stateDir, "tickets", "merge-queue", "feat-1")),
-        ).toBe(false);
-        // And its worktree + branch were closed as part of concluding it.
-        expect(result.worktreesRemoved).toEqual([
-            join(root, "project", "worktrees", "feat-1"),
-        ]);
-        expect(result.branchesDeleted).toEqual(["worktrees/feat-1"]);
-        expect(result.teardownWarnings).toEqual([]);
+        expect(result.status).toBe("conflict");
+        expect(result.conflict?.conflicts).toEqual(["shared.txt"]);
     });
 
-    test("throws when the train no longer fast-forwards", async () => {
-        const { runGit } = scriptedGit([
-            ok("main"), // rev-parse
-            fail("not a fast-forward"), // merge --ff-only
-        ]);
-        await expect(
-            landTrain(stateDir, "merge-test", ["feat-1"], runGit),
-        ).rejects.toThrow(MergeError);
+    test("continues after the conflict is resolved and stacks the rest", async () => {
+        await conflicted();
+        const wt = join(projectDir, "worktrees", "t2");
+        await writeFile(join(wt, "shared.txt"), "from t1 and t2\n");
+        await git(wt, "add", "-A");
+
+        const result = await resumeStack(stateDir, ["t1", "t2", "t3"], realGit);
+
+        expect(result.status).toBe("stacked");
+        expect(result.included).toEqual(["t1", "t2", "t3"]);
+        expect(result.tip).toBe("t3");
+        const t3 = join(projectDir, "worktrees", "t3");
+        expect(await readFile(join(t3, "shared.txt"), "utf8")).toBe("from t1 and t2\n");
+        expect(await exists(join(t3, "c.txt"))).toBe(true);
+    });
+
+    test("errors when no ticket has a rebase in progress", async () => {
+        await addTicket("t1", { file: "a.txt", content: "a" });
+        await stackTickets(stateDir, ["t1"], realGit);
+
+        await expect(resumeStack(stateDir, ["t1"], realGit)).rejects.toThrow(/no ticket has a rebase in progress/);
     });
 });
 
-describe("discardTrain()", () => {
-    test("removes only the train worktree and branch", async () => {
-        await mkdir(join(root, "project", "worktrees", "merge-test"));
+describe("landStack()", () => {
+    test("fast-forwards main to the last ticket, moves every ticket to done/ and closes the worktrees", async () => {
+        await addTicket("t1", { file: "a.txt", content: "a" });
+        await addTicket("t2", { file: "b.txt", content: "b" });
+        await addTicket("empty");
+        await stackTickets(stateDir, ["t1", "t2", "empty"], realGit);
 
-        const { runGit, calls } = scriptedGit([
-            ok(), // worktree remove train
-            ok(), // show-ref train branch (present)
-            ok(), // branch -D train
-            ok(), // worktree prune
-        ]);
+        const result = await landStack(stateDir, ["t1", "t2", "empty"], realGit);
 
-        const result = await discardTrain(stateDir, "merge-test", runGit);
+        expect(result.landed).toEqual(["t1", "t2", "empty"]);
+        expect(await exists(join(projectDir, "a.txt"))).toBe(true);
+        expect(await exists(join(projectDir, "b.txt"))).toBe(true);
+        for (const id of ["t1", "t2", "empty"]) {
+            expect(await exists(join(stateDir, "tickets", "done", id))).toBe(true);
+            expect(await exists(join(stateDir, "tickets", "merge-queue", id))).toBe(false);
+            expect(await exists(join(projectDir, "worktrees", id))).toBe(false);
+        }
+        expect(await git(projectDir, "rev-list", "--count", "--merges", "main")).toBe("0");
+    });
 
-        expect(result.branchDeleted).toBe("worktrees/merge-test");
-        expect(calls[0].args.slice(0, 3)).toEqual([
-            "worktree",
-            "remove",
-            "--force",
-        ]);
-        expect(calls.at(-1)?.args).toEqual(["worktree", "prune"]);
+    test("errors, and moves nothing, when main has moved since the stack", async () => {
+        await addTicket("t1", { file: "a.txt", content: "a" });
+        await stackTickets(stateDir, ["t1"], realGit);
+        await writeFile(join(projectDir, "other.txt"), "x");
+        await git(projectDir, "add", "-A");
+        await git(projectDir, "commit", "-q", "-m", "main moved");
+
+        await expect(landStack(stateDir, ["t1"], realGit)).rejects.toThrow(/no longer fast-forwards/);
+        expect(await exists(join(stateDir, "tickets", "merge-queue", "t1"))).toBe(true);
+        expect(await exists(join(stateDir, "tickets", "done", "t1"))).toBe(false);
     });
 });

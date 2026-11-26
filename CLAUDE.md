@@ -8,7 +8,7 @@ Claude Code is launched from the root of this repo and these are your standing i
 
 **Never commit unless the developer explicitly asks for it, or the process requires it.** A question is not a command. Do not commit just because changes look ready.
 
-**Never rewrite Git history, and never ask to rewrite it.** The one exception: a ticket's branch in its own worktree (`worktrees/<id>`) is rebased onto main, by the `conflicts/` step and by `merge-ticket.ts build`, so main's history stays flat with no merge commits. Main itself is never rewritten.
+**Never rewrite Git history, and never ask to rewrite it.** The one exception: a ticket's branch in its own worktree (`worktrees/<id>`) is rebased onto main, by `merge-ticket.ts stack` and `resume`, so main's history stays flat with no merge commits. Main itself is never rewritten.
 
 **Never invoke a skill without an explicit instruction to do so.** A skill runs only when the developer names it (`/pb:next`, `pb:review`, ...) or tells you in plain words to run that specific skill. Describing a problem, asking a question, or saying "figure this out" is not permission to invoke a skill; it never chains into one on its own, and one skill never auto-invokes another. When a skill would be the right next step, recommend it and stop. Do not run it until told.
 

@@ -1,5 +1,5 @@
 // Unit tests for removeWorktreeAndBranch: the shared worktree/branch teardown used
-// by merge-ticket.ts (train worktree) and lib/conclude-ticket.ts (each concluded
+// by lib/conclude-ticket.ts (each concluded
 // ticket). Git is faked with a scripted GitRunner; the worktree-existence guard
 // reads the real filesystem, so tests create/omit a temp dir to drive it.
 

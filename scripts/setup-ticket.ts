@@ -21,7 +21,7 @@
 // checked out, so the worktree cannot share it; a per-ticket branch off the
 // current commit avoids the collision and keeps the ticket's commits on a named
 // ref. merge-ticket.ts merges that branch onto the merge train
-// at merge time and deletes the branch once the train lands.
+// at merge time and deletes the branch once the chain lands.
 
 import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";

@@ -1,0 +1,14 @@
+flowchart LR
+    MAIN["main"] --> T1["Ticket 1 branch<br/>rebased onto main<br/>(conflicts fixed here)"]
+    T1 --> T2["Ticket 2 branch<br/>rebased onto ticket 1<br/>(conflicts fixed here)"]
+    T2 --> TN["Ticket N branch<br/>rebased onto ticket N-1<br/>(conflicts fixed here)"]
+    TN --> CHECKS{"Run the checks<br/>once on ticket N"}
+    CHECKS -->|Red| FAILFIX["Read the failure and<br/>fix it with a commit<br/>on ticket N's branch"]
+    FAILFIX --> CHECKS
+    CHECKS -->|Green| FF["Main fast-forwards<br/>to ticket N's branch"]
+    FF --> DONE["Tickets move<br/>to done/"]
+
+    classDef agent fill:#1f6feb,stroke:#58a6ff,color:#fff
+    classDef ok fill:#238636,stroke:#56d364,color:#fff
+    class FAILFIX agent
+    class FF,DONE ok

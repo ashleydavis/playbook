@@ -1,55 +1,55 @@
 #!/usr/bin/env bun
-// Merge approved tickets into the project's main branch as a single train, then
-// move each merged ticket to done/. Replaces the old one-ticket-at-a-time merge:
-// stacking many tickets onto one scratch worktree lets the post-merge checks run
-// ONCE on the combined result instead of once per ticket.
+// Merge approved tickets into the project's main branch as a chain of ticket
+// branches, then move each merged ticket to done/. There is no extra worktree or
+// branch: the chain is main => ticket 1 branch => ticket 2 branch => ... => ticket
+// N branch => main.
 //
 // Usage (run with the state repo as the current working directory):
-//   bun ../scripts/merge-ticket.ts build  <id> [<id> ...]   -> create + stack
-//   bun ../scripts/merge-ticket.ts land   <trainId> <id> ... -> ff main, -> done/
-//   bun ../scripts/merge-ticket.ts discard <trainId>         -> tear the train down
+//   bun ../scripts/merge-ticket.ts stack  <id> [<id> ...]  -> rebase the tickets into a chain
+//   bun ../scripts/merge-ticket.ts resume <id> [<id> ...]  -> continue after a conflict
+//   bun ../scripts/merge-ticket.ts land   <id> [<id> ...]  -> ff main, -> done/
+// Every command takes the full, ordered list of ticket ids.
 //
-// Why a train: merging N tickets one at a time runs the full check suite N times
-// in series. A train stacks every ticket's commits onto a single scratch
-// worktree, the agent runs the suite ONCE there, and on green the project branch
-// fast-forwards to the train in one step. On red the agent bisects (rebuilding
-// smaller trains) to find the breaking ticket. This script does the deterministic
-// git + queue mechanics; running the checks (project-specific, captured to
-// evidence) stays with the agent, exactly as the post-merge checks did before.
-//
-// The train is itself a worktree under the project repo (../project/worktrees/<trainId>
-// on branch worktrees/<trainId>), so the existing cleanup machinery handles it for
-// free: the pb:next end-of-turn reaper and reset-loop.ts both sweep that directory.
-// <trainId> is "merge-<random>" so two runs never collide.
+// Why a chain: ticket 1 is rebased onto main's tip in its own worktree, ticket 2
+// onto ticket 1's rebased branch in its own worktree, and so on. Ticket N's branch
+// then holds the whole stack, so the post-merge checks run ONCE, in ticket N's
+// worktree. Nothing runs a check before that. A ticket that conflicts is resolved
+// right there in its own worktree by the merge agent (keeping both sides'
+// behaviour), then `resume` carries on with the next ticket. If the checks fail the
+// agent fixes the failure with a commit on ticket N's branch and runs them again.
+// When they pass, `land` fast-forwards main to ticket N's branch. This script does
+// the deterministic git + queue mechanics; running the checks (project-specific,
+// captured to evidence) stays with the agent.
 //
 // Flow (all against the PROJECT repo at ../project, plus the STATE repo at the cwd):
-//   build:
-//     1. Read the project's current branch.
-//     2. Create the train worktree at that branch tip (new branch worktrees/<trainId>).
-//     3. For each ticket in order, rebase its own commits (worktrees/<id> since it
-//        left the branch) onto the train tip and fast-forward the train to them, so
-//        main's history stays flat with no merge commits. The rebase runs on a
-//        detached copy of the ticket's commits in the train worktree, so the ticket's
-//        own branch is never moved and a discarded train leaves it as it was.
-//        - clean:    record it as included.
-//        - no commits of its own: record it as a noop (landed for free).
-//        - conflict: abort that rebase (the train keeps the earlier, clean tickets)
-//                    and report the offending ticket so the agent can drop it and
-//                    rebuild without it.
+//   stack:
+//     For each ticket in order, rebase its own commits onto the previous ticket's
+//     branch (ticket 1 onto main's tip) with `git rebase` in the ticket's own
+//     worktree (../project/worktrees/<id>), so main's history stays flat with no
+//     merge commits. Rebasing rewrites only the ticket's own branch.
+//     - clean:    record it as included.
+//     - no commits of its own: record it as a noop (landed for free); the next
+//                 ticket is rebased onto the branch before it.
+//     - conflict: do NOT abort. The rebase stays in progress in that ticket's
+//                 worktree. Report status "conflict" (exit 2) with the ticket, its
+//                 worktree path, its conflicted paths and the ids still to stack
+//                 after it. The agent resolves the files, `git add`s them, and runs
+//                 `resume`.
+//   resume:
+//     Finds the ticket whose worktree has a rebase in progress, runs `rebase
+//     --continue` there (non-interactive editor), and carries on stacking the tickets
+//     after it with the same loop. Another conflict is reported the same way; files
+//     still unresolved are reported again with the rebase still in progress.
 //   land:
-//     1. Fast-forward the project branch to the train (always clean: the train was
-//        built on the branch tip and nothing else moves it during the merge stage).
+//     1. Fast-forward the project branch to the last ticket's branch (an error if
+//        main has moved since the chain was stacked).
 //        ONCE THIS SUCCEEDS THE TICKETS ARE MERGED, so the next step is unconditional:
-//     2. Move each landed ticket from merge-queue/ to done/ in the state repo and
-//        commit that transition. A merged ticket is done even if main's checks then
-//        fail (that is a separate broken-main problem for the agent to surface; the
-//        merge itself cannot be undone, so the ticket does not go back).
-//     3. Best-effort cleanup: remove the train worktree + branch and every landed
-//        ticket's worktree + branch. A cleanup failure does not un-merge anything;
-//        the leak is reaped by pb:next / reset-loop, so it never blocks the done move.
-//   discard:
-//     Remove just the train worktree + branch; ticket worktrees are left untouched
-//     (used to tear down a failed train before rebuilding a smaller one).
+//     2. Move each landed ticket from merge-queue/ to done/ in the state repo,
+//        close its worktree and delete its branch, and commit the state change. A
+//        merged ticket is done even if main's checks then fail (that is a separate
+//        broken-main problem for the agent to surface; the merge cannot be undone).
+//        A cleanup failure does not un-merge anything; the leak is reaped by
+//        pb:next / reset-loop.
 
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -60,36 +60,40 @@ import { assertGitVersion, GitVersionError } from "./lib/git-version";
 import {
     WorktreeTeardownError,
     realGit,
-    removeWorktreeAndBranch,
     type GitOutput,
     type GitRunner,
 } from "./lib/worktree-teardown";
 
-// Re-exported so this module's existing test imports keep resolving; the git
-// runner and its types now live with the shared teardown they belong to.
+// Re-exported so this module's tests keep resolving; the git runner and its types
+// live with the shared teardown they belong to.
 export type { GitOutput, GitRunner };
 
-// Raised for any expected, user-facing failure (missing args, missing repo, a git
-// failure that is not a merge conflict). The CLI maps it to a non-zero exit
-// with a clean message; tests assert on it.
+// Raised for any expected, user-facing failure (missing args, missing repo or
+// worktree, a git failure that is not a merge conflict). The CLI maps it to a
+// non-zero exit with a clean message; tests assert on it.
 export class MergeError extends Error {}
 
-export interface BuildResult {
-    trainId: string;
-    trainBranch: string;
-    trainPath: string;
+export interface StackResult {
     projectBranch: string;
-    status: "built" | "conflict";
-    // Tickets whose commits were rebased onto the train cleanly, in order.
+    status: "stacked" | "conflict";
+    // Tickets whose commits were rebased onto the chain cleanly, in order.
     included: string[];
     // Tickets that had no commits of their own (landed for free).
     noops: string[];
-    // Present only when status is "conflict": the ticket that would not apply.
-    conflict?: { ticket: string; conflicts: string[] };
+    // The ticket whose worktree holds the whole stack so far (the one to run the
+    // checks in), or null when no ticket has commits.
+    tip: string | null;
+    // Present only when status is "conflict": the ticket that would not apply, its
+    // worktree, its conflicted paths and the ids still to stack after it.
+    conflict?: {
+        ticket: string;
+        worktree: string;
+        conflicts: string[];
+        remaining: string[];
+    };
 }
 
 export interface LandResult {
-    trainId: string;
     projectBranch: string;
     // Tickets moved merge-queue/ -> done/.
     landed: string[];
@@ -101,12 +105,6 @@ export interface LandResult {
     teardownWarnings: string[];
 }
 
-export interface DiscardResult {
-    trainId: string;
-    worktreeRemoved: string;
-    branchDeleted: string | null;
-}
-
 async function exists(path: string): Promise<boolean> {
     try {
         await stat(path);
@@ -116,101 +114,103 @@ async function exists(path: string): Promise<boolean> {
     }
 }
 
-function paths(stateDir: string, trainId: string) {
+function projectPaths(stateDir: string) {
     const projectDir = resolve(stateDir, "..", "project");
-    const trainPath = join(projectDir, "worktrees", trainId);
-    const trainBranch = `worktrees/${trainId}`;
-    return { projectDir, trainPath, trainBranch };
+    return { projectDir, worktreesDir: join(projectDir, "worktrees") };
 }
 
-// Paths git reports as unmerged during a conflicted merge.
+async function projectBranchOf(
+    projectDir: string,
+    runGit: GitRunner,
+): Promise<string> {
+    if (!(await exists(projectDir))) {
+        throw new MergeError(`no project repo at ${projectDir}`);
+    }
+    const out = await runGit(projectDir, ["rev-parse", "--abbrev-ref", "HEAD"]);
+    if (out.code !== 0) {
+        throw new MergeError(`could not read project branch: ${out.stderr}`);
+    }
+    return out.stdout;
+}
+
+// Paths git reports as unmerged during a conflicted rebase.
 async function conflictedPaths(
     cwd: string,
     runGit: GitRunner,
 ): Promise<string[]> {
-    const out = await runGit(cwd, [
-        "diff",
-        "--name-only",
-        "--diff-filter=U",
-    ]);
+    const out = await runGit(cwd, ["diff", "--name-only", "--diff-filter=U"]);
     if (out.code !== 0) {
         return [];
     }
     return out.stdout.split("\n").filter((l) => l.length > 0);
 }
 
-// Create the train worktree and rebase each ticket's commits onto it.
-export async function buildTrain(
-    stateDir: string,
-    trainId: string,
+async function rebaseInProgress(
+    worktree: string,
+    runGit: GitRunner,
+): Promise<boolean> {
+    for (const dir of ["rebase-merge", "rebase-apply"]) {
+        const out = await runGit(worktree, ["rev-parse", "--git-path", dir]);
+        if (out.code === 0) {
+            const path = out.stdout.startsWith("/")
+                ? out.stdout
+                : join(worktree, out.stdout);
+            if (await exists(path)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+async function requireWorktrees(
+    worktreesDir: string,
     ids: string[],
-    runGit: GitRunner = realGit,
-): Promise<BuildResult> {
-    if (!trainId) {
-        throw new MergeError("missing trainId");
-    }
+): Promise<void> {
     if (ids.length === 0) {
-        throw new MergeError("no tickets to build a train from");
+        throw new MergeError("no tickets to merge");
     }
-    const { projectDir, trainPath, trainBranch } = paths(stateDir, trainId);
-
-    if (!(await exists(projectDir))) {
-        throw new MergeError(`no project repo at ${projectDir}`);
-    }
-
-    const branchOut = await runGit(projectDir, [
-        "rev-parse",
-        "--abbrev-ref",
-        "HEAD",
-    ]);
-    if (branchOut.code !== 0) {
-        throw new MergeError(
-            `could not read project branch: ${branchOut.stderr}`,
-        );
-    }
-    const projectBranch = branchOut.stdout;
-
-    // Create the train worktree at the project branch tip, on its own branch,
-    // with RELATIVE link files so it survives the repo being shared across
-    // machines (NFS) at different mount points. `--relative-paths` needs git
-    // >= 2.48 (main() asserts this before we get here).
-    const add = await runGit(projectDir, [
-        "worktree",
-        "add",
-        "--relative-paths",
-        "-b",
-        trainBranch,
-        trainPath,
-        projectBranch,
-    ]);
-    if (add.code !== 0) {
-        throw new MergeError(`git worktree add failed: ${add.stderr}`);
-    }
-
-    const included: string[] = [];
-    const noops: string[] = [];
-
     for (const id of ids) {
-        const ticketBranch = `worktrees/${id}`;
+        if (!(await exists(join(worktreesDir, id)))) {
+            throw new MergeError(`no worktree for ${id} at ${join(worktreesDir, id)}`);
+        }
+    }
+}
 
-        // The commit where this ticket diverged from the branch: the ticket's own
-        // commits are the ones after it, never anything already on the branch.
-        const baseOut = await runGit(projectDir, [
-            "merge-base",
-            projectBranch,
-            ticketBranch,
-        ]);
+// Rebase tickets ids[from..] onto the chain, starting from `base`, the branch the
+// ticket at `from` is rebased onto. Leaves a conflicted rebase in progress.
+async function stackFrom(
+    stateDir: string,
+    ids: string[],
+    from: number,
+    base: string,
+    tip: string | null,
+    included: string[],
+    noops: string[],
+    projectBranch: string,
+    runGit: GitRunner,
+): Promise<StackResult> {
+    const { projectDir, worktreesDir } = projectPaths(stateDir);
+    let chainBase = base;
+    let chainTip = tip;
+
+    for (let i = from; i < ids.length; i++) {
+        const id = ids[i];
+        const worktree = join(worktreesDir, id);
+        const branch = `worktrees/${id}`;
+
+        // The commits that are the ticket's own: the ones after where it left the
+        // chain. None means it has nothing to land.
+        const baseOut = await runGit(projectDir, ["merge-base", chainBase, branch]);
         if (baseOut.code !== 0) {
             throw new MergeError(
                 `could not find merge-base for ${id}: ${baseOut.stderr}`,
             );
         }
-        const range = `${baseOut.stdout}..${ticketBranch}`;
-
-        const countOut = await runGit(trainPath, [
+        const countOut = await runGit(projectDir, [
             "rev-list",
             "--count",
-            range,
+            `${baseOut.stdout}..${branch}`,
         ]);
         if (countOut.code !== 0) {
             throw new MergeError(
@@ -222,115 +222,178 @@ export async function buildTrain(
             continue;
         }
 
-        // Replay the ticket's own commits onto the train tip. `^0` hands rebase the
-        // ticket's tip as a bare commit, so it works detached and never checks out
-        // (or moves) the ticket's branch, which its own worktree has checked out.
-        // Merge commits on the branch are dropped, so the train stays linear.
-        const rebase = await runGit(trainPath, [
+        // Rebase the ticket's own branch onto the chain, in its own worktree.
+        // Merge commits on the branch are dropped, so history stays linear.
+        const rebase = await runGit(worktree, [
             "rebase",
             "--no-rebase-merges",
             "--no-autosquash",
-            "--onto",
-            trainBranch,
-            baseOut.stdout,
-            `${ticketBranch}^0`,
+            chainBase,
         ]);
         if (rebase.code !== 0) {
-            const conflicts = await conflictedPaths(trainPath, runGit);
-            // Abort this rebase so the train is left clean (it still holds the
-            // earlier, cleanly rebased tickets); the agent drops this ticket and
-            // rebuilds without it.
-            await runGit(trainPath, ["rebase", "--abort"]);
+            const conflicts = await conflictedPaths(worktree, runGit);
             return {
-                trainId,
-                trainBranch,
-                trainPath,
                 projectBranch,
                 status: "conflict",
                 included,
                 noops,
-                conflict: { ticket: id, conflicts },
+                tip: chainTip,
+                conflict: {
+                    ticket: id,
+                    worktree,
+                    conflicts,
+                    remaining: ids.slice(i + 1),
+                },
             };
         }
-        // The rebase left the train worktree detached on the replayed commits,
-        // which sit on top of the train tip. Point the train branch at them, a
-        // fast-forward, and check it out again.
-        const advance = await runGit(trainPath, [
-            "checkout",
-            "-B",
-            trainBranch,
-            "HEAD",
-        ]);
-        if (advance.code !== 0) {
-            throw new MergeError(
-                `could not advance the train to ${id}: ${advance.stderr}`,
-            );
-        }
         included.push(id);
+        chainBase = branch;
+        chainTip = id;
     }
 
     return {
-        trainId,
-        trainBranch,
-        trainPath,
         projectBranch,
-        status: "built",
+        status: "stacked",
         included,
         noops,
+        tip: chainTip,
     };
 }
 
-// Fast-forward the project branch to the train, then move every landed ticket
-// from merge-queue/ to done/ in the state repo. The fast-forward is the point of
-// no return: after it the tickets are merged, so the done move is unconditional.
-// This does NOT commit the state repo or clean up worktrees; the CLI does both
-// (commit, then best-effort cleanup) so a cleanup failure cannot strand a merged
-// ticket short of done.
-export async function landTrain(
+// Rebase each ticket onto the one before it, ticket 1 onto main's tip.
+export async function stackTickets(
     stateDir: string,
-    trainId: string,
-    ticketIds: string[],
+    ids: string[],
+    runGit: GitRunner = realGit,
+): Promise<StackResult> {
+    const { projectDir, worktreesDir } = projectPaths(stateDir);
+    const projectBranch = await projectBranchOf(projectDir, runGit);
+    await requireWorktrees(worktreesDir, ids);
+    return stackFrom(stateDir, ids, 0, projectBranch, null, [], [], projectBranch, runGit);
+}
+
+// Finish the conflicted rebase the stack stopped on, then stack the rest.
+export async function resumeStack(
+    stateDir: string,
+    ids: string[],
+    runGit: GitRunner = realGit,
+): Promise<StackResult> {
+    const { projectDir, worktreesDir } = projectPaths(stateDir);
+    const projectBranch = await projectBranchOf(projectDir, runGit);
+    await requireWorktrees(worktreesDir, ids);
+
+    let index = -1;
+    for (let i = 0; i < ids.length; i++) {
+        if (await rebaseInProgress(join(worktreesDir, ids[i]), runGit)) {
+            index = i;
+            break;
+        }
+    }
+    if (index === -1) {
+        throw new MergeError("no ticket has a rebase in progress to resume");
+    }
+
+    const id = ids[index];
+    const worktree = join(worktreesDir, id);
+
+    // Everything before the conflicted ticket is already stacked: work out which of
+    // them have commits of their own, to find the branch this ticket sits on.
+    const included: string[] = [];
+    const noops: string[] = [];
+    let chainBase = projectBranch;
+    let chainTip: string | null = null;
+    for (let i = 0; i < index; i++) {
+        const branch = `worktrees/${ids[i]}`;
+        const baseOut = await runGit(projectDir, ["merge-base", chainBase, branch]);
+        const countOut = await runGit(projectDir, [
+            "rev-list",
+            "--count",
+            `${baseOut.stdout}..${branch}`,
+        ]);
+        if (baseOut.code === 0 && countOut.stdout.trim() === "0") {
+            noops.push(ids[i]);
+            continue;
+        }
+        included.push(ids[i]);
+        chainBase = branch;
+        chainTip = ids[i];
+    }
+
+    const cont = await runGit(worktree, ["rebase", "--continue"]);
+    if (cont.code !== 0) {
+        const conflicts = await conflictedPaths(worktree, runGit);
+        if (conflicts.length === 0) {
+            throw new MergeError(
+                `git rebase --continue failed for ${id}: ${cont.stderr}`,
+            );
+        }
+        return {
+            projectBranch,
+            status: "conflict",
+            included,
+            noops,
+            tip: chainTip,
+            conflict: {
+                ticket: id,
+                worktree,
+                conflicts,
+                remaining: ids.slice(index + 1),
+            },
+        };
+    }
+    included.push(id);
+    return stackFrom(
+        stateDir,
+        ids,
+        index + 1,
+        `worktrees/${id}`,
+        id,
+        included,
+        noops,
+        projectBranch,
+        runGit,
+    );
+}
+
+// Fast-forward the project branch to the last ticket's branch, then move every
+// landed ticket from merge-queue/ to done/ in the state repo and close its worktree.
+// The fast-forward is the point of no return: after it the tickets are merged, so
+// the done move is unconditional. This does NOT commit the state repo; the CLI does
+// (right after), so a merged ticket is recorded as done before anything else can
+// fail.
+export async function landStack(
+    stateDir: string,
+    ids: string[],
     runGit: GitRunner = realGit,
 ): Promise<LandResult> {
-    if (!trainId) {
-        throw new MergeError("missing trainId");
-    }
-    const { projectDir, trainBranch } = paths(stateDir, trainId);
+    const { projectDir, worktreesDir } = projectPaths(stateDir);
+    const projectBranch = await projectBranchOf(projectDir, runGit);
+    await requireWorktrees(worktreesDir, ids);
 
-    if (!(await exists(projectDir))) {
-        throw new MergeError(`no project repo at ${projectDir}`);
-    }
-
-    const branchOut = await runGit(projectDir, [
-        "rev-parse",
-        "--abbrev-ref",
-        "HEAD",
-    ]);
-    if (branchOut.code !== 0) {
-        throw new MergeError(
-            `could not read project branch: ${branchOut.stderr}`,
-        );
-    }
-    const projectBranch = branchOut.stdout;
-
-    // The train was built on the branch tip and nothing else advances the branch
-    // during the merge stage, so this is always a clean fast-forward.
-    const ff = await runGit(projectDir, ["merge", "--ff-only", trainBranch]);
-    if (ff.code !== 0) {
-        throw new MergeError(
-            `train ${trainId} no longer fast-forwards ${projectBranch}: ${ff.stderr}`,
-        );
+    // The branch holding the whole stack is the last ticket that has commits of
+    // its own; an all-noop list lands for free.
+    const tip = await lastTicketWithCommits(projectDir, projectBranch, ids, runGit);
+    if (tip !== null) {
+        const ff = await runGit(projectDir, [
+            "merge",
+            "--ff-only",
+            `worktrees/${tip}`,
+        ]);
+        if (ff.code !== 0) {
+            throw new MergeError(
+                `worktrees/${tip} no longer fast-forwards ${projectBranch}: ${ff.stderr}`,
+            );
+        }
     }
 
-    // Merged. Conclude each ticket: move it to done/ AND close its worktree, the
-    // shared path a Debug ticket also takes. Teardown is best-effort inside
-    // concludeTicket, so it never throws here and can never strand a merged ticket
-    // short of done/; the CLI commits the done/ moves after this returns.
+    // Merged. Conclude each ticket: move it to done/ AND close its worktree.
+    // Teardown is best-effort inside concludeTicket, so it never throws here and
+    // can never strand a merged ticket short of done/.
     const landed: string[] = [];
     const worktreesRemoved: string[] = [];
     const branchesDeleted: string[] = [];
     const teardownWarnings: string[] = [];
-    for (const id of ticketIds) {
+    for (const id of ids) {
         const concluded = await concludeTicket(stateDir, id, runGit);
         landed.push(id);
         if (concluded.worktreeRemoved) {
@@ -344,61 +407,42 @@ export async function landTrain(
         }
     }
 
-    return {
-        trainId,
-        projectBranch,
-        landed,
-        worktreesRemoved,
-        branchesDeleted,
-        teardownWarnings,
-    };
+    return { projectBranch, landed, worktreesRemoved, branchesDeleted, teardownWarnings };
 }
 
-// Tear down a failed train, leaving the ticket worktrees in place to rebuild. Also
-// used after a successful land to remove the (now-merged) train worktree itself,
-// once concludeTicket has already closed each landed ticket's own worktree.
-export async function discardTrain(
-    stateDir: string,
-    trainId: string,
-    runGit: GitRunner = realGit,
-): Promise<DiscardResult> {
-    if (!trainId) {
-        throw new MergeError("missing trainId");
+// The last ticket in the chain whose branch has commits beyond the one before it.
+async function lastTicketWithCommits(
+    projectDir: string,
+    projectBranch: string,
+    ids: string[],
+    runGit: GitRunner,
+): Promise<string | null> {
+    let chainBase = projectBranch;
+    let tip: string | null = null;
+    for (const id of ids) {
+        const branch = `worktrees/${id}`;
+        const baseOut = await runGit(projectDir, ["merge-base", chainBase, branch]);
+        if (baseOut.code !== 0) {
+            throw new MergeError(
+                `could not find merge-base for ${id}: ${baseOut.stderr}`,
+            );
+        }
+        const countOut = await runGit(projectDir, [
+            "rev-list",
+            "--count",
+            `${baseOut.stdout}..${branch}`,
+        ]);
+        if (countOut.stdout.trim() !== "0") {
+            chainBase = branch;
+            tip = id;
+        }
     }
-    const { projectDir, trainPath, trainBranch } = paths(stateDir, trainId);
-
-    if (!(await exists(projectDir))) {
-        throw new MergeError(`no project repo at ${projectDir}`);
-    }
-
-    const removed: string[] = [];
-    const deleted: string[] = [];
-    await removeWorktreeAndBranch(
-        projectDir,
-        trainPath,
-        trainBranch,
-        runGit,
-        removed,
-        deleted,
-    );
-    await runGit(projectDir, ["worktree", "prune"]);
-
-    return {
-        trainId,
-        worktreeRemoved: removed[0] ?? trainPath,
-        branchDeleted: deleted[0] ?? null,
-    };
-}
-
-// A fresh, collision-proof train id. The random suffix lets two runs (or a retry)
-// build trains side by side without clashing on the worktree path or branch name.
-function newTrainId(): string {
-    return `merge-${Math.floor(Math.random() * 1e9).toString(36)}`;
+    return tip;
 }
 
 // Thin CLI wrapper. Not exercised by the unit tests.
 async function main(argv: string[]): Promise<void> {
-    const [sub, ...rest] = argv;
+    const [sub, ...ids] = argv;
 
     const stateDir = process.cwd();
     if (!(await exists(join(stateDir, "tickets")))) {
@@ -410,28 +454,23 @@ async function main(argv: string[]): Promise<void> {
 
     try {
         await assertGitVersion();
-        if (sub === "build") {
-            const ids = rest;
+        if (sub === "stack" || sub === "resume" || sub === "land") {
             if (ids.length === 0) {
-                console.error("usage: merge-ticket.ts build <id> [<id> ...]");
+                console.error(`usage: merge-ticket.ts ${sub} <id> [<id> ...]`);
                 process.exit(1);
             }
-            const result = await buildTrain(stateDir, newTrainId(), ids);
-            // Emit JSON so the agent reliably reads back the trainId, what was
-            // included, and any conflict, without parsing prose.
+        }
+        if (sub === "stack" || sub === "resume") {
+            const result =
+                sub === "stack"
+                    ? await stackTickets(stateDir, ids)
+                    : await resumeStack(stateDir, ids);
+            // Emit JSON so the agent reliably reads back what was included, the tip
+            // and any conflict, without parsing prose.
             console.log(JSON.stringify(result));
             process.exit(result.status === "conflict" ? 2 : 0);
         } else if (sub === "land") {
-            const [trainId, ...ticketIds] = rest;
-            if (!trainId) {
-                console.error(
-                    "usage: merge-ticket.ts land <trainId> [<id> ...]",
-                );
-                process.exit(1);
-            }
-            // landTrain concludes each ticket (moves it to done/ and closes its
-            // worktree); the only cleanup left is the throwaway train worktree.
-            const result = await landTrain(stateDir, trainId, ticketIds);
+            const result = await landStack(stateDir, ids);
             // The merge has landed: commit the done/ moves immediately, so a
             // merged ticket is recorded as done before anything else can fail.
             if (result.landed.length > 0) {
@@ -444,32 +483,9 @@ async function main(argv: string[]): Promise<void> {
                     ]),
                 );
             }
-            // Removing the train worktree is best-effort: the tickets are already
-            // merged and committed to done/, so a removal failure must not fail the
-            // command (the leak is reaped by pb:next / reset-loop).
-            try {
-                const train = await discardTrain(stateDir, trainId);
-                console.log(JSON.stringify({ ...result, train }));
-            } catch (cleanupErr) {
-                const msg =
-                    cleanupErr instanceof Error
-                        ? cleanupErr.message
-                        : String(cleanupErr);
-                console.error(
-                    `warning: train ${trainId} landed but train-worktree removal failed (leak reaped later): ${msg}`,
-                );
-                console.log(JSON.stringify(result));
-            }
-        } else if (sub === "discard") {
-            const [trainId] = rest;
-            if (!trainId) {
-                console.error("usage: merge-ticket.ts discard <trainId>");
-                process.exit(1);
-            }
-            const result = await discardTrain(stateDir, trainId);
             console.log(JSON.stringify(result));
         } else {
-            console.error("usage: merge-ticket.ts <build|land|discard> ...");
+            console.error("usage: merge-ticket.ts <stack|resume|land> <id> [<id> ...]");
             process.exit(1);
         }
     } catch (err) {
