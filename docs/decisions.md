@@ -2,6 +2,12 @@
 
 A chronological log of decisions about the Playbook process: what changed and why. Newest first. Each entry has a date, a one-line title, and a short "what / why" body. This is not a queue or a status file and it never tracks in-flight work; for that, run `/pb:status` (which summarises the live ticket queues) or `/pb:board`.
 
+## 2026-11-26: pb:next runs no checks when it rebases a conflicted ticket
+
+**What changed:** the conflicts step only rebases the ticket onto main and resolves conflicts, then moves it to the merge queue. It runs no checks and captures no new evidence. The merge train's post-merge checks are the only ones.
+
+**Why:** the rebase agent's checks and the train's checks tested the same code twice, which doubled the time to land each conflicted ticket.
+
 ## 2026-11-26: pb:next never runs more than 10 agents at once
 
 **What changed:** `pb:next` runs at most 10 sub-agents at the same time, across all queues, and starts the next only when one returns.
